@@ -1,7 +1,9 @@
+// src/Paginas/Propostas.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useNavigate } from "react-router-dom";
+import { FaFileAlt, FaUser } from "react-icons/fa";
 
 export default function Propostas() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -117,7 +119,7 @@ export default function Propostas() {
                         onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
                         className="link-acao"
                       >
-                        {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
+                        <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
                       </button>
                     </td>
                     <td>{prop.descricao}</td>
@@ -167,7 +169,7 @@ export default function Propostas() {
                         onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
                         className="link-acao"
                       >
-                        {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
+                        <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
                       </button>
                     </td>
                     <td>
@@ -176,7 +178,7 @@ export default function Propostas() {
                         onClick={() => navigate(`/perfil/${prop.freelancer}`)}
                         title="Ver perfil do freelancer"
                       >
-                        {prop.freelancer_nome || prop.freelancer}
+                        <FaUser /> {prop.freelancer_nome || prop.freelancer}
                       </span>
                     </td>
                     <td>{prop.descricao}</td>

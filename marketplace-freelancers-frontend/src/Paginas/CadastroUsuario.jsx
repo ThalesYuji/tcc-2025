@@ -20,10 +20,56 @@ export default function CadastroUsuario() {
   const [sucesso, setSucesso] = useState("");
   const navigate = useNavigate();
 
+  // Máscara para telefone
+  function formatarTelefone(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length > 11) numeros = numeros.slice(0, 11);
+
+    if (numeros.length > 10) {
+      return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (numeros.length > 6) {
+      return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (numeros.length > 2) {
+      return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    } else {
+      return numeros.replace(/^(\d*)/, "($1");
+    }
+  }
+
+  // Máscara para CPF
+  function formatarCPF(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length > 11) numeros = numeros.slice(0, 11);
+    return numeros.replace(
+      /^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/,
+      "$1.$2.$3-$4"
+    );
+  }
+
+  // Máscara para CNPJ
+  function formatarCNPJ(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length > 14) numeros = numeros.slice(0, 14);
+    return numeros.replace(
+      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2}).*/,
+      "$1.$2.$3/$4-$5"
+    );
+  }
+
   function handleChange(e) {
     const { name, value, files } = e.target;
+
     if (name === "foto_perfil") {
       setForm({ ...form, [name]: files[0] });
+    } else if (name === "telefone") {
+      setForm({ ...form, [name]: formatarTelefone(value) });
+    } else if (name === "cpf") {
+      setForm({ ...form, [name]: formatarCPF(value) });
+    } else if (name === "cnpj") {
+      setForm({ ...form, [name]: formatarCNPJ(value) });
     } else {
       setForm({ ...form, [name]: value });
     }
@@ -187,6 +233,7 @@ export default function CadastroUsuario() {
                   onChange={handleChange}
                   required
                   className={erros.telefone ? "input-erro" : ""}
+                  maxLength="15"
                 />
               </div>
               <div className="form-row">
@@ -198,6 +245,7 @@ export default function CadastroUsuario() {
                   onChange={handleChange}
                   required
                   className={erros.cpf ? "input-erro" : ""}
+                  maxLength="14"
                 />
                 {form.tipo === "cliente" && (
                   <input
@@ -208,6 +256,7 @@ export default function CadastroUsuario() {
                     onChange={handleChange}
                     required
                     className={erros.cnpj ? "input-erro" : ""}
+                    maxLength="18"
                   />
                 )}
               </div>

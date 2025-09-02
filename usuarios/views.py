@@ -100,5 +100,7 @@ class UsuarioMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = UsuarioSerializer(request.user)
+        # 🔹 Ajustado: passa o request no context para gerar URLs absolutas
+        serializer = UsuarioSerializer(request.user, context={'request': request})
         return Response(serializer.data)
+

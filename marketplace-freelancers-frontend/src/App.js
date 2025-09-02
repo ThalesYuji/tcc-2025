@@ -21,7 +21,12 @@ import CadastrarDenuncia from "./Paginas/CadastrarDenuncia";
 import PainelDenuncias from "./Paginas/PainelDenuncias";
 import MinhasDenuncias from "./Paginas/MinhasDenuncias";
 import HistoricoNotificacoes from "./Paginas/HistoricoNotificacoes";
-import ChatContrato from "./Paginas/ChatContrato"; // ← import do chat
+import ChatContrato from "./Paginas/ChatContrato";
+import HomeInicial from "./Paginas/HomeInicial"; // 🔹 nova tela inicial
+
+// 🔹 Toastify
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import "./App.css";
 
@@ -29,6 +34,19 @@ function App() {
   return (
     <UsuarioProvider>
       <Router>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
+
         <Routes>
           {/* Rotas públicas */}
           <Route path="/" element={<Navigate to="/login" />} />
@@ -45,7 +63,8 @@ function App() {
                   <Navbar />
                   <div className="app-container">
                     <Routes>
-                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/home" element={<HomeInicial />} /> {/* 🔹 nova primeira tela */}
+                      <Route path="/dashboard" element={<Dashboard />} /> {/* continua existindo */}
                       <Route path="/trabalhos" element={<Trabalhos />} />
                       <Route path="/trabalhos/novo" element={<CadastroTrabalho />} />
                       <Route path="/trabalhos/editar/:id" element={<EditarTrabalho />} />
@@ -61,7 +80,7 @@ function App() {
                       <Route path="/minhas-denuncias" element={<MinhasDenuncias />} />
                       <Route path="/notificacoes" element={<HistoricoNotificacoes />} />
                       <Route path="/contratos/:contratoId/chat" element={<ChatContrato />} />
-                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="*" element={<Navigate to="/home" replace />} /> {/* 🔹 agora redireciona para Home */}
                     </Routes>
                   </div>
                 </>

@@ -4,10 +4,12 @@ from habilidades.models import Habilidade
 from datetime import date
 import re
 
+
 class HabilidadeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Habilidade
         fields = ['id', 'nome', 'categoria', 'subcategoria']
+
 
 class TrabalhoSerializer(serializers.ModelSerializer):
     habilidades = serializers.CharField(required=False, allow_blank=True)
@@ -19,10 +21,12 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         model = Trabalho
         fields = '__all__'
         read_only_fields = [
-            'cliente', 'status', 'criado_em', 'atualizado_em',
+            'cliente', 'status', 'is_privado',
+            'criado_em', 'atualizado_em',
             'habilidades_detalhes', 'nome_cliente', 'cliente_id'
         ]
-        # ⬆️  'status' permanece como read_only para impedir mudanças diretas via API
+
+    # ===================== GETTERS =====================
 
     def get_nome_cliente(self, obj):
         if obj.cliente:
@@ -36,6 +40,8 @@ class TrabalhoSerializer(serializers.ModelSerializer):
 
     def get_cliente_id(self, obj):
         return obj.cliente.id if obj.cliente else None
+
+    # ===================== VALIDATIONS =====================
 
     def validate_prazo(self, value):
         if value < date.today():
@@ -58,31 +64,43 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        request = self.context.get('request')
-        usuario = getattr(request, 'user', None)
-        if not usuario:
-            return data
+        usuario = self.context['request'].user
         if usuario.tipo != 'cliente' and not usuario.is_superuser:
-            raise serializers.ValidationError(
-                "Apenas usuários do tipo 'cliente' ou administradores podem publicar trabalhos."
-            )
+            raise serializers.ValidationError("Apenas clientes ou administradores podem publicar trabalhos.")
         return data
+
+    # ===================== CREATE =====================
 
     def create(self, validated_data):
         habilidades_texto = self._extrair_habilidades()
         validated_data['cliente'] = self.context['request'].user
+
+        # 🔹 Define se é privado ou público
+        freelancer = validated_data.get('freelancer')
+        if freelancer:
+            validated_data['is_privado'] = True
+            validated_data['status'] = 'aberto'  # aguardando aceitação do freela
+        else:
+            validated_data['is_privado'] = False
+            validated_data['status'] = 'aberto'
+
         validated_data.pop('habilidades', None)
         trabalho = super().create(validated_data)
+
+        # Processa habilidades
         self._processar_habilidades(trabalho, habilidades_texto)
         return trabalho
 
+    # ===================== UPDATE =====================
+
     def update(self, instance, validated_data):
-        """
-        ⚠️ Bloqueia alteração direta de status via API.
-        O status só pode mudar pelos fluxos de propostas/contratos.
-        """
+        # 🔹 Bloqueia alteração manual de status
         if 'status' in validated_data:
             validated_data.pop('status')
+
+        # 🔹 Bloqueia troca de freelancer depois de definido
+        if 'freelancer' in validated_data and instance.freelancer:
+            validated_data.pop('freelancer')
 
         habilidades_texto = self._extrair_habilidades()
         validated_data.pop('habilidades', None)
@@ -93,6 +111,8 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             self._processar_habilidades(trabalho, habilidades_texto)
 
         return trabalho
+
+    # ===================== HABILIDADES =====================
 
     def _extrair_habilidades(self):
         request = self.context.get('request')

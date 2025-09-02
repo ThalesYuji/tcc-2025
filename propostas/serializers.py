@@ -3,6 +3,10 @@ from .models import Proposta
 from datetime import date
 
 class PropostaSerializer(serializers.ModelSerializer):
+    # 🔹 Campos extras só para leitura
+    trabalho_titulo = serializers.CharField(source="trabalho.titulo", read_only=True)
+    freelancer_nome = serializers.CharField(source="freelancer.nome", read_only=True)
+
     class Meta:
         model = Proposta
         fields = '__all__'

@@ -5,12 +5,14 @@ import { useParams, useNavigate } from "react-router-dom";
 
 const BASE_URL = "http://localhost:8000";
 
+// 🔹 Função para cores do status
 function getStatusColor(status) {
   switch (status) {
     case "aberto": return "green";
     case "em_andamento": return "orange";
     case "concluido": return "blue";
     case "cancelado": return "red";
+    case "recusado": return "gray";
     default: return "gray";
   }
 }
@@ -21,25 +23,24 @@ export default function DetalhesTrabalho() {
   const [erro, setErro] = useState("");
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    descricao: "",
-    valor: "",
-    prazo_estimado: "",
-  });
+  const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
   const [formErro, setFormErro] = useState("");
   const [formSucesso, setFormSucesso] = useState("");
+  const [alerta, setAlerta] = useState(null); // 🔹 estado do alerta central
   const navigate = useNavigate();
 
+  // 🔹 Buscar dados do trabalho + usuário logado
   useEffect(() => {
     api.get(`/trabalhos/${id}/`)
       .then((response) => setTrabalho(response.data))
-      .catch(() => setErro("❌ Erro ao buscar o trabalho. Por favor, tente novamente."));
+      .catch(() => setErro("❌ Erro ao buscar o trabalho."));
 
     getUsuarioLogado()
       .then(setUsuarioLogado)
       .catch(() => setUsuarioLogado(null));
   }, [id]);
 
+  // 🔹 Utilidades de data
   function formatarData(dataStr) {
     if (!dataStr) return "";
     const [ano, mes, dia] = dataStr.split("-");
@@ -52,28 +53,39 @@ export default function DetalhesTrabalho() {
     return d.toLocaleString("pt-BR");
   }
 
-  const podeEditarOuExcluir = () => {
-    if (!usuarioLogado || !trabalho) return false;
-    return usuarioLogado.id === trabalho.cliente_id || usuarioLogado.is_superuser;
-  };
+  // 🔹 Função para mostrar alerta central
+  function mostrarAlerta(tipo, texto, destino = null) {
+    setAlerta({ tipo, texto });
+    setTimeout(() => {
+      setAlerta(null);
+      if (destino) navigate(destino);
+    }, 2000); // desaparece em 2s
+  }
+
+  // 🔹 Permissões de edição/exclusão
+  const podeEditarOuExcluir = () =>
+    usuarioLogado &&
+    trabalho &&
+    (usuarioLogado.id === trabalho.cliente_id || usuarioLogado.is_superuser);
 
   const handleDelete = async () => {
     const confirmar = window.confirm("Tem certeza que deseja excluir este trabalho?");
     if (!confirmar) return;
     try {
       await api.delete(`/trabalhos/${trabalho.id}/`);
-      navigate("/trabalhos");
+      mostrarAlerta("sucesso", "🗑️ Trabalho excluído com sucesso!", "/trabalhos");
     } catch {
-      alert("Erro ao excluir trabalho. Tente novamente mais tarde.");
+      mostrarAlerta("erro", "❌ Erro ao excluir trabalho.");
     }
   };
 
-  // ====== PROPOSTA ======
+  // ====== PROPOSTA (só para trabalhos públicos) ======
   const podeEnviarProposta =
     usuarioLogado &&
     usuarioLogado.tipo === "freelancer" &&
     trabalho &&
-    trabalho.status === "aberto";
+    trabalho.status === "aberto" &&
+    !trabalho.is_privado;
 
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
@@ -104,13 +116,42 @@ export default function DetalhesTrabalho() {
       setShowForm(false);
     } catch (err) {
       const mensagem =
-        (err.response?.data?.erro ||
-         err.response?.data?.detail ||
-         "Erro ao enviar proposta. Tente novamente.");
+        err.response?.data?.erro ||
+        err.response?.data?.detail ||
+        "Erro ao enviar proposta. Tente novamente.";
       setFormErro(`❌ ${mensagem}`);
     }
   };
 
+  // ====== ACEITAR / RECUSAR (apenas freelancer alvo em trabalhos privados) ======
+  const podeAceitarOuRecusar =
+    usuarioLogado &&
+    trabalho &&
+    trabalho.is_privado &&
+    trabalho.freelancer === usuarioLogado.id &&
+    trabalho.status === "aberto";
+
+  const aceitarTrabalho = async () => {
+    try {
+      await api.post(`/trabalhos/${trabalho.id}/aceitar/`);
+      mostrarAlerta("sucesso", "✅ Trabalho aceito e contrato criado!", "/contratos");
+    } catch (err) {
+      console.error(err.response?.data || err);
+      mostrarAlerta("erro", "❌ Erro ao aceitar o trabalho.");
+    }
+  };
+
+  const recusarTrabalho = async () => {
+    try {
+      await api.post(`/trabalhos/${trabalho.id}/recusar/`);
+      mostrarAlerta("info", "⚠️ Você recusou o trabalho.", "/trabalhos");
+    } catch (err) {
+      console.error(err.response?.data || err);
+      mostrarAlerta("erro", "❌ Erro ao recusar o trabalho.");
+    }
+  };
+
+  // ====== RENDER ======
   if (erro) {
     return (
       <div className="main-center">
@@ -129,6 +170,23 @@ export default function DetalhesTrabalho() {
 
   return (
     <div className="main-center">
+      {/* ALERTA CENTRAL */}
+      {alerta && (
+        <div className="alerta-overlay">
+          <div
+            className={`alerta-box ${
+              alerta.tipo === "sucesso"
+                ? "alerta-sucesso"
+                : alerta.tipo === "erro"
+                ? "alerta-erro"
+                : "alerta-info"
+            }`}
+          >
+            {alerta.texto}
+          </div>
+        </div>
+      )}
+      
       <div className="main-box" style={{ maxWidth: 520 }}>
         <h2 style={{ marginBottom: 18 }}>📄 Detalhes do Trabalho</h2>
         <div><strong>Título:</strong> {trabalho.titulo}</div>
@@ -188,7 +246,7 @@ export default function DetalhesTrabalho() {
           )}
         </div>
 
-        {/* FORMULÁRIO DE PROPOSTA */}
+        {/* FORMULÁRIO DE PROPOSTA (apenas trabalhos públicos) */}
         {podeEnviarProposta && (
           <div style={{ marginTop: 24 }}>
             <button onClick={abrirFormProposta}>✉️ Enviar Proposta</button>
@@ -240,6 +298,41 @@ export default function DetalhesTrabalho() {
                 </div>
               </form>
             )}
+          </div>
+        )}
+
+        {/* BOTÕES ACEITAR / RECUSAR (apenas freelancer alvo) */}
+        {podeAceitarOuRecusar && (
+          <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
+            <button
+              onClick={aceitarTrabalho}
+              style={{
+                background: "#43a047",
+                color: "#fff",
+                border: "none",
+                borderRadius: 7,
+                padding: "10px 18px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Aceitar Trabalho
+            </button>
+
+            <button
+              onClick={recusarTrabalho}
+              style={{
+                background: "#e53935",
+                color: "#fff",
+                border: "none",
+                borderRadius: 7,
+                padding: "10px 18px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Recusar Trabalho
+            </button>
           </div>
         )}
       </div>

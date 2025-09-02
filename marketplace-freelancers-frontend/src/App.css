@@ -2787,33 +2787,69 @@ input[type="file"] {
 .tabela-propostas th {
   background: #2563eb;
   color: #fff;
-  padding: 12px;
+  padding: 14px 16px;
   text-align: left;
   font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .tabela-propostas td {
-  padding: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid #eee;
+  vertical-align: middle;
+  font-size: 0.95rem;
+  color: #333;
 }
 
 .tabela-propostas tr:last-child td {
   border-bottom: none;
 }
 
+/* zebra rows */
+.tabela-propostas tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+/* hover na linha inteira */
+.tabela-propostas tbody tr:hover {
+  background: #f3f4f6; /* cinza suave */
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.05); /* relevo leve */
+  transition: all 0.2s ease-in-out;
+}
+
 .nenhum-registro {
   text-align: center;
   padding: 20px;
   color: #555;
+  font-style: italic;
 }
 
+/* Links mais discretos */
 .link-acao {
   background: none;
   border: none;
   color: #2563eb;
-  text-decoration: underline;
   cursor: pointer;
   font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-acao:hover {
+  color: #1e3a8a; /* azul mais forte */
+  text-decoration: underline;
+}
+
+/* Ícone do trabalho */
+.link-acao svg {
+  font-size: 1rem;
+  color: #2563eb;
+  opacity: 0.85;
 }
 
 .status-badge {
@@ -2852,6 +2888,7 @@ input[type="file"] {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
+  transition: background 0.2s ease-in-out;
 }
 
 .btn-aceitar {
@@ -2871,6 +2908,7 @@ input[type="file"] {
 .btn-recusar:hover {
   background: #c82333;
 }
+
 
 /* =========================
    BOTÃO DE CHAT
@@ -3623,4 +3661,130 @@ input[type="file"] {
   .notificacoes-item-texto {
     max-width: 90vw;
   }
+}
+
+/* =========================
+   ALERTAS CENTRAIS
+   ========================= */
+.alerta-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.alerta-box {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  min-width: 320px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* Variações de cor */
+.alerta-sucesso {
+  color: #2e7d32; /* verde */
+}
+
+.alerta-erro {
+  color: #c62828; /* vermelho */
+}
+
+.alerta-info {
+  color: #1565c0; /* azul */
+}
+
+/* ============================= */
+/*   ESTILO FINAL HOME INICIAL   */
+/* ============================= */
+
+/* Container principal */
+.home-wrapper {
+  padding-top: 100px; /* 🔹 Espaço p/ navbar fixa */
+  padding-bottom: 40px;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+/* Banner de boas-vindas */
+.welcome-banner {
+  background: linear-gradient(135deg, #1976d2, #42a5f5);
+  color: #fff !important;
+  border-radius: 18px;
+  padding: 40px 20px;
+  margin-bottom: 40px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+}
+.welcome-banner h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.welcome-banner p {
+  font-size: 1.2rem;
+  opacity: 0.95;
+}
+
+/* Atalhos principais */
+.shortcut-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  text-decoration: none !important;
+  color: #fff !important;
+  border-radius: 18px;
+  padding: 2rem 1rem;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  height: 100%;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+.shortcut-tile i {
+  font-size: 2.4rem;
+}
+.shortcut-tile:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+/* Cards de oportunidades */
+.opp-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+.opp-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+}
+.opp-card .card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1976d2;
+}
+.opp-card .card-text {
+  font-size: 0.95rem;
+  color: #444;
+  margin-bottom: 1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .welcome-banner h2 { font-size: 1.5rem; }
+  .welcome-banner p { font-size: 1rem; }
+  .shortcut-tile { padding: 1.5rem 0.8rem; font-size: 0.9rem; }
+  .shortcut-tile i { font-size: 2rem; }
 }

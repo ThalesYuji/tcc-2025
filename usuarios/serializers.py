@@ -42,12 +42,27 @@ class UsuarioSerializer(serializers.ModelSerializer):
     )
     
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
-    foto_perfil = serializers.ImageField(required=False, allow_null=True)
+    # 🔹 Ajustado: agora devolve URL absoluta da imagem
+    foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
     notificacao_email = serializers.BooleanField(required=False)
 
     class Meta:
         model = Usuario
         fields = '__all__'
+
+    # 🔹 Normalizar dados antes de salvar no banco
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+
+        # Remove caracteres não numéricos de CPF, CNPJ e telefone
+        if 'cpf' in data and data['cpf']:
+            data['cpf'] = re.sub(r'\D', '', data['cpf'])
+        if 'cnpj' in data and data['cnpj']:
+            data['cnpj'] = re.sub(r'\D', '', data['cnpj'])
+        if 'telefone' in data and data['telefone']:
+            data['telefone'] = re.sub(r'\D', '', data['telefone'])
+
+        return data
 
     def create(self, validated_data):
         password = validated_data.pop('password')

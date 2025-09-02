@@ -16,9 +16,11 @@ def upload_to_anexos(instance, filename):
 class Trabalho(models.Model):
     STATUS_CHOICES = (
         ('aberto', 'Aberto'),
+        ('aguardando_aceitacao', 'Aguardando aceitação do freelancer'),
         ('em_andamento', 'Em andamento'),
         ('concluido', 'Concluído'),
         ('cancelado', 'Cancelado'),
+        ('recusado', 'Recusado'),
     )
 
     titulo = models.CharField(max_length=200)
@@ -26,25 +28,40 @@ class Trabalho(models.Model):
     prazo = models.DateField()
     orcamento = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(
-        max_length=20,
+        max_length=25,
         choices=STATUS_CHOICES,
         default='aberto'
     )
+
     cliente = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='trabalhos_publicados'
     )
+
+    # 🔹 Caso seja um trabalho privado
+    freelancer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='trabalhos_direcionados'
+    )
+
+    is_privado = models.BooleanField(default=False)
+
     anexo = models.FileField(
         upload_to=upload_to_anexos,
         blank=True,
         null=True
     )
+
     habilidades = models.ManyToManyField(
         'habilidades.Habilidade',
         blank=True,
         related_name='trabalhos'
     )
+
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

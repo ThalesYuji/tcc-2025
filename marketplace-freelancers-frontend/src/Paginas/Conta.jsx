@@ -43,6 +43,23 @@ export default function Conta() {
 
   const fileInputRef = useRef(null);
 
+  // Função de máscara para telefone
+  function formatarTelefone(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length > 11) numeros = numeros.slice(0, 11);
+
+    if (numeros.length > 10) {
+      return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (numeros.length > 6) {
+      return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (numeros.length > 2) {
+      return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    } else {
+      return numeros.replace(/^(\d*)/, "($1");
+    }
+  }
+
   // Carrega avaliações recebidas ao abrir a tela
   React.useEffect(() => {
     async function buscarAvaliacoes() {
@@ -71,14 +88,10 @@ export default function Conta() {
     setEditando(true);
     setForm({
       nome: usuarioLogado.nome,
-      telefone: usuarioLogado.telefone,
+      telefone: formatarTelefone(usuarioLogado.telefone || ""),
       foto_perfil: null,
     });
-    setPreviewFoto(
-      usuarioLogado.foto_perfil
-        ? `http://localhost:8000${usuarioLogado.foto_perfil}`
-        : "/icone-usuario.png"
-    );
+    setPreviewFoto(getPreviewFoto(usuarioLogado));
     setErro("");
     setFeedback("");
   }
@@ -88,6 +101,8 @@ export default function Conta() {
     if (name === "foto_perfil" && files && files[0]) {
       setForm((f) => ({ ...f, foto_perfil: files[0] }));
       setPreviewFoto(URL.createObjectURL(files[0]));
+    } else if (name === "telefone") {
+      setForm((f) => ({ ...f, telefone: formatarTelefone(value) }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
@@ -99,21 +114,17 @@ export default function Conta() {
     setFeedback("");
     setForm({
       nome: usuarioLogado.nome,
-      telefone: usuarioLogado.telefone,
+      telefone: formatarTelefone(usuarioLogado.telefone || ""),
       foto_perfil: null,
     });
-    setPreviewFoto(
-      usuarioLogado.foto_perfil
-        ? `http://localhost:8000${usuarioLogado.foto_perfil}`
-        : "/icone-usuario.png"
-    );
+    setPreviewFoto(getPreviewFoto(usuarioLogado));
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function getPreviewFoto(usuario) {
     const foto = usuario?.foto_perfil;
     if (foto && foto !== "" && foto !== null) {
-      return `http://localhost:8000${foto}`;
+      return foto; // já vem como URL completa do backend
     }
     return "/icone-usuario.png";
   }
@@ -125,7 +136,7 @@ export default function Conta() {
     setFeedback("");
     const formData = new FormData();
     formData.append("nome", form.nome);
-    formData.append("telefone", form.telefone);
+    formData.append("telefone", form.telefone.replace(/\D/g, ""));
     if (form.foto_perfil) {
       formData.append("foto_perfil", form.foto_perfil);
     }
@@ -140,6 +151,9 @@ export default function Conta() {
         telefone: resp.data.telefone,
         foto_perfil: resp.data.foto_perfil,
       }));
+
+      // 🔹 Atualiza o preview também
+      setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
       setFeedback("Dados atualizados com sucesso!");
       setCarregando(false);
@@ -327,7 +341,7 @@ export default function Conta() {
                 </li>
               )}
               <li>
-                <strong>Telefone:</strong> {usuarioLogado.telefone}
+                <strong>Telefone:</strong> {formatarTelefone(usuarioLogado.telefone)}
               </li>
               {typeof notaMedia !== "undefined" && (
                 <li>

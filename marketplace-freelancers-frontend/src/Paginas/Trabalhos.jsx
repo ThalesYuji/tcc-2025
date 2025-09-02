@@ -23,7 +23,6 @@ export default function Trabalhos() {
     api.get("/habilidades/")
       .then(res => {
         if (Array.isArray(res.data) && res.data.length > 0) {
-          // 🔹 Ordena por nome
           const habilidadesOrdenadas = res.data.sort((a, b) => a.nome.localeCompare(b.nome));
           setTodasHabilidades(habilidadesOrdenadas);
         } else {
@@ -41,11 +40,8 @@ export default function Trabalhos() {
     let params = [];
     if (filtros.busca !== undefined && filtros.busca.trim() !== "")
       params.push(`busca=${encodeURIComponent(filtros.busca)}`);
-
-    // 🔹 Envia o nome da habilidade se ela for selecionada
     if (filtros.habilidade !== undefined && filtros.habilidade)
       params.push(`habilidade=${encodeURIComponent(filtros.habilidade)}`);
-
     params.push(`page=${filtros.page || page}`);
     params.push(`page_size=${pageSize}`);
     if (params.length > 0) url += `?${params.join("&")}`;
@@ -56,7 +52,7 @@ export default function Trabalhos() {
         setPage(response.data.page || 1);
         setNumPages(response.data.num_pages || 1);
       })
-      .catch(() => setErro("❌ Erro ao buscar trabalhos. Tente novamente mais tarde."));
+      .catch(() => setErro("❌ Erro ao buscar trabalhos."));
   }
 
   function formatarData(dataStr) {
@@ -95,19 +91,11 @@ export default function Trabalhos() {
   }
 
   if (carregando) {
-    return (
-      <div className="main-center">
-        <div className="main-box">🔄 Carregando trabalhos...</div>
-      </div>
-    );
+    return <div className="main-center"><div className="main-box">🔄 Carregando trabalhos...</div></div>;
   }
 
   if (!usuarioLogado) {
-    return (
-      <div className="main-center">
-        <div className="main-box error-msg">⚠️ Usuário não autenticado!</div>
-      </div>
-    );
+    return <div className="main-center"><div className="main-box error-msg">⚠️ Usuário não autenticado!</div></div>;
   }
 
   return (
@@ -115,7 +103,7 @@ export default function Trabalhos() {
       <div className="main-box" style={{ maxWidth: 900 }}>
         <h2>🛠️ Trabalhos Disponíveis</h2>
 
-        {/* Formulário de busca/filtro */}
+        {/* Filtros */}
         <form className="form-filtro" onSubmit={filtrar} style={{ marginBottom: 24 }}>
           <input
             type="text"
@@ -124,10 +112,7 @@ export default function Trabalhos() {
             onChange={e => setBusca(e.target.value)}
             style={{ minWidth: 190 }}
           />
-          <select
-            value={habilidade}
-            onChange={e => setHabilidade(e.target.value)}
-          >
+          <select value={habilidade} onChange={e => setHabilidade(e.target.value)}>
             <option value="">Todas Habilidades</option>
             {todasHabilidades.length > 0 ? (
               todasHabilidades.map(hab => (
@@ -145,7 +130,7 @@ export default function Trabalhos() {
           </div>
         </form>
 
-        {/* Botão de criar trabalho */}
+        {/* Criar trabalho */}
         {(usuarioLogado.tipo === "cliente" || usuarioLogado.is_superuser) && (
           <button
             className="btn-novo-trabalho"
@@ -156,12 +141,11 @@ export default function Trabalhos() {
           </button>
         )}
 
-        {/* ERRO */}
         {erro && <div className="error-msg" style={{ marginBottom: 12 }}>{erro}</div>}
 
-        {/* Lista de trabalhos */}
+        {/* Lista */}
         {trabalhos.length === 0 ? (
-          <div style={{ color: "#666", marginTop: 20 }}>Nenhum trabalho encontrado com os filtros aplicados.</div>
+          <div style={{ color: "#666", marginTop: 20 }}>Nenhum trabalho encontrado.</div>
         ) : (
           <ul className="lista-trabalhos">
             {trabalhos.map((trabalho) => (
@@ -178,11 +162,7 @@ export default function Trabalhos() {
                     <div>
                       <b>Cliente:</b>{" "}
                       <span
-                        style={{
-                          color: "#1976d2",
-                          textDecoration: "underline",
-                          cursor: "pointer"
-                        }}
+                        style={{ color: "#1976d2", textDecoration: "underline", cursor: "pointer" }}
                         onClick={() => navigate(`/perfil/${trabalho.cliente_id}`)}
                       >
                         {trabalho.nome_cliente}
@@ -207,12 +187,16 @@ export default function Trabalhos() {
                       </div>
                     )}
                   </div>
-                  <button
-                    className="btn-detalhes"
-                    onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
-                  >
-                    Ver Detalhes
-                  </button>
+
+                  {/* Botão único */}
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      className="btn-detalhes"
+                      onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
+                    >
+                      Ver Detalhes
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -223,9 +207,7 @@ export default function Trabalhos() {
         {numPages > 1 && (
           <div className="pagination" style={{ marginTop: 18 }}>
             <button disabled={page <= 1} onClick={anterior}>⬅️ Anterior</button>
-            <span style={{ margin: "0 14px" }}>
-              Página {page} de {numPages}
-            </span>
+            <span style={{ margin: "0 14px" }}>Página {page} de {numPages}</span>
             <button disabled={page >= numPages} onClick={proxima}>Próxima ➡️</button>
           </div>
         )}

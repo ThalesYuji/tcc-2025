@@ -1,10 +1,18 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import api from "../Servicos/Api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 
 export default function CadastroTrabalho() {
   const { usuarioLogado } = useContext(UsuarioContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 🔹 Captura freelancerId da query string
+  const params = new URLSearchParams(location.search);
+  const freelancerId = params.get("freelancer");
+
+  const [freelancerNome, setFreelancerNome] = useState("");
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -19,21 +27,40 @@ export default function CadastroTrabalho() {
   const [erroGeral, setErroGeral] = useState("");
   const [sucesso, setSucesso] = useState("");
 
-  const navigate = useNavigate();
+  // 🔹 Buscar nome do freelancer (se for trabalho privado)
+  useEffect(() => {
+    async function fetchFreelancer() {
+      if (freelancerId) {
+        try {
+          const resp = await api.get(`/usuarios/${freelancerId}/`);
+          setFreelancerNome(resp.data.nome || resp.data.email);
+        } catch {
+          setFreelancerNome("Freelancer não encontrado");
+        }
+      }
+    }
+    fetchFreelancer();
+  }, [freelancerId]);
+
+  // 🔹 buscarSugestoes definido com useCallback
+  const buscarSugestoes = useCallback(
+    async (texto) => {
+      try {
+        const res = await api.get(`/habilidades/?search=${texto}`);
+        const nomes = res.data.map((h) => h.nome);
+        setSugestoes(
+          texto ? nomes.filter((nome) => !habilidades.includes(nome)) : []
+        );
+      } catch {
+        setSugestoes([]);
+      }
+    },
+    [habilidades]
+  );
 
   useEffect(() => {
     buscarSugestoes(""); // inicia sem sugestões
-  }, []);
-
-  const buscarSugestoes = async (texto) => {
-    try {
-      const res = await api.get(`/habilidades/?search=${texto}`);
-      const nomes = res.data.map(h => h.nome);
-      setSugestoes(texto ? nomes.filter(nome => !habilidades.includes(nome)) : []);
-    } catch {
-      setSugestoes([]);
-    }
-  };
+  }, [buscarSugestoes]);
 
   const handleHabilidadeInput = (e) => {
     const valor = e.target.value;
@@ -66,7 +93,8 @@ export default function CadastroTrabalho() {
     if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
     if (!prazo) novosErros.prazo = "Escolha o prazo.";
     if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
-      novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
+      novosErros.orcamento =
+        "Informe um orçamento válido (maior que zero).";
     }
     return novosErros;
   };
@@ -92,9 +120,14 @@ export default function CadastroTrabalho() {
     habilidades.forEach((hab) => formData.append("habilidades", hab));
     if (anexo) formData.append("anexo", anexo);
 
+    // 🔹 Se veio da query string → envia freelancer fixo
+    if (freelancerId) {
+      formData.append("freelancer", freelancerId);
+    }
+
     try {
       await api.post("/trabalhos/", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Trabalho cadastrado com sucesso!");
       setTimeout(() => navigate("/trabalhos"), 1200);
@@ -103,17 +136,26 @@ export default function CadastroTrabalho() {
         const backendErros = err.response.data;
         let novosErros = {};
         Object.entries(backendErros).forEach(([campo, mensagem]) => {
-          novosErros[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : mensagem;
+          novosErros[campo] = Array.isArray(mensagem)
+            ? mensagem.join(" ")
+            : mensagem;
         });
         setErros(novosErros);
-        setErroGeral(backendErros.detail || "Erro ao cadastrar trabalho.");
+        setErroGeral(
+          backendErros.detail || "Erro ao cadastrar trabalho."
+        );
       } else {
-        setErroGeral("Erro ao cadastrar trabalho. Verifique os campos e tente novamente.");
+        setErroGeral(
+          "Erro ao cadastrar trabalho. Verifique os campos e tente novamente."
+        );
       }
     }
   };
 
-  if (!usuarioLogado || (usuarioLogado.tipo !== "cliente" && !usuarioLogado.is_superuser)) {
+  if (
+    !usuarioLogado ||
+    (usuarioLogado.tipo !== "cliente" && !usuarioLogado.is_superuser)
+  ) {
     return (
       <div className="main-center">
         <div className="main-box" style={{ color: "red" }}>
@@ -126,13 +168,25 @@ export default function CadastroTrabalho() {
   return (
     <div className="main-center">
       <div className="form-box">
-        <h2 style={{ marginBottom: 22 }}>Cadastrar Novo Trabalho</h2>
+        <h2 style={{ marginBottom: 22 }}>
+          {freelancerId
+            ? "Criar Trabalho Privado"
+            : "Cadastrar Novo Trabalho"}
+        </h2>
+
+        {freelancerId && (
+          <p style={{ marginBottom: 15, color: "#1976d2" }}>
+            Este trabalho será direcionado apenas para{" "}
+            <strong>{freelancerNome || `Freelancer #${freelancerId}`}</strong>.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} encType="multipart/form-data">
           <input
             type="text"
             placeholder="Título"
             value={titulo}
-            onChange={e => setTitulo(e.target.value)}
+            onChange={(e) => setTitulo(e.target.value)}
             required
             className={erros.titulo ? "input-erro" : ""}
           />
@@ -141,16 +195,18 @@ export default function CadastroTrabalho() {
           <textarea
             placeholder="Descrição"
             value={descricao}
-            onChange={e => setDescricao(e.target.value)}
+            onChange={(e) => setDescricao(e.target.value)}
             required
             className={erros.descricao ? "input-erro" : ""}
           />
-          {erros.descricao && <div className="error-msg">{erros.descricao}</div>}
+          {erros.descricao && (
+            <div className="error-msg">{erros.descricao}</div>
+          )}
 
           <input
             type="date"
             value={prazo}
-            onChange={e => setPrazo(e.target.value)}
+            onChange={(e) => setPrazo(e.target.value)}
             required
             className={erros.prazo ? "input-erro" : ""}
           />
@@ -160,19 +216,26 @@ export default function CadastroTrabalho() {
             type="number"
             placeholder="Orçamento"
             value={orcamento}
-            onChange={e => setOrcamento(e.target.value)}
+            onChange={(e) => setOrcamento(e.target.value)}
             min="1"
             required
             className={erros.orcamento ? "input-erro" : ""}
           />
-          {erros.orcamento && <div className="error-msg">{erros.orcamento}</div>}
+          {erros.orcamento && (
+            <div className="error-msg">{erros.orcamento}</div>
+          )}
 
           <label>Habilidades:</label>
           <div className="habilidades-container">
             {habilidades.map((hab, index) => (
               <div key={index} className="habilidade-tag">
                 {hab}
-                <button type="button" onClick={() => removeHabilidade(hab)}>×</button>
+                <button
+                  type="button"
+                  onClick={() => removeHabilidade(hab)}
+                >
+                  ×
+                </button>
               </div>
             ))}
             <input
@@ -197,13 +260,15 @@ export default function CadastroTrabalho() {
           <label>Anexo (opcional):</label>
           <input
             type="file"
-            onChange={e => setAnexo(e.target.files[0])}
+            onChange={(e) => setAnexo(e.target.files[0])}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             className={erros.anexo ? "input-erro" : ""}
           />
           {erros.anexo && <div className="error-msg">{erros.anexo}</div>}
 
-          <button type="submit">Cadastrar Trabalho</button>
+          <button type="submit">
+            {freelancerId ? "Enviar para Freelancer" : "Cadastrar Trabalho"}
+          </button>
         </form>
         {sucesso && <div className="success-msg">{sucesso}</div>}
         {erroGeral && <div className="error-msg">{erroGeral}</div>}

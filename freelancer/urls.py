@@ -24,7 +24,7 @@ from django.conf.urls.static import static
 router = DefaultRouter()
 router.register(r'usuarios', UsuarioViewSet, basename='usuario')
 router.register(r'propostas', PropostaViewSet)
-router.register(r'contratos', ContratoViewSet)
+router.register(r'contratos', ContratoViewSet, basename='contrato')  # ✅ corrigido
 router.register(r'pagamentos', PagamentoViewSet)
 router.register(r'avaliacoes', AvaliacaoViewSet)
 router.register(r'mensagens', MensagemViewSet, basename='mensagem')

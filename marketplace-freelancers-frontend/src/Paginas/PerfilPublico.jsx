@@ -401,7 +401,7 @@ export default function PerfilPublico() {
                   cursor: "pointer",
                   boxShadow: "0 2px 6px #dbeee2"
                 }}
-                onClick={() => navigate("/trabalhos/cadastrar")}
+                onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
               >
                 Contratar Freelancer
               </button>

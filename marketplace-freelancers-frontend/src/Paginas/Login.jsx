@@ -20,6 +20,7 @@ export default function Login() {
 
     setCarregando(true);
     try {
+      // 🔹 Faz login e recebe token
       const response = await api.post("/token/", {
         email: email.trim(),
         password: senha,
@@ -27,16 +28,21 @@ export default function Login() {
 
       localStorage.setItem("token", response.data.access);
 
+      // 🔹 Busca dados do usuário logado
       const userResponse = await api.get("/usuarios/me/", {
         headers: { Authorization: `Bearer ${response.data.access}` },
       });
 
       localStorage.setItem("userId", userResponse.data.id);
 
-      navigate("/dashboard");
+      // 🔹 Redireciona para a nova tela inicial (Home)
+      navigate("/home");
       window.location.reload();
     } catch (err) {
-      const msg = err.response?.data?.detail || err.response?.data?.non_field_errors?.join(" ");
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.non_field_errors?.join(" ");
+
       if (
         msg === "No active account found with the given credentials" ||
         msg === "Usuário ou senha inválidos." ||
@@ -59,12 +65,24 @@ export default function Login() {
   return (
     <div className="login-bg">
       <div className="login-content">
+        {/* 🔹 Lado esquerdo (branding) */}
         <div className="login-left">
-          <img src="/profreelabr.png" alt="Logo ProFreelaBR" className="login-logo" />
+          <img
+            src="/profreelabr.png"
+            alt="Logo ProFreelaBR"
+            className="login-logo"
+          />
           <h1 className="login-title">Bem-vindo ao ProFreelaBR</h1>
-          <h2 className="login-subtitle">Conecte-se aos melhores freelancers do Brasil</h2>
-          <p>Encontre oportunidades, faça networking e transforme seu talento em resultados reais.</p>
+          <h2 className="login-subtitle">
+            Conecte-se aos melhores freelancers do Brasil
+          </h2>
+          <p>
+            Encontre oportunidades, faça networking e transforme seu talento em
+            resultados reais.
+          </p>
         </div>
+
+        {/* 🔹 Lado direito (formulário) */}
         <div className="login-right">
           <div className="login-box">
             <h3>Entrar</h3>
@@ -88,8 +106,15 @@ export default function Login() {
               <button type="submit" disabled={carregando}>
                 {carregando ? "Entrando..." : "Entrar"}
               </button>
-              {erro && <div className="error-msg" style={{ marginTop: 10 }}>{erro}</div>}
+
+              {/* Mensagem de erro */}
+              {erro && (
+                <div className="error-msg" style={{ marginTop: 10 }}>
+                  {erro}
+                </div>
+              )}
             </form>
+
             <p className="cadastro-link">
               Não tem conta? <a href="/cadastro">Cadastre-se</a>
             </p>

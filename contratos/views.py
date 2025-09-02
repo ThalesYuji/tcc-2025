@@ -11,7 +11,6 @@ from notificacoes.utils import enviar_notificacao  # 🔹 Import para notificaç
 
 
 class ContratoViewSet(viewsets.ModelViewSet):
-    queryset = Contrato.objects.all()
     serializer_class = ContratoSerializer
     permission_classes = [IsAuthenticated, PermissaoContrato]
 
@@ -19,18 +18,20 @@ class ContratoViewSet(viewsets.ModelViewSet):
         """
         Admin vê todos os contratos.
         Usuário normal só vê contratos onde é cliente ou freelancer.
+        Os contratos são ordenados do mais recente para o mais antigo.
         """
         user = self.request.user
+        base_qs = Contrato.objects.all().order_by("-id")  # 🔹 mais novos primeiro
         if user.is_superuser:
-            return Contrato.objects.all()
-        return Contrato.objects.filter(
+            return base_qs
+        return base_qs.filter(
             models.Q(cliente=user) | models.Q(freelancer=user)
         ).distinct()
 
     def create(self, request, *args, **kwargs):
         """
         🚫 Bloqueia criação manual de contratos.
-        Os contratos são criados automaticamente ao aceitar uma proposta.
+        Os contratos são criados automaticamente ao aceitar uma proposta/trabalho privado.
         """
         return Response(
             {"detail": "A criação de contratos é automática ao aceitar uma proposta."},
