@@ -1,0 +1,112 @@
+.dashboard-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: calc(100vh - 80px); /* considerando navbar fixa */
+  padding: 40px 20px;
+  background: #f9fafb;
+}
+
+/* ============================= */
+/* Card principal                */
+/* ============================= */
+.dashboard-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+/* ============================= */
+/* Títulos e textos              */
+/* ============================= */
+.dashboard-card h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  color: #333;
+}
+
+.dashboard-card p {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 0.8rem;
+}
+
+/* Texto de dica */
+.hint-text {
+  margin-top: 1.2rem;
+  font-size: 0.9rem;
+  color: #1976d2;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ============================= */
+/* Lista de resumo               */
+/* ============================= */
+.dashboard-card ul {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+
+.dashboard-card li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.dashboard-card li strong {
+  color: #1976d2;
+}
+
+/* ============================= */
+/* Mensagens                     */
+/* ============================= */
+.error-msg {
+  color: #e53935;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-top: 0.8rem;
+}
+
+.success-msg {
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-top: 0.8rem;
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 768px) {
+  .dashboard-card {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .dashboard-card h2 {
+    font-size: 1.3rem;
+  }
+
+  .dashboard-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .dashboard-card li {
+    font-size: 0.9rem;
+  }
+}

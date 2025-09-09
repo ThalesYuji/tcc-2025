@@ -1,8 +1,9 @@
+// src/Paginas/MinhasDenuncias.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useNavigate } from "react-router-dom";
-import "../App.css";
+import "../styles/MinhasDenuncias.css";
 
 export default function MinhasDenuncias() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -16,27 +17,17 @@ export default function MinhasDenuncias() {
 
   useEffect(() => {
     async function carregarEnviadas() {
-      try {
-        const res = await api.get("/denuncias/?tipo=enviadas", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setEnviadas(res.data || []);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
+      const res = await api.get("/denuncias/?tipo=enviadas", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEnviadas(res.data || []);
     }
 
     async function carregarRecebidas() {
-      try {
-        const res = await api.get("/denuncias/?tipo=recebidas", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setRecebidas(res.data || []);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
+      const res = await api.get("/denuncias/?tipo=recebidas", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRecebidas(res.data || []);
     }
 
     async function fetchDenuncias() {
@@ -65,11 +56,7 @@ export default function MinhasDenuncias() {
   };
 
   const UsuarioNome = ({ usuario }) => (
-    <span
-      className="link-perfil"
-      onClick={() => navigate(`/perfil/${usuario.id}`)}
-      style={{ cursor: "pointer", color: "#1976d2" }}
-    >
+    <span className="link-perfil" onClick={() => navigate(`/perfil/${usuario.id}`)}>
       {usuario.nome}
     </span>
   );
@@ -99,14 +86,13 @@ export default function MinhasDenuncias() {
           </button>
         </div>
 
-        {/* Tabela de denúncias */}
+        {/* Tabela */}
         <div className="denuncias-table-wrap">
           {denunciasAtivas.length === 0 ? (
             <div className="denuncias-empty">
-              {abaAtiva === "feitas" 
-                ? "Você ainda não fez nenhuma denúncia." 
-                : "Você ainda não recebeu nenhuma denúncia."
-              }
+              {abaAtiva === "feitas"
+                ? "Você ainda não fez nenhuma denúncia."
+                : "Você ainda não recebeu nenhuma denúncia."}
             </div>
           ) : (
             <table className="denuncias-table">
@@ -135,13 +121,15 @@ export default function MinhasDenuncias() {
               </thead>
               <tbody>
                 {denunciasAtivas.map((denuncia) => {
-                  const quemNome = abaAtiva === "feitas"
-                    ? denuncia.denunciado_detalhes?.nome || "Usuário"
-                    : denuncia.denunciante?.nome || "Usuário";
-                  
-                  const quemObj = abaAtiva === "feitas"
-                    ? denuncia.denunciado_detalhes 
-                    : denuncia.denunciante;
+                  const quemObj =
+                    abaAtiva === "feitas"
+                      ? denuncia.denunciado_detalhes
+                      : denuncia.denunciante;
+
+                  const quemNome =
+                    abaAtiva === "feitas"
+                      ? denuncia.denunciado_detalhes?.nome || "Usuário"
+                      : denuncia.denunciante?.nome || "Usuário";
 
                   const data = denuncia.data_criacao
                     ? new Date(denuncia.data_criacao).toLocaleDateString("pt-BR")
@@ -157,24 +145,22 @@ export default function MinhasDenuncias() {
                           <span>{quemNome}</span>
                         )}
                       </td>
-                      <td className="hide-mobile" style={{ maxWidth: "200px", wordWrap: "break-word" }}>
-                        {denuncia.motivo?.trim() ? 
-                          (denuncia.motivo.length > 50 
-                            ? `${denuncia.motivo.substring(0, 50)}...` 
+                      <td className="hide-mobile cell-truncate">
+                        {denuncia.motivo?.trim()
+                          ? denuncia.motivo.length > 50
+                            ? `${denuncia.motivo.substring(0, 50)}...`
                             : denuncia.motivo
-                          ) : "—"
-                        }
+                          : "—"}
                       </td>
                       <td>
                         <Badge status={denuncia.status} />
                       </td>
-                      <td className="hide-mobile" style={{ maxWidth: "200px", wordWrap: "break-word" }}>
-                        {denuncia.resposta_admin ? 
-                          (denuncia.resposta_admin.length > 50 
+                      <td className="hide-mobile cell-truncate">
+                        {denuncia.resposta_admin
+                          ? denuncia.resposta_admin.length > 50
                             ? `${denuncia.resposta_admin.substring(0, 50)}...`
                             : denuncia.resposta_admin
-                          ) : <em>Aguardando resposta</em>
-                        }
+                          : <em>Aguardando resposta</em>}
                       </td>
                       <td>{data}</td>
                     </tr>

@@ -1,0 +1,189 @@
+.editar-trabalho-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+/* =============================== */
+/* Caixa do formulário             */
+/* =============================== */
+.form-box {
+  background: #fff;
+  padding: 26px 28px;
+  border-radius: 14px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.form-box h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #223146;
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+/* =============================== */
+/* Campos de formulário            */
+/* =============================== */
+.form-box input[type="text"],
+.form-box input[type="date"],
+.form-box input[type="number"],
+.form-box input[type="file"],
+.form-box textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #dde4ef;
+  border-radius: 8px;
+  font-size: 15px;
+  margin-bottom: 12px;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.form-box input:focus,
+.form-box textarea:focus {
+  border-color: #1976d2;
+}
+
+.form-box textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* Campo com erro */
+.input-erro {
+  border-color: #d32f2f !important;
+}
+
+/* =============================== */
+/* Botão principal                 */
+/* =============================== */
+.btn-principal {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.btn-principal:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.btn-principal:disabled {
+  background: #9cbbe6;
+  cursor: not-allowed;
+}
+
+/* =============================== */
+/* Habilidades                     */
+/* =============================== */
+.habilidades-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: #f9fafc;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1.5px solid #dde4ef;
+}
+
+.habilidade-tag {
+  background: #1976d2;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.habilidade-tag button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* =============================== */
+/* Anexo                           */
+/* =============================== */
+.anexo-atual {
+  font-size: 0.95rem;
+  margin: 8px 0;
+}
+
+.link-anexo {
+  color: #1976d2;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link-anexo:hover {
+  text-decoration: underline;
+}
+
+.btn-remover-anexo {
+  background: transparent;
+  border: none;
+  color: #e53935;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-left: 10px;
+  font-weight: 600;
+}
+
+.btn-remover-anexo:hover {
+  text-decoration: underline;
+}
+
+.trocar-anexo {
+  margin-top: 10px;
+}
+
+.aviso-remocao {
+  color: #e53935;
+  font-size: 0.9rem;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* =============================== */
+/* Mensagens                       */
+/* =============================== */
+.error-msg {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.success-msg {
+  color: #2e7d32;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* =============================== */
+/* Responsividade                  */
+/* =============================== */
+@media (max-width: 600px) {
+  .form-box {
+    padding: 20px;
+  }
+}

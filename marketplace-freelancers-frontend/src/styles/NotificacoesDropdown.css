@@ -1,0 +1,156 @@
+.notificacoes-dropdown {
+  position: relative;
+  margin-right: 20px;
+}
+
+/* Ícone */
+.notificacoes-icon-btn {
+  background: none;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notificacoes-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #e53935;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+
+/* Dropdown */
+.notificacoes-dropdown-menu {
+  position: absolute;
+  top: 120%;
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  z-index: 999;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Animação */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cabeçalho */
+.notificacoes-dropdown-header-centralizado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1976d2;
+  color: #fff;
+  padding: 0.7rem 1rem;
+}
+
+.notificacoes-dropdown-titulo {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.notificacoes-marcar-lido-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.notificacoes-marcar-lido-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notificacoes-dropdown-vazio {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Lista */
+.notificacoes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.notificacoes-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notificacoes-item:hover {
+  background: #f5f5f5;
+}
+
+.notificacao-nao-lida {
+  background: #e3f2fd;
+  font-weight: 600;
+}
+
+.notificacao-lida {
+  background: #fff;
+  color: #666;
+}
+
+/* Conteúdo item */
+.notificacoes-item-icone {
+  font-size: 1.2rem;
+}
+
+.notificacoes-item-texto {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.notificacoes-item-data {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+/* Ver todas */
+.notificacoes-ver-todas-btn {
+  width: 100%;
+  padding: 0.7rem;
+  border: none;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0 0 12px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notificacoes-ver-todas-btn:hover {
+  background: #125ea8;
+}
+
+/* Scrollbar custom */
+.notificacoes-lista::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notificacoes-lista::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 6px;
+}

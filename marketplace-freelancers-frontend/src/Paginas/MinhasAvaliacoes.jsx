@@ -1,8 +1,9 @@
+// src/Paginas/MinhasAvaliacoes.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useNavigate } from "react-router-dom";
-import "../App.css";
+import "../styles/MinhasAvaliacoes.css";
 
 export default function MinhasAvaliacoes() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -26,19 +27,17 @@ export default function MinhasAvaliacoes() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAvaliacoesRecebidas(recebidasResp.data);
-      } catch (err) {
-        console.error(err);
+      } catch {
         setErro("❌ Erro ao carregar suas avaliações. Tente novamente mais tarde.");
       }
     }
 
-    if (usuarioLogado) {
-      fetchAvaliacoes();
-    }
+    if (usuarioLogado) fetchAvaliacoes();
   }, [usuarioLogado, token]);
 
+  // 🔹 Renderização de estrelas
   const renderEstrelas = (nota) => (
-    <span className="estrelas">
+    <span className="avaliacoes-estrelas">
       {Array.from({ length: 5 }, (_, i) => (
         <span key={i} className={i < nota ? "estrela cheia" : "estrela vazia"}>
           ★
@@ -48,11 +47,11 @@ export default function MinhasAvaliacoes() {
     </span>
   );
 
+  // 🔹 Link para perfil
   const UsuarioNome = ({ usuario }) => (
     <span
       className="link-perfil"
       onClick={() => navigate(`/perfil/${usuario.id}`)}
-      style={{ cursor: "pointer", color: "#1976d2" }}
     >
       {usuario.nome}
     </span>
@@ -65,9 +64,9 @@ export default function MinhasAvaliacoes() {
       <div className="main-box">
         <h2 className="avaliacoes-title">⭐ Minhas Avaliações</h2>
 
-        {erro && <p className="erro-msg">{erro}</p>}
+        {erro && <p className="error-msg">{erro}</p>}
 
-        {/* Abas */}
+        {/* 🔹 Abas */}
         <div className="avaliacoes-tabs">
           <button
             onClick={() => setAbaAtiva("feitas")}
@@ -83,14 +82,13 @@ export default function MinhasAvaliacoes() {
           </button>
         </div>
 
-        {/* Tabela de avaliações */}
+        {/* 🔹 Tabela de avaliações */}
         <div className="avaliacoes-table-wrap">
           {avaliacoesAtivas.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", color: "#6b7280", fontStyle: "italic" }}>
-              {abaAtiva === "feitas" 
-                ? "Você ainda não avaliou ninguém." 
-                : "Você ainda não recebeu nenhuma avaliação."
-              }
+            <div className="avaliacoes-vazio">
+              {abaAtiva === "feitas"
+                ? "Você ainda não avaliou ninguém."
+                : "Você ainda não recebeu nenhuma avaliação."}
             </div>
           ) : (
             <table className="avaliacoes-table">
@@ -120,11 +118,9 @@ export default function MinhasAvaliacoes() {
                     {abaAtiva === "feitas" ? (
                       <>
                         <td>{avaliacao.titulo_trabalho || "—"}</td>
-                        <td>
-                          <UsuarioNome usuario={avaliacao.avaliado} />
-                        </td>
+                        <td><UsuarioNome usuario={avaliacao.avaliado} /></td>
                         <td>{renderEstrelas(avaliacao.nota)}</td>
-                        <td style={{ maxWidth: "200px", wordWrap: "break-word" }}>
+                        <td className="avaliacoes-comentario">
                           {avaliacao.comentario || <em>Sem comentário</em>}
                         </td>
                         <td>
@@ -133,11 +129,9 @@ export default function MinhasAvaliacoes() {
                       </>
                     ) : (
                       <>
-                        <td>
-                          <UsuarioNome usuario={avaliacao.avaliador} />
-                        </td>
+                        <td><UsuarioNome usuario={avaliacao.avaliador} /></td>
                         <td>{renderEstrelas(avaliacao.nota)}</td>
-                        <td style={{ maxWidth: "200px", wordWrap: "break-word" }}>
+                        <td className="avaliacoes-comentario">
                           {avaliacao.comentario || <em>Sem comentário</em>}
                         </td>
                         <td>

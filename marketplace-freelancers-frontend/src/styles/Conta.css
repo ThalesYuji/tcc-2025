@@ -1,0 +1,359 @@
+.conta-page-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+
+/* Card principal */
+.conta-card-novo {
+  background: #fff;
+  padding: 28px 30px;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ================== */
+/* Avatar do usuário  */
+/* ================== */
+.conta-avatar-absolute {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.conta-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #1976d2;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.25);
+}
+
+/* ==================== */
+/* Lista de informações */
+/* ==================== */
+.conta-detalhes-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px 0;
+}
+.conta-detalhes-lista li {
+  margin-bottom: 10px;
+  font-size: 15px;
+  color: #444;
+}
+.conta-detalhes-lista strong {
+  color: #223146;
+  margin-right: 4px;
+}
+
+/* ========================= */
+/* Formulário de edição info */
+/* ========================= */
+.conta-form-editar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.conta-form-editar label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #223146;
+  display: flex;
+  flex-direction: column;
+}
+.conta-form-editar input[type="text"],
+.conta-form-editar input[type="file"],
+.conta-form-editar input[type="password"] {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  font-size: 15px;
+  outline: none;
+  transition: border 0.2s ease;
+}
+.conta-form-editar input:focus {
+  border-color: #1976d2;
+}
+
+/* Botões do formulário */
+.conta-form-botoes {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.conta-form-botoes button {
+  flex: 1;
+  padding: 10px 0;
+  margin: 0 6px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.conta-form-botoes button[type="submit"] {
+  background: #1976d2;
+  color: #fff;
+}
+.conta-form-botoes button[type="button"] {
+  background: #ccc;
+  color: #223146;
+}
+.conta-form-botoes button:hover {
+  filter: brightness(0.95);
+}
+
+/* ================= */
+/* Botões principais */
+/* ================= */
+.conta-editar-btn {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 0;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  width: 100%;
+}
+.conta-editar-btn:hover {
+  filter: brightness(0.95);
+}
+
+/* Ver perfil público */
+.conta-ver-publico-btn {
+  width: 100%;
+  margin: 8px 0;
+  background: #f5faff;
+  color: #1976d2;
+  border-radius: 10px;
+  border: 1.2px solid #1976d2;
+  padding: 11px 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.conta-ver-publico-btn:hover {
+  filter: brightness(0.95);
+}
+
+/* ================= */
+/* Bloco avaliações  */
+/* ================= */
+.conta-avaliacoes-recebidas {
+  margin-top: 28px;
+}
+.conta-avaliacoes-recebidas h4 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #223146;
+  margin-bottom: 12px;
+}
+.conta-avaliacao-item {
+  display: flex;
+  flex-direction: column;
+  background: #f9fafc;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #e7eaf3;
+  font-size: 14px;
+  color: #444;
+}
+
+/* ================= */
+/* Troca de senha    */
+/* ================= */
+.conta-trocar-senha-bloco {
+  margin-top: 32px;
+}
+.conta-trocar-senha-btn {
+  background: #223146;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 7px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.conta-trocar-senha-btn:hover {
+  filter: brightness(1.1);
+}
+.conta-trocar-senha-form {
+  margin-top: 10px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 8px;
+  max-width: 400px;
+}
+.conta-trocar-senha-form label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #223146;
+}
+.conta-trocar-senha-form input {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.conta-trocar-senha-form input:focus {
+  border-color: #1976d2;
+  outline: none;
+}
+.conta-trocar-senha-form .botoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+.conta-trocar-senha-form button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 7px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+.conta-trocar-senha-form .btn-salvar {
+  background: #1976d2;
+  color: #fff;
+}
+.conta-trocar-senha-form .btn-cancelar {
+  background: #bbb;
+  color: #223146;
+}
+
+/* ================= */
+/* Botão excluir     */
+/* ================= */
+.conta-excluir-btn {
+  background: #f23d3d !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 7px;
+  padding: 10px 0;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 20px;
+  transition: filter 0.2s;
+}
+.conta-excluir-btn:hover {
+  filter: brightness(0.9);
+}
+
+/* ================= */
+/* Modal de exclusão */
+/* ================= */
+.modal-excluir-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30,30,40,0.48);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-excluir-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 30px 22px 30px;
+  box-shadow: 0 8px 32px #1976d244;
+  min-width: 330px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.modal-excluir-box h3 {
+  margin-bottom: 6px;
+  font-weight: 800;
+  color: #223146;
+}
+.modal-excluir-box p {
+  margin-bottom: 12px;
+  color: #555;
+  font-size: 1.05rem;
+}
+.modal-excluir-box input {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 11px 15px;
+  font-size: 17px;
+  border: 1.5px solid #e7eaf3;
+  border-radius: 8px;
+  outline: none;
+}
+.modal-excluir-botoes {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+.modal-excluir-botoes button {
+  flex: 1;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+.modal-excluir-botoes .btn-excluir {
+  background: #f23d3d;
+  color: #fff;
+}
+.modal-excluir-botoes .btn-cancelar {
+  background: #bbb;
+  color: #223146;
+}
+
+/* ================= */
+/* Feedbacks gerais  */
+/* ================= */
+.error-msg {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-top: 6px;
+}
+.success-msg {
+  color: #2e7d32;
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+/* ================= */
+/* Responsividade    */
+/* ================= */
+@media (max-width: 600px) {
+  .conta-card-novo {
+    padding: 20px;
+  }
+  .conta-avatar {
+    width: 90px;
+    height: 90px;
+  }
+}

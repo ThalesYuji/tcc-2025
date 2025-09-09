@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { FiBell, FiCheckCircle } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
-import "../App.css";
+import "../styles/NotificacoesDropdown.css";
 
 // Função para retornar ícone de acordo com o tipo de notificação
 function getIconeNotificacao(mensagem = "") {

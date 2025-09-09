@@ -1,0 +1,254 @@
+/* Fundo e container */
+.perfil-publico-container {
+  min-height: 100vh;
+  background: linear-gradient(120deg, #e8f0fa 0%, #f7fafd 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 60px;
+}
+
+/* Card principal */
+.perfil-publico-box {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 18px #0f377226;
+  width: 410px;
+  max-width: 98vw;
+  margin-top: 20px;
+  padding: 52px 34px 30px 34px;
+  position: relative;
+  text-align: center;
+}
+
+/* Avatar e badge */
+.perfil-avatar-wrapper {
+  position: absolute;
+  top: -64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: #eaf4fd;
+  border: 5px solid #fff;
+  box-shadow: 0 4px 18px #1976d238;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.perfil-avatar {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #1976d2;
+  background: #f2f5f9;
+}
+
+.perfil-badge {
+  position: absolute;
+  right: -12px;
+  bottom: -6px;
+  background: #ffce3d;
+  color: #223146;
+  font-weight: 900;
+  padding: 5px 12px;
+  border-radius: 14px;
+  font-size: 15px;
+  box-shadow: 0 1px 4px #f9e9a0;
+}
+
+/* Botão voltar dashboard */
+.btn-voltar {
+  margin-top: 68px;
+  margin-bottom: 16px;
+  background: #eaf4fd;
+  border: 1.2px solid #1976d2;
+  color: #1976d2;
+  border-radius: 9px;
+  padding: 10px 34px;
+  font-weight: 700;
+  font-size: 1.08rem;
+  cursor: pointer;
+  box-shadow: 0 1px 6px #ddeaf6;
+}
+.btn-voltar:hover {
+  background: #d8ebff;
+}
+
+/* Infos principais */
+.perfil-nome {
+  margin: 0 0 8px 0;
+  color: #1976d2;
+  font-weight: 800;
+}
+
+.perfil-tipo {
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #223146;
+  font-size: 17px;
+}
+
+.perfil-media {
+  margin-bottom: 8px;
+  color: #1976d2;
+  font-weight: 700;
+}
+
+/* Blocos */
+.perfil-bloco {
+  margin-top: 20px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.perfil-vazio {
+  color: #888;
+  font-style: italic;
+}
+
+/* Habilidades */
+.perfil-habilidades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+}
+
+.habilidade-tag {
+  background: #1976d2;
+  color: #fff;
+  border-radius: 16px;
+  padding: 4px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 1px 4px #dde4ef;
+}
+
+/* Trabalhos publicados */
+.perfil-trabalhos-lista,
+.perfil-portfolio-lista {
+  padding-left: 0;
+  list-style: none;
+  margin: 0;
+}
+
+.perfil-trabalho-item {
+  margin-bottom: 10px;
+  background: #f8fafb;
+  border-radius: 8px;
+  padding: 7px 12px;
+  box-shadow: 0 1px 3px #eee;
+}
+
+.perfil-trabalho-item button {
+  margin-left: 12px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+.perfil-trabalho-item button:hover {
+  filter: brightness(0.95);
+}
+
+/* Portfólio */
+.perfil-portfolio-item {
+  margin-bottom: 10px;
+  background: #f0f5fa;
+  border-radius: 8px;
+  padding: 7px 12px;
+  box-shadow: 0 1px 3px #e6eaf1;
+}
+
+.perfil-portfolio-item button {
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+.perfil-portfolio-item button:hover {
+  filter: brightness(0.95);
+}
+
+/* Avaliações */
+.perfil-avaliacao {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 1rem;
+  text-align: left;
+}
+
+.perfil-estrelas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  color: #1976d2;
+  font-weight: 700;
+}
+
+.perfil-comentario {
+  margin: 2px 0;
+  font-style: italic;
+  color: #555;
+}
+
+.perfil-avaliacao small {
+  font-size: 14px;
+  color: #777;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+/* Botões finais */
+.perfil-acoes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+
+.perfil-acoes button {
+  border: none;
+  border-radius: 7px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-contratar {
+  background: #43a047;
+  color: #fff;
+  box-shadow: 0 2px 6px #dbeee2;
+}
+.btn-denunciar {
+  background: #e53935;
+  color: #fff;
+  box-shadow: 0 2px 6px #fde3e4;
+}
+.perfil-acoes button:hover {
+  filter: brightness(0.95);
+}
+
+/* Responsividade */
+@media (max-width: 500px) {
+  .perfil-publico-box {
+    padding: 40px 20px 24px 20px;
+  }
+}

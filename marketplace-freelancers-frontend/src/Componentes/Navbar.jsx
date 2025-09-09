@@ -2,7 +2,9 @@ import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { FiLogOut, FiUser, FiSettings } from "react-icons/fi";
+import { FaShieldAlt, FaExclamationTriangle } from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
+import "../styles/Navbar.css";
 
 export default function Navbar() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -26,15 +28,24 @@ export default function Navbar() {
   const rotaAtiva = (rota) =>
     location.pathname === rota ? "nav-btn active" : "nav-btn";
 
-  // 🔹 Agora o backend já envia a URL completa da foto
   const fotoPerfil = usuarioLogado?.foto_perfil || "/icone-usuario.png";
 
   return (
     <nav className="navbar">
-      <div className="nav-brand" onClick={() => navigate("/dashboard")}>
-        <img src="/profreelabr.png" alt="Logo ProFreela" className="logo-img" />
+      {/* Logo */}
+      <div
+        className="nav-brand"
+        role="button"
+        onClick={() => navigate("/dashboard")}
+      >
+        <img
+          src="/profreelabr.png"
+          alt="Logo do ProFreelaBR"
+          className="logo-img"
+        />
       </div>
 
+      {/* Links */}
       <div className="nav-links">
         <button
           onClick={() => navigate("/dashboard")}
@@ -48,6 +59,7 @@ export default function Navbar() {
         >
           Trabalhos
         </button>
+
         {(usuarioLogado.tipo === "freelancer" ||
           usuarioLogado.tipo === "cliente") && (
           <button
@@ -59,6 +71,7 @@ export default function Navbar() {
               : "Propostas Recebidas"}
           </button>
         )}
+
         {(usuarioLogado.tipo === "freelancer" ||
           usuarioLogado.tipo === "cliente") && (
           <button
@@ -68,6 +81,7 @@ export default function Navbar() {
             Contratos
           </button>
         )}
+
         {(usuarioLogado.tipo === "freelancer" ||
           usuarioLogado.tipo === "cliente") && (
           <button
@@ -78,13 +92,13 @@ export default function Navbar() {
           </button>
         )}
 
-        {/* Botão de Denúncias */}
+        {/* Denúncias */}
         {usuarioLogado.is_superuser ? (
           <button
             onClick={() => navigate("/painel-denuncias")}
             className={rotaAtiva("/painel-denuncias")}
           >
-            <i className="fas fa-shield-alt me-2"></i>
+            <FaShieldAlt style={{ marginRight: 6 }} />
             Painel Denúncias
           </button>
         ) : (
@@ -92,19 +106,21 @@ export default function Navbar() {
             onClick={() => navigate("/minhas-denuncias")}
             className={rotaAtiva("/minhas-denuncias")}
           >
-            <i className="fas fa-exclamation-triangle me-2"></i>
+            <FaExclamationTriangle style={{ marginRight: 6 }} />
             Minhas Denúncias
           </button>
         )}
 
+        {/* Notificações */}
         <NotificacoesDropdown />
 
-        {/* Menu do avatar */}
+        {/* Menu do usuário */}
         <div className="menu-usuario" ref={menuRef}>
           <img
             src={fotoPerfil}
-            alt="Avatar"
+            alt="Foto de perfil do usuário"
             className="avatar"
+            role="button"
             onClick={() => setMenuAberto(!menuAberto)}
           />
           {menuAberto && (
@@ -123,7 +139,7 @@ export default function Navbar() {
                 onClick={() => {
                   localStorage.removeItem("token");
                   localStorage.removeItem("userId");
-                  window.location.href = "/login";
+                  navigate("/login", { replace: true }); // 🔹 mais seguro
                 }}
               >
                 <FiLogOut /> Sair

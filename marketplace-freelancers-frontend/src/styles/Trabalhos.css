@@ -1,0 +1,237 @@
+/* Caixa principal herdada */
+.main-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Título */
+.main-box h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 1.5rem;
+}
+
+/* ============================= */
+/* Filtros                       */
+/* ============================= */
+.form-filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.form-filtro input,
+.form-filtro select {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-filtro input:focus,
+.form-filtro select:focus {
+  border-color: #1976d2;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+}
+
+/* Botões de filtro */
+.btn-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-group-vertical button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-group-vertical button:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+.btn-group-vertical button[type="button"] {
+  background: #757575;
+}
+
+.btn-group-vertical button[type="button"]:hover {
+  background: #5a5a5a;
+}
+
+/* ============================= */
+/* Botão Novo Trabalho           */
+/* ============================= */
+.btn-novo-trabalho {
+  display: inline-block;
+  padding: 0.7rem 1.2rem;
+  background: #2e7d32;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-novo-trabalho:hover {
+  background: #1b5e20;
+  transform: translateY(-2px);
+}
+
+/* ============================= */
+/* Lista de Trabalhos            */
+/* ============================= */
+.lista-trabalhos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.trabalho-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.trabalho-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.trabalho-card-conteudo {
+  padding: 1.2rem 1.5rem;
+}
+
+.trabalho-card-header {
+  font-size: 1.2rem;
+  color: #1976d2;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+}
+
+.trabalho-card-info {
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+.trabalho-card-info b {
+  color: #333;
+}
+
+/* Botão detalhes */
+.btn-detalhes {
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-detalhes:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+/* Links de cliente e anexo */
+.link-cliente,
+.link-anexo {
+  color: #1976d2;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-cliente:hover,
+.link-anexo:hover {
+  color: #125ea8;
+}
+
+/* Nenhum registro */
+.nenhum-registro {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin-top: 20px;
+}
+
+/* ============================= */
+/* Paginação                     */
+/* ============================= */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pagination button {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  background: #1976d2;
+  color: #fff;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.pagination button:disabled {
+  background: #90caf9;
+  cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 900px) {
+  .form-filtro {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-group-vertical {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .lista-trabalhos {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 901px) {
+  .lista-trabalhos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1200px) {
+  .lista-trabalhos {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}

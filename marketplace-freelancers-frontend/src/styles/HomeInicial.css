@@ -1,0 +1,113 @@
+.home-wrapper {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* ============================
+   Banner de boas-vindas
+   ============================ */
+.card-banner {
+  background: linear-gradient(135deg, var(--cor-primaria), #42a5f5);
+  border-radius: 16px;
+  padding: 2.5rem 1.5rem;
+  box-shadow: var(--sombra-card);
+  text-align: center;
+  color: #fff;
+}
+.card-banner h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+.card-banner p {
+  font-size: 1.1rem;
+  opacity: 0.95;
+  margin-bottom: 0;
+}
+
+/* ============================
+   Atalhos principais
+   ============================ */
+.shortcut-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  height: 100%;
+  border-radius: 14px;
+  padding: 1.6rem 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--sombra-card);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.shortcut-tile i {
+  font-size: 2rem;
+}
+.shortcut-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  text-decoration: none;
+}
+
+/* ============================
+   Cards de oportunidades
+   ============================ */
+.opp-card {
+  border: none;
+  border-radius: 14px;
+  box-shadow: var(--sombra-card);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.opp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+.opp-card .card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cor-primaria);
+}
+.opp-card .card-text {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+/* ============================
+   Responsividade
+   ============================ */
+@media (max-width: 1024px) {
+  .card-banner h2 {
+    font-size: 1.6rem;
+  }
+  .card-banner p {
+    font-size: 1rem;
+  }
+}
+@media (max-width: 768px) {
+  .card-banner {
+    padding: 2rem 1rem;
+  }
+  .shortcut-tile {
+    padding: 1.2rem 0.6rem;
+    font-size: 0.9rem;
+  }
+  .shortcut-tile i {
+    font-size: 1.8rem;
+  }
+}
+@media (max-width: 480px) {
+  .card-banner h2 {
+    font-size: 1.3rem;
+  }
+  .card-banner p {
+    font-size: 0.95rem;
+  }
+  .shortcut-tile {
+    padding: 1rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  .shortcut-tile i {
+    font-size: 1.6rem;
+  }
+}

@@ -1,0 +1,161 @@
+.navbar {
+  position: sticky; /* sempre visível no topo */
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1976d2, #42a5f5);
+  padding: 0.6rem 1.2rem;
+  height: 64px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Logo */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.logo-img {
+  height: 40px;
+  width: auto;
+}
+
+/* Links principais */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #fff;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.nav-btn.active {
+  background: #1565c0; /* destaque mais forte no ativo */
+  font-weight: 600;
+}
+
+/* Avatar + dropdown */
+.menu-usuario {
+  position: relative;
+  margin-left: 1rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  cursor: pointer;
+  object-fit: cover;
+  transition: box-shadow 0.2s;
+}
+
+.avatar:hover {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Dropdown */
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 50px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  padding: 0.5rem 0;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.menu-dropdown .usuario-nome {
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.menu-dropdown button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.menu-dropdown button:hover {
+  background: #f1f1f1;
+}
+
+/* Animação */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================= */
+/* Responsividade Navbar         */
+/* ============================= */
+
+@media (max-width: 1024px) {
+  .nav-links {
+    gap: 0.4rem;
+  }
+
+  .nav-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.6rem;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-btn {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .logo-img {
+    height: 32px;
+  }
+}

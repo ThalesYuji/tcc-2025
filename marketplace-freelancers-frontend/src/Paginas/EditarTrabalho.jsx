@@ -1,6 +1,8 @@
+// src/Paginas/EditarTrabalho.jsx
 import React, { useState, useEffect } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useParams } from "react-router-dom";
+import "../styles/EditarTrabalho.css";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -9,7 +11,7 @@ export default function EditarTrabalho() {
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
   const [orcamento, setOrcamento] = useState("");
-  const [habilidades, setHabilidades] = useState([]); // Lista de strings
+  const [habilidades, setHabilidades] = useState([]);
   const [novaHabilidade, setNovaHabilidade] = useState("");
 
   const [anexoAtual, setAnexoAtual] = useState(null);
@@ -25,20 +27,23 @@ export default function EditarTrabalho() {
   const { id } = useParams();
 
   useEffect(() => {
-    // Carrega dados do trabalho
-    api.get(`/trabalhos/${id}/`)
-      .then((response) => {
-        setTitulo(response.data.titulo);
-        setDescricao(response.data.descricao);
-        setPrazo(response.data.prazo);
-        setOrcamento(response.data.orcamento);
-        setAnexoAtual(response.data.anexo);
+    async function carregarTrabalho() {
+      try {
+        const resp = await api.get(`/trabalhos/${id}/`);
+        setTitulo(resp.data.titulo);
+        setDescricao(resp.data.descricao);
+        setPrazo(resp.data.prazo);
+        setOrcamento(resp.data.orcamento);
+        setAnexoAtual(resp.data.anexo);
 
-        if (response.data.habilidades_detalhes) {
-          setHabilidades(response.data.habilidades_detalhes.map(h => h.nome));
+        if (resp.data.habilidades_detalhes) {
+          setHabilidades(resp.data.habilidades_detalhes.map((h) => h.nome));
         }
-      })
-      .catch(() => setErroGeral("Erro ao carregar o trabalho. Tente novamente mais tarde."));
+      } catch {
+        setErroGeral("Erro ao carregar o trabalho. Tente novamente mais tarde.");
+      }
+    }
+    carregarTrabalho();
   }, [id]);
 
   const handleSubmit = async (e) => {
@@ -54,8 +59,7 @@ export default function EditarTrabalho() {
     formData.append("prazo", prazo);
     formData.append("orcamento", orcamento);
 
-    // Envia cada habilidade como string
-    habilidades.forEach(hab => formData.append("habilidades", hab));
+    habilidades.forEach((hab) => formData.append("habilidades", hab));
 
     if (removerAnexo) {
       formData.append("anexo", "");
@@ -68,13 +72,15 @@ export default function EditarTrabalho() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Trabalho atualizado com sucesso!");
-      setTimeout(() => navigate("/trabalhos"), 1000);
+      setTimeout(() => navigate("/trabalhos"), 1200);
     } catch (err) {
       if (err.response?.data) {
         const backendErros = err.response.data;
         let novosErros = {};
         Object.entries(backendErros).forEach(([campo, mensagem]) => {
-          novosErros[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : mensagem;
+          novosErros[campo] = Array.isArray(mensagem)
+            ? mensagem.join(" ")
+            : mensagem;
         });
         setErros(novosErros);
         setErroGeral(backendErros.detail || "Erro ao atualizar o trabalho.");
@@ -94,7 +100,7 @@ export default function EditarTrabalho() {
   };
 
   const handleRemoverHabilidade = (hab) => {
-    setHabilidades(habilidades.filter(h => h !== hab));
+    setHabilidades(habilidades.filter((h) => h !== hab));
   };
 
   const handleKeyPress = (e) => {
@@ -118,33 +124,36 @@ export default function EditarTrabalho() {
   }
 
   return (
-    <div className="main-center">
+    <div className="editar-trabalho-container">
       <div className="form-box">
-        <h2 style={{ marginBottom: 22 }}>Editar Trabalho</h2>
+        <h2>✏️ Editar Trabalho</h2>
+
         <form onSubmit={handleSubmit} encType="multipart/form-data">
           <input
             type="text"
             placeholder="Título"
             value={titulo}
-            onChange={e => setTitulo(e.target.value)}
+            onChange={(e) => setTitulo(e.target.value)}
             required
+            className={erros.titulo ? "input-erro" : ""}
           />
           {erros.titulo && <div className="error-msg">{erros.titulo}</div>}
 
           <textarea
             placeholder="Descrição"
             value={descricao}
-            onChange={e => setDescricao(e.target.value)}
+            onChange={(e) => setDescricao(e.target.value)}
             required
+            className={erros.descricao ? "input-erro" : ""}
           />
           {erros.descricao && <div className="error-msg">{erros.descricao}</div>}
 
           <input
             type="date"
-            placeholder="Prazo"
             value={prazo}
-            onChange={e => setPrazo(e.target.value)}
+            onChange={(e) => setPrazo(e.target.value)}
             required
+            className={erros.prazo ? "input-erro" : ""}
           />
           {erros.prazo && <div className="error-msg">{erros.prazo}</div>}
 
@@ -152,17 +161,19 @@ export default function EditarTrabalho() {
             type="number"
             placeholder="Orçamento"
             value={orcamento}
-            onChange={e => setOrcamento(e.target.value)}
+            onChange={(e) => setOrcamento(e.target.value)}
             required
+            className={erros.orcamento ? "input-erro" : ""}
           />
           {erros.orcamento && <div className="error-msg">{erros.orcamento}</div>}
 
+          {/* Habilidades */}
           <label>Habilidades:</label>
           <div className="habilidades-container">
             {habilidades.map((hab, index) => (
               <span key={index} className="habilidade-tag">
                 {hab}
-                <button type="button" onClick={() => handleRemoverHabilidade(hab)}>x</button>
+                <button type="button" onClick={() => handleRemoverHabilidade(hab)}>×</button>
               </span>
             ))}
             <input
@@ -175,36 +186,38 @@ export default function EditarTrabalho() {
           </div>
           {erros.habilidades && <div className="error-msg">{erros.habilidades}</div>}
 
+          {/* Anexo */}
           {anexoAtual && !removerAnexo && (
-            <div style={{ marginTop: 8, marginBottom: 8 }}>
+            <div className="anexo-atual">
               <strong>Anexo atual:</strong>{" "}
-              <a href={`${BASE_URL}${anexoAtual}`} target="_blank" rel="noopener noreferrer">
+              <a href={`${BASE_URL}${anexoAtual}`} target="_blank" rel="noopener noreferrer" className="link-anexo">
                 {anexoAtual.split("/").pop()}
               </a>
               <button
                 type="button"
-                style={{ marginLeft: 10, color: "red" }}
+                className="btn-remover-anexo"
                 onClick={() => { setRemoverAnexo(true); setNovoAnexo(null); }}
               >
-                Remover Anexo
+                Remover
               </button>
             </div>
           )}
+
           {!removerAnexo && (
-            <>
-              <label style={{ display: "block", marginTop: 10 }}>Trocar anexo:</label>
+            <div className="trocar-anexo">
+              <label>Trocar anexo:</label>
               <input type="file" onChange={handleAnexoChange} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip" />
               {erros.anexo && <div className="error-msg">{erros.anexo}</div>}
-            </>
+            </div>
           )}
-          {removerAnexo && <div style={{ color: "red", marginTop: 8 }}>O anexo será removido deste trabalho.</div>}
+          {removerAnexo && <div className="aviso-remocao">⚠️ O anexo será removido deste trabalho.</div>}
 
-          <button type="submit" style={{ marginTop: 10 }} disabled={carregando}>
-            {carregando ? "Salvando..." : "Salvar"}
+          <button type="submit" className="btn-principal" disabled={carregando}>
+            {carregando ? "Salvando..." : "Salvar Alterações"}
           </button>
         </form>
 
-        {sucesso && <div className="success-msg" style={{ marginTop: 10 }}>{sucesso}</div>}
+        {sucesso && <div className="success-msg">{sucesso}</div>}
       </div>
     </div>
   );

@@ -1,25 +1,30 @@
+// src/Paginas/PerfilPublico.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useParams, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import "../styles/PerfilPublico.css";
 
-// Função para desenhar estrelas
+// 🔹 Função para desenhar estrelas
 function renderEstrelas(nota) {
-  const estrelas = [];
-  for (let i = 1; i <= 5; i++) {
-    estrelas.push(
-      <span key={i} style={{ color: i <= nota ? "#ffce3d" : "#e0e0e0", fontSize: 18, marginRight: 1 }}>
-        ★
-      </span>
-    );
-  }
-  return estrelas;
+  return Array.from({ length: 5 }, (_, i) => (
+    <span
+      key={i}
+      style={{
+        color: i < nota ? "#ffce3d" : "#e0e0e0",
+        fontSize: 18,
+        marginRight: 1,
+      }}
+    >
+      ★
+    </span>
+  ));
 }
 
+// 🔹 Formata data padrão BR
 function formatarDataBR(dataStr) {
   if (!dataStr) return "";
-  const d = new Date(dataStr);
-  return d.toLocaleDateString("pt-BR");
+  return new Date(dataStr).toLocaleDateString("pt-BR");
 }
 
 export default function PerfilPublico() {
@@ -31,13 +36,17 @@ export default function PerfilPublico() {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(null);
   const [carregando, setCarregando] = useState(true);
+
   const [trabalhosPublicados, setTrabalhosPublicados] = useState([]);
   const [carregandoTrabalhos, setCarregandoTrabalhos] = useState(false);
+
   const [habilidades, setHabilidades] = useState([]);
   const [carregandoHabilidades, setCarregandoHabilidades] = useState(false);
+
   const [portfolio, setPortfolio] = useState([]);
   const [carregandoPortfolio, setCarregandoPortfolio] = useState(false);
 
+  // 🔹 Carrega dados do usuário e avaliações
   useEffect(() => {
     async function buscarDados() {
       try {
@@ -45,27 +54,37 @@ export default function PerfilPublico() {
         setUsuario(resp.data);
 
         const avs = await api.get("/avaliacoes/");
-        const recebidas = avs.data.filter((a) => String(a.avaliado.id) === String(id));
+        const recebidas = avs.data.filter(
+          (a) => String(a.avaliado.id) === String(id)
+        );
         setAvaliacoes(recebidas);
+
         if (recebidas.length > 0) {
-          const media = recebidas.reduce((soma, a) => soma + a.nota, 0) / recebidas.length;
+          const media =
+            recebidas.reduce((soma, a) => soma + a.nota, 0) /
+            recebidas.length;
           setNotaMedia(media);
         }
       } catch {
         setUsuario(null);
+      } finally {
+        setCarregando(false);
       }
-      setCarregando(false);
     }
     buscarDados();
   }, [id]);
 
+  // 🔹 Trabalhos do cliente
   useEffect(() => {
-    if (usuario && usuario.tipo === "cliente") {
+    if (usuario?.tipo === "cliente") {
       setCarregandoTrabalhos(true);
-      api.get("/trabalhos/")
-        .then(res => {
+      api
+        .get("/trabalhos/")
+        .then((res) => {
           const lista = res.data.results || res.data;
-          const meusTrabalhos = lista.filter(t => String(t.cliente_id) === String(usuario.id));
+          const meusTrabalhos = lista.filter(
+            (t) => String(t.cliente_id) === String(usuario.id)
+          );
           setTrabalhosPublicados(meusTrabalhos);
         })
         .catch(() => setTrabalhosPublicados([]))
@@ -73,184 +92,119 @@ export default function PerfilPublico() {
     }
   }, [usuario]);
 
+  // 🔹 Habilidades do freelancer
   useEffect(() => {
     async function buscarHabilidades() {
-      if (usuario && usuario.tipo === "freelancer") {
+      if (usuario?.tipo === "freelancer") {
         setCarregandoHabilidades(true);
         try {
           const resp = await api.get("/trabalhos/");
           const lista = resp.data.results || resp.data;
-          const trabalhosDoFreela = lista.filter(t => String(t.freelancer) === String(usuario.id));
+          const trabalhosDoFreela = lista.filter(
+            (t) => String(t.freelancer) === String(usuario.id)
+          );
+
           let todas = [];
-          trabalhosDoFreela.forEach(t => {
+          trabalhosDoFreela.forEach((t) => {
             if (Array.isArray(t.habilidades_detalhes)) {
-              todas = todas.concat(t.habilidades_detalhes.map(h => h.nome));
+              todas = todas.concat(t.habilidades_detalhes.map((h) => h.nome));
             }
           });
-          const unicas = [...new Set(todas)];
-          setHabilidades(unicas);
+
+          setHabilidades([...new Set(todas)]);
         } catch {
           setHabilidades([]);
+        } finally {
+          setCarregandoHabilidades(false);
         }
-        setCarregandoHabilidades(false);
       }
     }
     buscarHabilidades();
   }, [usuario]);
 
+  // 🔹 Portfólio de freelancer (trabalhos concluídos)
   useEffect(() => {
     async function buscarPortfolio() {
-      if (usuario && usuario.tipo === "freelancer") {
+      if (usuario?.tipo === "freelancer") {
         setCarregandoPortfolio(true);
         try {
           const resp = await api.get("/trabalhos/");
           const lista = resp.data.results || resp.data;
           const concluidos = lista.filter(
-            t => String(t.freelancer) === String(usuario.id) && t.status === "concluido"
+            (t) =>
+              String(t.freelancer) === String(usuario.id) &&
+              t.status === "concluido"
           );
           setPortfolio(concluidos);
         } catch {
           setPortfolio([]);
+        } finally {
+          setCarregandoPortfolio(false);
         }
-        setCarregandoPortfolio(false);
       }
     }
     buscarPortfolio();
   }, [usuario]);
 
-  if (carregando) return <div style={{ textAlign: "center", marginTop: 60 }}>Carregando perfil...</div>;
-  if (!usuario) return <div style={{ textAlign: "center", marginTop: 60 }}>Perfil não encontrado.</div>;
+  if (carregando)
+    return (
+      <div style={{ textAlign: "center", marginTop: 60 }}>
+        Carregando perfil...
+      </div>
+    );
+  if (!usuario)
+    return (
+      <div style={{ textAlign: "center", marginTop: 60 }}>
+        Perfil não encontrado.
+      </div>
+    );
 
+  // 🔹 Avatar + badge
   const fotoPerfil =
-    usuario.foto_perfil
-      ? usuario.foto_perfil.startsWith("http")
-        ? usuario.foto_perfil
-        : `http://localhost:8000${usuario.foto_perfil}`
-      : "/icone-usuario.png";
+    usuario.foto_perfil && !usuario.foto_perfil.startsWith("http")
+      ? `http://localhost:8000${usuario.foto_perfil}`
+      : usuario.foto_perfil || "/icone-usuario.png";
 
-  const mostrarBadge = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
+  const mostrarBadge =
+    usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(120deg,#e8f0fa 0%,#f7fafd 100%)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: 60
-    }}>
-      <div style={{
-        background: "#fff",
-        borderRadius: 20,
-        boxShadow: "0 4px 18px #0f377226",
-        width: 410,
-        maxWidth: "98vw",
-        marginTop: 20,
-        padding: "52px 34px 30px 34px",
-        position: "relative",
-        textAlign: "center"
-      }}>
-        {/* Avatar e badge */}
-        <div style={{
-          position: "absolute",
-          top: -64,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 110,
-          height: 110,
-          borderRadius: "50%",
-          background: "#eaf4fd",
-          border: "5px solid #fff",
-          boxShadow: "0 4px 18px #1976d238",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 10
-        }}>
-          <img
-            src={fotoPerfil}
-            alt="Foto de perfil"
-            style={{
-              width: 90,
-              height: 90,
-              objectFit: "cover",
-              borderRadius: "50%",
-              border: "2px solid #1976d2",
-              background: "#f2f5f9"
-            }}
-          />
-          {mostrarBadge && (
-            <div style={{
-              position: "absolute",
-              right: -12,
-              bottom: -6,
-              background: "#ffce3d",
-              color: "#223146",
-              fontWeight: 900,
-              padding: "5px 12px",
-              borderRadius: 14,
-              fontSize: 15,
-              boxShadow: "0 1px 4px #f9e9a0"
-            }}>
-              TOP ★
-            </div>
-          )}
+    <div className="perfil-publico-container">
+      <div className="perfil-publico-box">
+        {/* Avatar */}
+        <div className="perfil-avatar-wrapper">
+          <img src={fotoPerfil} alt="Foto de perfil" className="perfil-avatar" />
+          {mostrarBadge && <div className="perfil-badge">TOP ★</div>}
         </div>
 
-        {/* BOTÃO DASHBOARD CENTRALIZADO E ABAIXO DO AVATAR */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            marginTop: 68,
-            marginBottom: 16,
-            background: "#eaf4fd",
-            border: "1.2px solid #1976d2",
-            color: "#1976d2",
-            borderRadius: 9,
-            padding: "10px 34px",
-            fontWeight: 700,
-            fontSize: "1.08rem",
-            cursor: "pointer",
-            boxShadow: "0 1px 6px #ddeaf6",
-            outline: "none"
-          }}
-        >
+        {/* Botão dashboard */}
+        <button className="btn-voltar" onClick={() => navigate("/dashboard")}>
           ← Dashboard
         </button>
 
-        <h2 style={{ margin: "0 0 8px 0", color: "#1976d2", fontWeight: 800 }}>
-          {usuario.nome}
-        </h2>
-        <div style={{ marginBottom: 5, fontWeight: 600, color: "#223146", fontSize: 17 }}>
+        <h2 className="perfil-nome">{usuario.nome}</h2>
+        <div className="perfil-tipo">
           {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
         </div>
         {typeof notaMedia !== "undefined" && (
-          <div style={{ marginBottom: 8, color: "#1976d2", fontWeight: 700 }}>
-            Média de avaliação: {notaMedia ? notaMedia.toFixed(2) + " / 5" : "Sem avaliações"}
+          <div className="perfil-media">
+            Média de avaliação:{" "}
+            {notaMedia ? notaMedia.toFixed(2) + " / 5" : "Sem avaliações"}
           </div>
         )}
 
         {/* Habilidades */}
         {usuario.tipo === "freelancer" && (
-          <div style={{ margin: "14px 0" }}>
-            <div style={{ color: "#223146", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Habilidades</div>
+          <div className="perfil-bloco">
+            <h4>Habilidades</h4>
             {carregandoHabilidades ? (
-              <div style={{ color: "#888" }}>Carregando habilidades...</div>
+              <p>Carregando habilidades...</p>
             ) : habilidades.length === 0 ? (
-              <div style={{ color: "#888", fontStyle: "italic" }}>Nenhuma habilidade encontrada ainda.</div>
+              <p className="perfil-vazio">Nenhuma habilidade encontrada ainda.</p>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, justifyContent: "center" }}>
+              <div className="perfil-habilidades">
                 {habilidades.map((hab, i) => (
-                  <span key={hab + i}
-                    style={{
-                      background: "#1976d2",
-                      color: "#fff",
-                      borderRadius: 16,
-                      padding: "4px 14px",
-                      fontWeight: 600,
-                      fontSize: 14,
-                      boxShadow: "0 1px 4px #dde4ef"
-                    }}>
+                  <span key={hab + i} className="habilidade-tag">
                     {hab}
                   </span>
                 ))}
@@ -259,42 +213,25 @@ export default function PerfilPublico() {
           </div>
         )}
 
-        {/* Trabalhos publicados (cliente) */}
+        {/* Trabalhos publicados */}
         {usuario.tipo === "cliente" && (
-          <div style={{ marginTop: 22, marginBottom: 18, textAlign: "center" }}>
-            <h4 style={{ color: "#223146", fontWeight: 700, marginBottom: 8 }}>Trabalhos Publicados</h4>
+          <div className="perfil-bloco">
+            <h4>Trabalhos Publicados</h4>
             {carregandoTrabalhos ? (
-              <div style={{ color: "#888" }}>Carregando trabalhos...</div>
+              <p>Carregando trabalhos...</p>
             ) : trabalhosPublicados.length === 0 ? (
-              <div style={{ color: "#888", fontStyle: "italic" }}>Nenhum trabalho publicado ainda.</div>
+              <p className="perfil-vazio">Nenhum trabalho publicado ainda.</p>
             ) : (
-              <ul style={{ paddingLeft: 0, listStyle: "none", margin: 0 }}>
-                {trabalhosPublicados.map(trab => (
-                  <li key={trab.id} style={{
-                    marginBottom: 10, background: "#f8fafb", borderRadius: 8, padding: "7px 12px", boxShadow: "0 1px 3px #eee"
-                  }}>
-                    <span style={{ fontWeight: 600 }}>{trab.titulo}</span>{" "}
-                    <span style={{
-                      color:
-                        trab.status === "aberto" ? "green" :
-                          trab.status === "concluido" ? "blue" :
-                            trab.status === "cancelado" ? "red" : "#888"
-                    }}>
+              <ul className="perfil-trabalhos-lista">
+                {trabalhosPublicados.map((trab) => (
+                  <li key={trab.id} className="perfil-trabalho-item">
+                    <span>{trab.titulo}</span>{" "}
+                    <span className={`status-${trab.status}`}>
                       [{trab.status}]
                     </span>
-                    <button
-                      style={{
-                        marginLeft: 12,
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        background: "#1976d2",
-                        color: "#fff",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: 14
-                      }}
-                      onClick={() => navigate(`/trabalhos/${trab.id}`)}
-                    >Ver detalhes</button>
+                    <button onClick={() => navigate(`/trabalhos/${trab.id}`)}>
+                      Ver detalhes
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -302,43 +239,27 @@ export default function PerfilPublico() {
           </div>
         )}
 
-        {/* Portfólio de trabalhos concluídos (freelancer) */}
+        {/* Portfólio freelancer */}
         {usuario.tipo === "freelancer" && (
-          <div style={{ marginTop: 20, textAlign: "center" }}>
-            <h4 style={{ color: "#223146", fontWeight: 700, marginBottom: 8 }}>
-              Portfólio: Trabalhos Concluídos
-            </h4>
+          <div className="perfil-bloco">
+            <h4>Portfólio: Trabalhos Concluídos</h4>
             {carregandoPortfolio ? (
-              <div style={{ color: "#888" }}>Carregando portfólio...</div>
+              <p>Carregando portfólio...</p>
             ) : portfolio.length === 0 ? (
-              <div style={{ color: "#888", fontStyle: "italic" }}>Nenhum trabalho concluído ainda.</div>
+              <p className="perfil-vazio">Nenhum trabalho concluído ainda.</p>
             ) : (
-              <ul style={{ paddingLeft: 0, listStyle: "none", margin: 0 }}>
-                {portfolio.map(trab => (
-                  <li key={trab.id} style={{
-                    marginBottom: 10, background: "#f0f5fa", borderRadius: 8, padding: "7px 12px", boxShadow: "0 1px 3px #e6eaf1"
-                  }}>
-                    <span style={{ fontWeight: 600 }}>{trab.titulo}</span>
-                    <span style={{ color: "#1976d2", fontSize: 13, marginLeft: 7 }}>
-                      [Concluído]
-                    </span>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>{trab.descricao}</div>
-                    <div style={{ fontSize: 12, color: "#999" }}>
+              <ul className="perfil-portfolio-lista">
+                {portfolio.map((trab) => (
+                  <li key={trab.id} className="perfil-portfolio-item">
+                    <span>{trab.titulo}</span>
+                    <span className="status-concluido">[Concluído]</span>
+                    <p>{trab.descricao}</p>
+                    <small>
                       Orçamento: R$ {Number(trab.orcamento).toFixed(2)}
-                    </div>
-                    <button
-                      style={{
-                        marginTop: 6,
-                        padding: "3px 10px",
-                        borderRadius: 5,
-                        background: "#1976d2",
-                        color: "#fff",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: 13
-                      }}
-                      onClick={() => navigate(`/trabalhos/${trab.id}`)}
-                    >Ver detalhes</button>
+                    </small>
+                    <button onClick={() => navigate(`/trabalhos/${trab.id}`)}>
+                      Ver detalhes
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -346,87 +267,55 @@ export default function PerfilPublico() {
           </div>
         )}
 
-        {/* Avaliações recebidas */}
-        <div style={{ marginTop: 22 }}>
-          <h4 style={{ color: "#223146", fontWeight: 700 }}>Avaliações Recebidas</h4>
+        {/* Avaliações */}
+        <div className="perfil-bloco">
+          <h4>Avaliações Recebidas</h4>
           {avaliacoes.length === 0 && (
-            <div style={{ color: "#888", fontStyle: "italic" }}>
-              Nenhuma avaliação recebida ainda.
-            </div>
+            <p className="perfil-vazio">Nenhuma avaliação recebida ainda.</p>
           )}
           {avaliacoes.map((av) => (
-            <div key={av.id} style={{
-              padding: "10px 0",
-              borderBottom: "1px solid #f0f0f0",
-              fontSize: "1rem",
-              textAlign: "left"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <div key={av.id} className="perfil-avaliacao">
+              <div className="perfil-estrelas">
                 {renderEstrelas(av.nota)}
-                <span style={{ color: "#1976d2", fontWeight: 700 }}>{av.nota} / 5</span>
+                <span>{av.nota} / 5</span>
               </div>
-              <div style={{ margin: "2px 0", fontStyle: "italic", color: "#555" }}>
+              <p className="perfil-comentario">
                 “{av.comentario || "Sem comentário"}”
-              </div>
-              <div style={{ fontSize: 14, color: "#777", marginTop: 2 }}>
-                <span><strong>De:</strong> {av.avaliador?.nome || "Usuário"}</span>
-                <span style={{ marginLeft: 8 }}>|</span>
-                <span style={{ marginLeft: 8 }}><strong>Data:</strong> {formatarDataBR(av.data_avaliacao)}</span>
-              </div>
+              </p>
+              <small>
+                <strong>De:</strong> {av.avaliador?.nome || "Usuário"} |{" "}
+                <strong>Data:</strong> {formatarDataBR(av.data_avaliacao)}
+              </small>
             </div>
           ))}
         </div>
 
-        {/* BOTÕES FINAIS - AGRUPADOS CENTRALIZADOS */}
-        {(usuarioLogado && usuarioLogado.id !== usuario.id && (
-          <div style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 12,
-            marginTop: 26,
-            flexWrap: "wrap"
-          }}>
-            {/* Botão Contratar Freelancer */}
-            {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
-              <button
-                style={{
-                  background: "#43a047",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 7,
-                  padding: "10px 22px",
-                  fontWeight: 700,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  boxShadow: "0 2px 6px #dbeee2"
-                }}
-                onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
-              >
-                Contratar Freelancer
-              </button>
-            )}
-            {/* Botão Denunciar Perfil */}
+        {/* Ações finais */}
+        {usuarioLogado && usuarioLogado.id !== usuario.id && (
+          <div className="perfil-acoes">
+            {usuario.tipo === "freelancer" &&
+              usuarioLogado.tipo === "cliente" && (
+                <button
+                  className="btn-contratar"
+                  onClick={() =>
+                    navigate(`/trabalhos/novo?freelancer=${usuario.id}`)
+                  }
+                >
+                  Contratar Freelancer
+                </button>
+              )}
             <button
-              style={{
-                background: "#e53935",
-                color: "#fff",
-                border: "none",
-                borderRadius: 7,
-                padding: "10px 22px",
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: "pointer",
-                boxShadow: "0 2px 6px #fde3e4"
-              }}
+              className="btn-denunciar"
               onClick={() =>
-                navigate("/denuncias/cadastrar", { state: { denunciado: usuario.id } })
+                navigate("/denuncias/cadastrar", {
+                  state: { denunciado: usuario.id },
+                })
               }
             >
               Denunciar Perfil
             </button>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

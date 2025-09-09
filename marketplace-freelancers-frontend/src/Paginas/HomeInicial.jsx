@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
 import { Link } from "react-router-dom";
-import "../App.css";
+import "../styles/HomeInicial.css";
 
 export default function HomeInicial() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -27,13 +27,12 @@ export default function HomeInicial() {
         setCarregando(false);
       }
     }
-
     if (usuarioLogado) fetchData();
   }, [usuarioLogado]);
 
   if (carregando) {
     return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
+      <div className="main-center">
         <div className="spinner-border text-primary" role="status"></div>
         <span className="ms-2">Carregando...</span>
       </div>
@@ -42,8 +41,8 @@ export default function HomeInicial() {
 
   if (!usuarioLogado) {
     return (
-      <div className="container text-center mt-5">
-        <p className="alert alert-danger">⚠️ Usuário não autenticado!</p>
+      <div className="main-center">
+        <p className="error-msg">⚠️ Usuário não autenticado!</p>
       </div>
     );
   }
@@ -51,11 +50,11 @@ export default function HomeInicial() {
   return (
     <div className="home-wrapper container py-5">
       {/* 🔹 Banner de boas-vindas */}
-      <div className="welcome-banner text-white mb-5 rounded shadow-sm p-4 text-center">
-        <h2 className="fw-bold">
+      <div className="card card-banner mb-5">
+        <h2>
           👋 Bem-vindo, {usuarioLogado.nome || usuarioLogado.username}!
         </h2>
-        <p className="lead mb-0">
+        <p>
           {usuarioLogado.tipo === "freelancer"
             ? "Explore novos trabalhos e oportunidades personalizadas para você."
             : "Encontre freelancers ideais para os seus projetos."}
@@ -108,7 +107,7 @@ export default function HomeInicial() {
             : "✨ Freelancers Recomendados"}
         </h4>
 
-        {erro && <p className="text-danger">{erro}</p>}
+        {erro && <p className="error-msg">{erro}</p>}
 
         {oportunidades.length === 0 ? (
           <p className="text-muted">Nenhuma oportunidade encontrada.</p>

@@ -1,19 +1,19 @@
+// src/Paginas/CadastroTrabalho.jsx
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import "../styles/CadastroTrabalho.css";
 
 export default function CadastroTrabalho() {
   const { usuarioLogado } = useContext(UsuarioContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🔹 Captura freelancerId da query string
   const params = new URLSearchParams(location.search);
   const freelancerId = params.get("freelancer");
 
   const [freelancerNome, setFreelancerNome] = useState("");
-
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
@@ -27,7 +27,6 @@ export default function CadastroTrabalho() {
   const [erroGeral, setErroGeral] = useState("");
   const [sucesso, setSucesso] = useState("");
 
-  // 🔹 Buscar nome do freelancer (se for trabalho privado)
   useEffect(() => {
     async function fetchFreelancer() {
       if (freelancerId) {
@@ -42,7 +41,6 @@ export default function CadastroTrabalho() {
     fetchFreelancer();
   }, [freelancerId]);
 
-  // 🔹 buscarSugestoes definido com useCallback
   const buscarSugestoes = useCallback(
     async (texto) => {
       try {
@@ -59,7 +57,7 @@ export default function CadastroTrabalho() {
   );
 
   useEffect(() => {
-    buscarSugestoes(""); // inicia sem sugestões
+    buscarSugestoes("");
   }, [buscarSugestoes]);
 
   const handleHabilidadeInput = (e) => {
@@ -93,8 +91,7 @@ export default function CadastroTrabalho() {
     if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
     if (!prazo) novosErros.prazo = "Escolha o prazo.";
     if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
-      novosErros.orcamento =
-        "Informe um orçamento válido (maior que zero).";
+      novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
     }
     return novosErros;
   };
@@ -119,11 +116,7 @@ export default function CadastroTrabalho() {
     formData.append("orcamento", orcamento);
     habilidades.forEach((hab) => formData.append("habilidades", hab));
     if (anexo) formData.append("anexo", anexo);
-
-    // 🔹 Se veio da query string → envia freelancer fixo
-    if (freelancerId) {
-      formData.append("freelancer", freelancerId);
-    }
+    if (freelancerId) formData.append("freelancer", freelancerId);
 
     try {
       await api.post("/trabalhos/", formData, {
@@ -141,13 +134,9 @@ export default function CadastroTrabalho() {
             : mensagem;
         });
         setErros(novosErros);
-        setErroGeral(
-          backendErros.detail || "Erro ao cadastrar trabalho."
-        );
+        setErroGeral(backendErros.detail || "Erro ao cadastrar trabalho.");
       } else {
-        setErroGeral(
-          "Erro ao cadastrar trabalho. Verifique os campos e tente novamente."
-        );
+        setErroGeral("Erro ao cadastrar trabalho. Verifique os campos e tente novamente.");
       }
     }
   };
@@ -158,7 +147,7 @@ export default function CadastroTrabalho() {
   ) {
     return (
       <div className="main-center">
-        <div className="main-box" style={{ color: "red" }}>
+        <div className="main-box error-msg">
           Apenas clientes e administradores podem cadastrar trabalhos.
         </div>
       </div>
@@ -166,16 +155,12 @@ export default function CadastroTrabalho() {
   }
 
   return (
-    <div className="main-center">
+    <div className="cadastro-trabalho-container">
       <div className="form-box">
-        <h2 style={{ marginBottom: 22 }}>
-          {freelancerId
-            ? "Criar Trabalho Privado"
-            : "Cadastrar Novo Trabalho"}
-        </h2>
+        <h2>{freelancerId ? "Criar Trabalho Privado" : "Cadastrar Novo Trabalho"}</h2>
 
         {freelancerId && (
-          <p style={{ marginBottom: 15, color: "#1976d2" }}>
+          <p className="texto-info">
             Este trabalho será direcionado apenas para{" "}
             <strong>{freelancerNome || `Freelancer #${freelancerId}`}</strong>.
           </p>
@@ -199,9 +184,7 @@ export default function CadastroTrabalho() {
             required
             className={erros.descricao ? "input-erro" : ""}
           />
-          {erros.descricao && (
-            <div className="error-msg">{erros.descricao}</div>
-          )}
+          {erros.descricao && <div className="error-msg">{erros.descricao}</div>}
 
           <input
             type="date"
@@ -221,21 +204,14 @@ export default function CadastroTrabalho() {
             required
             className={erros.orcamento ? "input-erro" : ""}
           />
-          {erros.orcamento && (
-            <div className="error-msg">{erros.orcamento}</div>
-          )}
+          {erros.orcamento && <div className="error-msg">{erros.orcamento}</div>}
 
           <label>Habilidades:</label>
           <div className="habilidades-container">
             {habilidades.map((hab, index) => (
               <div key={index} className="habilidade-tag">
                 {hab}
-                <button
-                  type="button"
-                  onClick={() => removeHabilidade(hab)}
-                >
-                  ×
-                </button>
+                <button type="button" onClick={() => removeHabilidade(hab)}>×</button>
               </div>
             ))}
             <input
@@ -266,10 +242,11 @@ export default function CadastroTrabalho() {
           />
           {erros.anexo && <div className="error-msg">{erros.anexo}</div>}
 
-          <button type="submit">
+          <button type="submit" className="btn btn-primary">
             {freelancerId ? "Enviar para Freelancer" : "Cadastrar Trabalho"}
           </button>
         </form>
+
         {sucesso && <div className="success-msg">{sucesso}</div>}
         {erroGeral && <div className="error-msg">{erroGeral}</div>}
       </div>

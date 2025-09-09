@@ -1,0 +1,141 @@
+.pagamento-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+/* Caixa principal */
+.main-box {
+  background: #fff;
+  padding: 28px 30px;
+  border-radius: 14px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 600px;
+}
+.pagamento-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #223146;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Detalhes do contrato */
+.contrato-detalhes-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 15px;
+  color: #333;
+}
+.contrato-detalhes-grid strong {
+  color: #223146;
+}
+
+/* Mensagens */
+.pagamento-msg {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 10px 0;
+  text-align: center;
+}
+.pagamento-msg.erro {
+  color: #d32f2f;
+}
+.pagamento-msg.sucesso {
+  color: #2e7d32;
+}
+
+/* Bloco de opções de pagamento */
+.pagamento-form h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #223146;
+}
+.pagamento-opcoes {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.opcao-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1.5px solid #dde4ef;
+  border-radius: 10px;
+  background: #f9fafc;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+.opcao-box input {
+  display: none;
+}
+.opcao-box .icone {
+  font-size: 20px;
+  color: #1976d2;
+}
+.opcao-box:hover {
+  border-color: #1976d2;
+  background: #f0f7ff;
+  transform: translateY(-2px);
+}
+.opcao-box.ativo {
+  border-color: #1976d2;
+  background: #1976d2;
+  color: #fff;
+}
+.opcao-box.ativo .icone {
+  color: #fff;
+}
+
+/* Botões */
+.btn-confirmar,
+.btn-voltar {
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+.btn-confirmar {
+  background: #1976d2;
+  color: #fff;
+}
+.btn-confirmar:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+.btn-voltar {
+  background: #ccc;
+  color: #223146;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.btn-voltar:hover {
+  background: #b3b3b3;
+  transform: translateY(-2px);
+}
+
+/* Responsividade */
+@media (max-width: 600px) {
+  .main-box {
+    padding: 20px;
+  }
+}

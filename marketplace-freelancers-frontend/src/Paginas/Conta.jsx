@@ -1,6 +1,7 @@
-import React, { useContext, useState, useRef } from "react";
+import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
+import "../styles/Conta.css";
 
 export default function Conta() {
   const { usuarioLogado, setUsuarioLogado } = useContext(UsuarioContext);
@@ -38,41 +39,29 @@ export default function Conta() {
   const [erroSenha, setErroSenha] = useState("");
   const [carregandoSenha, setCarregandoSenha] = useState(false);
 
-  // Feedback global da troca de senha (aparece fora do menu/modal)
+  // Feedback global da troca de senha
   const [feedbackTrocaSenha, setFeedbackTrocaSenha] = useState("");
 
   const fileInputRef = useRef(null);
 
-  // Função de máscara para telefone
   function formatarTelefone(valor) {
     if (!valor) return "";
     let numeros = valor.replace(/\D/g, "");
     if (numeros.length > 11) numeros = numeros.slice(0, 11);
-
-    if (numeros.length > 10) {
-      return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
-    } else if (numeros.length > 6) {
-      return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
-    } else if (numeros.length > 2) {
-      return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-    } else {
-      return numeros.replace(/^(\d*)/, "($1");
-    }
+    if (numeros.length > 10) return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    if (numeros.length > 6) return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    if (numeros.length > 2) return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    return numeros.replace(/^(\d*)/, "($1");
   }
 
-  // Carrega avaliações recebidas ao abrir a tela
-  React.useEffect(() => {
+  useEffect(() => {
     async function buscarAvaliacoes() {
       try {
         const resp = await api.get("/avaliacoes/");
-        const recebidas = resp.data.filter(
-          (a) => a.avaliado.id === usuarioLogado.id
-        );
+        const recebidas = resp.data.filter((a) => a.avaliado.id === usuarioLogado.id);
         setAvaliacoes(recebidas);
         if (recebidas.length > 0) {
-          const media =
-            recebidas.reduce((soma, a) => soma + a.nota, 0) /
-            recebidas.length;
+          const media = recebidas.reduce((soma, a) => soma + a.nota, 0) / recebidas.length;
           setNotaMedia(media);
         } else {
           setNotaMedia(null);
@@ -123,9 +112,7 @@ export default function Conta() {
 
   function getPreviewFoto(usuario) {
     const foto = usuario?.foto_perfil;
-    if (foto && foto !== "" && foto !== null) {
-      return foto; // já vem como URL completa do backend
-    }
+    if (foto && foto !== "" && foto !== null) return foto;
     return "/icone-usuario.png";
   }
 
@@ -137,11 +124,9 @@ export default function Conta() {
     const formData = new FormData();
     formData.append("nome", form.nome);
     formData.append("telefone", form.telefone.replace(/\D/g, ""));
-    if (form.foto_perfil) {
-      formData.append("foto_perfil", form.foto_perfil);
-    }
+    if (form.foto_perfil) formData.append("foto_perfil", form.foto_perfil);
+
     try {
-      // PATCH para o usuário logado
       const resp = await api.patch(`/usuarios/${usuarioLogado.id}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -151,39 +136,32 @@ export default function Conta() {
         telefone: resp.data.telefone,
         foto_perfil: resp.data.foto_perfil,
       }));
-
-      // 🔹 Atualiza o preview também
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
       setFeedback("Dados atualizados com sucesso!");
-      setCarregando(false);
     } catch (err) {
-      if (err.response && err.response.data) {
+      let msg = "Erro ao atualizar dados.";
+      if (err.response?.data) {
         const backendErros = err.response.data;
-        let msg = backendErros.detail || "Erro ao atualizar dados.";
+        msg = backendErros.detail || msg;
         if (typeof backendErros === "object") {
           msg =
             Object.values(backendErros)
               .map((m) => (Array.isArray(m) ? m.join(" ") : m))
               .join(" ") || msg;
         }
-        setErro(msg);
-      } else {
-        setErro("Erro ao atualizar dados.");
       }
-      setCarregando(false);
+      setErro(msg);
     }
+    setCarregando(false);
   }
 
-  // PATCH notificação
   async function handleToggleNotificacao(e) {
     const novoValor = e.target.checked;
     setCarregandoNotificacao(true);
     setFeedbackNotificacao("");
     try {
-      await api.patch(`/usuarios/${usuarioLogado.id}/`, {
-        notificacao_email: novoValor,
-      });
+      await api.patch(`/usuarios/${usuarioLogado.id}/`, { notificacao_email: novoValor });
       setNotificacaoEmail(novoValor);
       setFeedbackNotificacao("Preferência de notificação atualizada!");
       setTimeout(() => setFeedbackNotificacao(""), 4000);
@@ -193,7 +171,6 @@ export default function Conta() {
     setCarregandoNotificacao(false);
   }
 
-  // Troca de senha
   async function handleTrocarSenha(e) {
     e.preventDefault();
     setCarregandoSenha(true);
@@ -207,7 +184,6 @@ export default function Conta() {
         confirmar_nova_senha: confirmarNovaSenha,
       });
       setFeedbackTrocaSenha("Senha alterada com sucesso!");
-      setTimeout(() => setFeedbackTrocaSenha(""), 5000);
       setErroSenha("");
       setSenhaAtual("");
       setNovaSenha("");
@@ -215,7 +191,7 @@ export default function Conta() {
       setExibirTrocaSenha(false);
     } catch (err) {
       let msg = "Erro ao alterar senha.";
-      if (err.response && err.response.data) {
+      if (err.response?.data) {
         const backendErros = err.response.data;
         if (typeof backendErros === "object") {
           msg =
@@ -231,17 +207,13 @@ export default function Conta() {
     setCarregandoSenha(false);
   }
 
-  // Exclusão de conta real
   async function handleExcluirConta(e) {
     e.preventDefault();
     setExcluindo(true);
     setErroExcluir("");
     setFeedbackExcluir("");
     try {
-      const resp = await api.post(
-        `/usuarios/${usuarioLogado.id}/excluir_conta/`,
-        { senha: senhaExcluir }
-      );
+      const resp = await api.post(`/usuarios/${usuarioLogado.id}/excluir_conta/`, { senha: senhaExcluir });
       setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
       setTimeout(() => {
         localStorage.removeItem("token");
@@ -249,7 +221,7 @@ export default function Conta() {
       }, 1500);
     } catch (err) {
       let msg = "Erro ao excluir conta.";
-      if (err.response && err.response.data) {
+      if (err.response?.data) {
         const backendErros = err.response.data;
         if (backendErros.erro) msg = backendErros.erro;
         if (typeof backendErros === "object") {
@@ -270,51 +242,17 @@ export default function Conta() {
     <div className="conta-page-wrapper">
       <div className="conta-card-novo">
         <div className="conta-avatar-absolute">
-          <img
-            src={previewFoto}
-            alt="Foto de perfil"
-            className="conta-avatar"
-          />
+          <img src={previewFoto} alt="Foto de perfil" className="conta-avatar" />
         </div>
+
         {editando ? (
           <form onSubmit={handleSalvar} className="conta-form-editar">
-            <label>
-              Nome:
-              <input
-                type="text"
-                name="nome"
-                value={form.nome}
-                onChange={handleChange}
-                required
-              />
-            </label>
-            <label>
-              Telefone:
-              <input
-                type="text"
-                name="telefone"
-                value={form.telefone}
-                onChange={handleChange}
-                required
-              />
-            </label>
-            <label>
-              Foto de perfil:
-              <input
-                type="file"
-                name="foto_perfil"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleChange}
-              />
-            </label>
+            <label>Nome:<input type="text" name="nome" value={form.nome} onChange={handleChange} required /></label>
+            <label>Telefone:<input type="text" name="telefone" value={form.telefone} onChange={handleChange} required /></label>
+            <label>Foto de perfil:<input type="file" name="foto_perfil" accept="image/*" ref={fileInputRef} onChange={handleChange} /></label>
             <div className="conta-form-botoes">
-              <button type="submit" disabled={carregando}>
-                {carregando ? "Salvando..." : "Salvar"}
-              </button>
-              <button type="button" onClick={handleCancelar} disabled={carregando}>
-                Cancelar
-              </button>
+              <button type="submit" disabled={carregando}>{carregando ? "Salvando..." : "Salvar"}</button>
+              <button type="button" onClick={handleCancelar} disabled={carregando}>Cancelar</button>
             </div>
             {erro && <div className="error-msg">{erro}</div>}
             {feedback && <div className="success-msg">{feedback}</div>}
@@ -322,319 +260,84 @@ export default function Conta() {
         ) : (
           <>
             <ul className="conta-detalhes-lista">
-              <li>
-                <strong>Nome:</strong> {usuarioLogado.nome}
-              </li>
-              <li>
-                <strong>Email:</strong> {usuarioLogado.email}
-              </li>
-              <li>
-                <strong>Tipo:</strong>{" "}
-                {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-              </li>
-              <li>
-                <strong>CPF:</strong> {usuarioLogado.cpf}
-              </li>
-              {usuarioLogado.cnpj && (
-                <li>
-                  <strong>CNPJ:</strong> {usuarioLogado.cnpj}
-                </li>
-              )}
-              <li>
-                <strong>Telefone:</strong> {formatarTelefone(usuarioLogado.telefone)}
-              </li>
+              <li><strong>Nome:</strong> {usuarioLogado.nome}</li>
+              <li><strong>Email:</strong> {usuarioLogado.email}</li>
+              <li><strong>Tipo:</strong> {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}</li>
+              <li><strong>CPF:</strong> {usuarioLogado.cpf}</li>
+              {usuarioLogado.cnpj && <li><strong>CNPJ:</strong> {usuarioLogado.cnpj}</li>}
+              <li><strong>Telefone:</strong> {formatarTelefone(usuarioLogado.telefone)}</li>
               {typeof notaMedia !== "undefined" && (
-                <li>
-                  <strong>Média de avaliação:</strong>{" "}
-                  {notaMedia ? notaMedia.toFixed(2) + " / 5" : "Sem avaliações"}
-                </li>
+                <li><strong>Média de avaliação:</strong> {notaMedia ? notaMedia.toFixed(2) + " / 5" : "Sem avaliações"}</li>
               )}
             </ul>
-            <button className="conta-editar-btn" onClick={handleEditar}>
-              Editar Informações
-            </button>
-            <button
-              className="conta-ver-publico-btn"
-              style={{
-                width: "100%",
-                marginTop: 8,
-                marginBottom: 4,
-                background: "#f5faff",
-                color: "#1976d2",
-                borderRadius: 10,
-                border: "1.2px solid #1976d2",
-                padding: "11px 0",
-                fontWeight: 700,
-                fontSize: "1.11rem",
-                cursor: "pointer",
-                transition: "filter .17s"
-              }}
-              onClick={() => window.open(`/perfil/${usuarioLogado.id}`, "_blank")}
-            >
-              Ver meu perfil público
-            </button>
+            <button className="conta-editar-btn" onClick={handleEditar}>Editar Informações</button>
+            <button className="conta-ver-publico-btn" onClick={() => window.open(`/perfil/${usuarioLogado.id}`, "_blank")}>Ver meu perfil público</button>
           </>
         )}
 
         {/* Preferência de notificação */}
-        <div style={{ margin: "22px 0 8px 0" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <input
-              type="checkbox"
-              checked={!!notificacaoEmail}
-              onChange={handleToggleNotificacao}
-              disabled={carregandoNotificacao}
-              style={{ width: 18, height: 18 }}
-            />
-            Receber notificações por e-mail
-          </label>
-          {feedbackNotificacao && (
-            <div className="success-msg" style={{ marginTop: 6 }}>
-              {feedbackNotificacao}
-            </div>
-          )}
+        <div className="conta-notificacao-bloco">
+          <label><input type="checkbox" checked={!!notificacaoEmail} onChange={handleToggleNotificacao} disabled={carregandoNotificacao} /> Receber notificações por e-mail</label>
+          {feedbackNotificacao && <div className="success-msg">{feedbackNotificacao}</div>}
         </div>
 
-        {/* --- Feedback global da troca de senha --- */}
-        {feedbackTrocaSenha && (
-          <div className="success-msg" style={{ margin: "16px 0 10px 0", fontWeight: 600 }}>
-            {feedbackTrocaSenha}
-          </div>
-        )}
+        {feedbackTrocaSenha && <div className="success-msg conta-feedback-global">{feedbackTrocaSenha}</div>}
 
-        {/* --- Bloco de troca de senha --- */}
-        <div className="conta-trocar-senha-bloco" style={{ marginTop: 32 }}>
-          <button
-            style={{
-              background: "#223146",
-              color: "#fff",
-              padding: "8px 20px",
-              borderRadius: "7px",
-              border: "none",
-              fontWeight: 700,
-              cursor: "pointer",
-              marginBottom: 6,
-            }}
-            onClick={() => setExibirTrocaSenha((v) => !v)}
-          >
+        {/* Troca de senha */}
+        <div className="conta-trocar-senha-bloco">
+          <button className="conta-btn-trocar" onClick={() => setExibirTrocaSenha((v) => !v)}>
             {exibirTrocaSenha ? "Fechar Alteração de Senha" : "Alterar Senha"}
           </button>
           {exibirTrocaSenha && (
-            <form
-              onSubmit={handleTrocarSenha}
-              style={{
-                marginTop: 10,
-                background: "#f5f5f5",
-                border: "1px solid #ddd",
-                padding: 16,
-                borderRadius: 8,
-                maxWidth: 400,
-              }}
-            >
-              <label>
-                Senha atual:
-                <input
-                  type="password"
-                  value={senhaAtual}
-                  onChange={(e) => setSenhaAtual(e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Nova senha:
-                <input
-                  type="password"
-                  value={novaSenha}
-                  onChange={(e) => setNovaSenha(e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Confirmar nova senha:
-                <input
-                  type="password"
-                  value={confirmarNovaSenha}
-                  onChange={(e) => setConfirmarNovaSenha(e.target.value)}
-                  required
-                />
-              </label>
-              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-                <button type="submit" disabled={carregandoSenha}>
-                  {carregandoSenha ? "Salvando..." : "Salvar nova senha"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExibirTrocaSenha(false);
-                    setErroSenha("");
-                    setFeedbackSenha("");
-                    setSenhaAtual("");
-                    setNovaSenha("");
-                    setConfirmarNovaSenha("");
-                  }}
-                  disabled={carregandoSenha}
-                  style={{ background: "#bbb", color: "#223146" }}
-                >
-                  Cancelar
-                </button>
+            <form onSubmit={handleTrocarSenha} className="conta-form-troca-senha">
+              <label>Senha atual:<input type="password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} required /></label>
+              <label>Nova senha:<input type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} required /></label>
+              <label>Confirmar nova senha:<input type="password" value={confirmarNovaSenha} onChange={(e) => setConfirmarNovaSenha(e.target.value)} required /></label>
+              <div className="conta-form-botoes">
+                <button type="submit" disabled={carregandoSenha}>{carregandoSenha ? "Salvando..." : "Salvar nova senha"}</button>
+                <button type="button" onClick={() => setExibirTrocaSenha(false)} disabled={carregandoSenha} className="btn-cancelar">Cancelar</button>
               </div>
-              {erroSenha && (
-                <div className="error-msg" style={{ marginTop: 6 }}>
-                  {erroSenha}
-                </div>
-              )}
-              {feedbackSenha && (
-                <div className="success-msg" style={{ marginTop: 6 }}>
-                  {feedbackSenha}
-                </div>
-              )}
+              {erroSenha && <div className="error-msg">{erroSenha}</div>}
+              {feedbackSenha && <div className="success-msg">{feedbackSenha}</div>}
             </form>
           )}
         </div>
 
-        {/* Lista de avaliações recebidas */}
+        {/* Avaliações */}
         <div className="conta-avaliacoes-recebidas">
           <h4>Avaliações Recebidas</h4>
-          {avaliacoes.length === 0 && (
-            <div style={{ color: "#888", fontStyle: "italic" }}>
-              Nenhuma avaliação recebida ainda.
-            </div>
+          {avaliacoes.length === 0 ? (
+            <div className="conta-avaliacao-vazia">Nenhuma avaliação recebida ainda.</div>
+          ) : (
+            avaliacoes.map((av) => (
+              <div key={av.id} className="conta-avaliacao-item">
+                <span><strong>Nota:</strong> {av.nota} / 5</span>
+                <span><strong>Comentário:</strong> {av.comentario || "Sem comentário"}</span>
+                <span><strong>De:</strong> {av.avaliador?.nome || "Usuário"}</span>
+              </div>
+            ))
           )}
-          {avaliacoes.map((av) => (
-            <div key={av.id} className="conta-avaliacao-item">
-              <span>
-                <strong>Nota:</strong> {av.nota} / 5
-              </span>
-              <span>
-                <strong>Comentário:</strong> {av.comentario || "Sem comentário"}
-              </span>
-              <span>
-                <strong>De:</strong> {av.avaliador?.nome || "Usuário"}
-              </span>
-            </div>
-          ))}
         </div>
 
-        {/* Exclusão real de conta */}
-        <div style={{ marginTop: 28 }}>
-          <button
-            className="conta-excluir-btn"
-            style={{
-              background: "#f23d3d",
-              color: "#fff",
-              borderRadius: 7,
-              border: "none",
-              padding: "8px 18px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-            onClick={() => setShowModalExcluir(true)}
-          >
-            Excluir Conta
-          </button>
+        {/* Exclusão de conta */}
+        <div className="conta-excluir-bloco">
+          <button className="conta-excluir-btn" onClick={() => setShowModalExcluir(true)}>Excluir Conta</button>
         </div>
 
         {/* Modal de exclusão */}
         {showModalExcluir && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(30,30,40,0.48)",
-              zIndex: 9000,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 14,
-                padding: "28px 30px 22px 30px",
-                boxShadow: "0 8px 32px #1976d244",
-                minWidth: 330,
-                maxWidth: "92vw",
-                zIndex: 9999,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center"
-              }}
-            >
-              <h3 style={{marginBottom: 6, fontWeight: 800, color: "#223146"}}>Excluir Conta</h3>
-              <p style={{marginBottom: 12, color: "#555", fontSize: "1.06rem"}}>Digite sua senha para confirmar a exclusão:</p>
-              <form onSubmit={handleExcluirConta} style={{width: "100%"}}>
-                <input
-                  type="password"
-                  value={senhaExcluir}
-                  onChange={(e) => setSenhaExcluir(e.target.value)}
-                  placeholder="Sua senha"
-                  required
-                  style={{
-                    width: "100%",
-                    marginBottom: 16,
-                    padding: "11px 15px",
-                    fontSize: 17,
-                    border: "1.5px solid #e7eaf3",
-                    borderRadius: 8,
-                    outline: "none"
-                  }}
-                />
-                <div style={{display: "flex", gap: 12, width: "100%"}}>
-                  <button
-                    type="submit"
-                    disabled={excluindo}
-                    style={{
-                      background: "#f23d3d",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 7,
-                      padding: "10px 18px",
-                      fontWeight: 700,
-                      fontSize: 15,
-                      width: "50%",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {excluindo ? "Excluindo..." : "Confirmar Exclusão"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModalExcluir(false);
-                      setSenhaExcluir("");
-                      setErroExcluir("");
-                      setFeedbackExcluir("");
-                    }}
-                    style={{
-                      background: "#bbb",
-                      color: "#223146",
-                      border: "none",
-                      borderRadius: 7,
-                      padding: "10px 18px",
-                      fontWeight: 700,
-                      fontSize: 15,
-                      width: "50%",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Cancelar
-                  </button>
+          <div className="modal-overlay">
+            <div className="modal-box">
+              <h3>Excluir Conta</h3>
+              <p>Digite sua senha para confirmar a exclusão:</p>
+              <form onSubmit={handleExcluirConta}>
+                <input type="password" value={senhaExcluir} onChange={(e) => setSenhaExcluir(e.target.value)} placeholder="Sua senha" required />
+                <div className="modal-botoes">
+                  <button type="submit" disabled={excluindo} className="btn-excluir">{excluindo ? "Excluindo..." : "Confirmar Exclusão"}</button>
+                  <button type="button" onClick={() => setShowModalExcluir(false)} className="btn-cancelar">Cancelar</button>
                 </div>
-                {erroExcluir && (
-                  <div className="error-msg" style={{marginTop: 8}}>
-                    {erroExcluir}
-                  </div>
-                )}
-                {feedbackExcluir && (
-                  <div className="success-msg" style={{marginTop: 8}}>
-                    {feedbackExcluir}
-                  </div>
-                )}
-                
+                {erroExcluir && <div className="error-msg">{erroExcluir}</div>}
+                {feedbackExcluir && <div className="success-msg">{feedbackExcluir}</div>}
               </form>
             </div>
           </div>

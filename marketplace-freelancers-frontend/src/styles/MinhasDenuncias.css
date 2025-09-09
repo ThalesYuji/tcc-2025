@@ -1,0 +1,193 @@
+.denuncias-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  min-height: calc(100vh - 80px);
+}
+
+/* Título */
+.denuncias-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #d32f2f;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* ============================= */
+/* Mensagens                     */
+/* ============================= */
+.erro-msg {
+  background: #ffebee;
+  color: #c62828;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.success-msg {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ============================= */
+/* Tabs                          */
+/* ============================= */
+.denuncias-tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.denuncias-tab {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  background: #e0e0e0;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.denuncias-tab:hover {
+  background: #d5d5d5;
+  transform: translateY(-2px);
+}
+
+.denuncias-tab.active {
+  background: #d32f2f;
+  color: #fff;
+}
+
+/* ============================= */
+/* Tabela                        */
+/* ============================= */
+.denuncias-table-wrap {
+  overflow-x: auto;
+}
+
+.denuncias-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.denuncias-table thead {
+  background: #d32f2f;
+  color: #fff;
+}
+
+.denuncias-table th,
+.denuncias-table td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.denuncias-table th {
+  font-weight: 600;
+}
+
+.denuncias-table tbody tr:hover {
+  background: #f5f5f5;
+}
+
+/* Estado vazio */
+.denuncias-empty {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* ============================= */
+/* Badges                        */
+/* ============================= */
+.denuncias-badge {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.denuncias-badge.warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.denuncias-badge.primary {
+  background: #bbdefb;
+  color: #0d47a1;
+}
+
+.denuncias-badge.success {
+  background: #c8e6c9;
+  color: #1b5e20;
+}
+
+.denuncias-badge.secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* ============================= */
+/* Links                         */
+/* ============================= */
+.link-perfil {
+  color: #1976d2;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-perfil:hover {
+  color: #125ea8;
+}
+
+/* ============================= */
+/* Truncamento de colunas longas */
+/* ============================= */
+.cell-truncate {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 768px) {
+  .denuncias-tab {
+    flex: 1;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+
+  .denuncias-table th,
+  .denuncias-table td {
+    font-size: 0.85rem;
+    padding: 0.6rem;
+  }
+
+  .hide-mobile {
+    display: none;
+  }
+
+  .cell-truncate {
+    max-width: 120px;
+  }
+}

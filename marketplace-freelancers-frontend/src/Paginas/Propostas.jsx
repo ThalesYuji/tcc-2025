@@ -4,6 +4,7 @@ import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useNavigate } from "react-router-dom";
 import { FaFileAlt, FaUser } from "react-icons/fa";
+import "../styles/Propostas.css";
 
 export default function Propostas() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -15,15 +16,15 @@ export default function Propostas() {
 
   useEffect(() => {
     if (!usuarioLogado) return;
+
     setLoading(true);
     api.get("/propostas/")
       .then(res => {
-        setPropostas(res.data);
+        setPropostas(res.data || []);
         setErro("");
       })
-      .catch(() => setErro("Erro ao buscar propostas."));
-    setLoading(false);
-    // eslint-disable-next-line
+      .catch(() => setErro("Erro ao buscar propostas."))
+      .finally(() => setLoading(false));
   }, [usuarioLogado, sucesso]);
 
   function formatarData(dataStr) {
@@ -35,11 +36,9 @@ export default function Propostas() {
     if (!msg) return "Erro inesperado ao processar a proposta.";
     if (
       typeof msg === "string" &&
-      (
-        msg.toLowerCase().includes("permission") ||
+      (msg.toLowerCase().includes("permission") ||
         msg.toLowerCase().includes("not allowed") ||
-        msg.toLowerCase().includes("unauthorized")
-      )
+        msg.toLowerCase().includes("unauthorized"))
     ) {
       return "Você não tem permissão para realizar essa ação.";
     }
@@ -64,23 +63,27 @@ export default function Propostas() {
       setSucesso(resp.data.mensagem || "Operação realizada com sucesso!");
     } catch (err) {
       const backendMsg =
-        (err.response && err.response.data && (err.response.data.erro || err.response.data.detail)) ||
-        "Erro ao alterar status.";
+        err.response?.data?.erro || err.response?.data?.detail || "Erro ao alterar status.";
       setErro(traduzirErroBackend(backendMsg));
     }
   }
 
-  if (loading) return (
-    <div className="main-center">
-      <div className="main-box">Carregando...</div>
-    </div>
-  );
+  // Estados básicos
+  if (loading) {
+    return (
+      <div className="main-center">
+        <div className="main-box">Carregando...</div>
+      </div>
+    );
+  }
 
-  if (!usuarioLogado) return (
-    <div className="main-center">
-      <div className="main-box">Usuário não autenticado!</div>
-    </div>
-  );
+  if (!usuarioLogado) {
+    return (
+      <div className="main-center">
+        <div className="main-box">⚠️ Usuário não autenticado!</div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-center">
@@ -105,34 +108,35 @@ export default function Propostas() {
                 </tr>
               </thead>
               <tbody>
-                {propostas.length === 0 && (
+                {propostas.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="nenhum-registro">
                       Nenhuma proposta enviada ainda.
                     </td>
                   </tr>
+                ) : (
+                  propostas.map(prop => (
+                    <tr key={prop.id}>
+                      <td>
+                        <button
+                          onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
+                          className="link-acao"
+                        >
+                          <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
+                        </button>
+                      </td>
+                      <td>{prop.descricao}</td>
+                      <td>R$ {Number(prop.valor).toFixed(2)}</td>
+                      <td>{prop.prazo_estimado}</td>
+                      <td>
+                        <span className={`status-badge status-${prop.status}`}>
+                          {prop.status}
+                        </span>
+                      </td>
+                      <td>{formatarData(prop.data_envio)}</td>
+                    </tr>
+                  ))
                 )}
-                {propostas.map(prop => (
-                  <tr key={prop.id}>
-                    <td>
-                      <button
-                        onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
-                        className="link-acao"
-                      >
-                        <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
-                      </button>
-                    </td>
-                    <td>{prop.descricao}</td>
-                    <td>R$ {Number(prop.valor).toFixed(2)}</td>
-                    <td>{prop.prazo_estimado}</td>
-                    <td>
-                      <span className={`status-badge status-${prop.status}`}>
-                        {prop.status}
-                      </span>
-                    </td>
-                    <td>{formatarData(prop.data_envio)}</td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
@@ -155,63 +159,64 @@ export default function Propostas() {
                 </tr>
               </thead>
               <tbody>
-                {propostas.length === 0 && (
+                {propostas.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="nenhum-registro">
                       Nenhuma proposta recebida ainda.
                     </td>
                   </tr>
+                ) : (
+                  propostas.map(prop => (
+                    <tr key={prop.id}>
+                      <td>
+                        <button
+                          onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
+                          className="link-acao"
+                        >
+                          <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
+                        </button>
+                      </td>
+                      <td>
+                        <span
+                          className="link-acao"
+                          onClick={() => navigate(`/perfil/${prop.freelancer}`)}
+                          title="Ver perfil do freelancer"
+                        >
+                          <FaUser /> {prop.freelancer_nome || prop.freelancer}
+                        </span>
+                      </td>
+                      <td>{prop.descricao}</td>
+                      <td>R$ {Number(prop.valor).toFixed(2)}</td>
+                      <td>{prop.prazo_estimado}</td>
+                      <td>
+                        <span className={`status-badge status-${prop.status}`}>
+                          {prop.status}
+                        </span>
+                      </td>
+                      <td>{formatarData(prop.data_envio)}</td>
+                      <td>
+                        {prop.status === "pendente" ? (
+                          <div className="acoes-btns">
+                            <button
+                              className="btn-aceitar"
+                              onClick={() => aceitarOuRecusar(prop.id, "aceita")}
+                            >
+                              Aceitar
+                            </button>
+                            <button
+                              className="btn-recusar"
+                              onClick={() => aceitarOuRecusar(prop.id, "recusada")}
+                            >
+                              Recusar
+                            </button>
+                          </div>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
                 )}
-                {propostas.map(prop => (
-                  <tr key={prop.id}>
-                    <td>
-                      <button
-                        onClick={() => navigate(`/trabalhos/detalhes/${prop.trabalho}`)}
-                        className="link-acao"
-                      >
-                        <FaFileAlt /> {prop.trabalho_titulo || `Trabalho #${prop.trabalho}`}
-                      </button>
-                    </td>
-                    <td>
-                      <span
-                        className="link-acao"
-                        onClick={() => navigate(`/perfil/${prop.freelancer}`)}
-                        title="Ver perfil do freelancer"
-                      >
-                        <FaUser /> {prop.freelancer_nome || prop.freelancer}
-                      </span>
-                    </td>
-                    <td>{prop.descricao}</td>
-                    <td>R$ {Number(prop.valor).toFixed(2)}</td>
-                    <td>{prop.prazo_estimado}</td>
-                    <td>
-                      <span className={`status-badge status-${prop.status}`}>
-                        {prop.status}
-                      </span>
-                    </td>
-                    <td>{formatarData(prop.data_envio)}</td>
-                    <td>
-                      {prop.status === "pendente" ? (
-                        <div className="acoes-btns">
-                          <button
-                            className="btn-aceitar"
-                            onClick={() => aceitarOuRecusar(prop.id, "aceita")}
-                          >
-                            Aceitar
-                          </button>
-                          <button
-                            className="btn-recusar"
-                            onClick={() => aceitarOuRecusar(prop.id, "recusada")}
-                          >
-                            Recusar
-                          </button>
-                        </div>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>

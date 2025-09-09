@@ -1,0 +1,201 @@
+.detalhes-trabalho-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.detalhes-trabalho-card {
+  background: #fff;
+  padding: 26px 28px;
+  border-radius: 14px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 600px;
+  font-size: 15px;
+  color: #333;
+}
+
+.detalhes-trabalho-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #223146;
+  margin-bottom: 18px;
+}
+
+.detalhes-trabalho-card p {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+/* ============================ */
+/* Status Badge                 */
+/* ============================ */
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  margin-left: 8px;
+  text-transform: capitalize;
+}
+
+.status-aberto { background: #43a047; }
+.status-andamento { background: #fb8c00; }
+.status-concluido { background: #1976d2; }
+.status-cancelado { background: #e53935; }
+.status-recusado { background: #757575; }
+.status-default { background: #9e9e9e; }
+
+/* ============================ */
+/* Grupo de botões inline       */
+/* ============================ */
+.btn-group-inline {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.btn-group-inline button {
+  flex: 1;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-group-inline button:hover {
+  filter: brightness(0.95);
+}
+
+.btn-group-inline .btn-excluir {
+  background: #e53935;
+}
+
+.btn-aceitar {
+  background: #43a047 !important;
+}
+
+.btn-recusar {
+  background: #e53935 !important;
+}
+
+/* ============================ */
+/* Alertas centrais             */
+/* ============================ */
+.alerta-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(20, 20, 30, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+}
+
+.alerta-box {
+  padding: 18px 26px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  color: #fff;
+  text-align: center;
+  min-width: 260px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.alerta-sucesso { background: #43a047; }
+.alerta-erro { background: #e53935; }
+.alerta-info { background: #1976d2; }
+
+/* ============================ */
+/* Formulário de proposta       */
+/* ============================ */
+.proposta-container {
+  margin-top: 24px;
+}
+
+.proposta-form {
+  margin-top: 14px;
+  background: #f6f8fb;
+  border: 1px solid #dde4ef;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.proposta-form textarea,
+.proposta-form input[type="number"],
+.proposta-form input[type="date"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #dde4ef;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  outline: none;
+  resize: none;
+  transition: border 0.2s;
+}
+
+.proposta-form textarea:focus,
+.proposta-form input:focus {
+  border-color: #1976d2;
+}
+
+/* ============================ */
+/* Links                        */
+/* ============================ */
+.link-anexo {
+  color: #1976d2;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link-anexo:hover {
+  text-decoration: underline;
+}
+
+/* ============================ */
+/* Mensagens de feedback        */
+/* ============================ */
+.error-msg {
+  color: #d32f2f;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.success-msg {
+  color: #2e7d32;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+/* ============================ */
+/* Responsividade               */
+/* ============================ */
+@media (max-width: 600px) {
+  .detalhes-trabalho-card {
+    padding: 20px;
+  }
+
+  .btn-group-inline {
+    flex-direction: column;
+  }
+
+  .btn-group-inline button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,247 @@
+.denuncias-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  min-height: calc(100vh - 80px);
+}
+
+/* Título */
+.denuncias-title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #d32f2f;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Mensagens de erro */
+.erro-msg {
+  background: #ffebee;
+  color: #c62828;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ============================= */
+/* Estatísticas                  */
+/* ============================= */
+.estatisticas-denuncias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.estatistica-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  min-width: 110px;
+  transition: transform 0.2s;
+}
+
+.estatistica-card:hover {
+  transform: translateY(-3px);
+}
+
+.estatistica-card strong {
+  font-size: 1.3rem;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.estatistica-card span {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.estatistica-card.total {
+  border-left: 5px solid #6c757d;
+}
+
+.estatistica-card.pendentes {
+  border-left: 5px solid #fbc02d;
+}
+
+.estatistica-card.analisando {
+  border-left: 5px solid #1976d2;
+}
+
+.estatistica-card.resolvidas {
+  border-left: 5px solid #2e7d32;
+}
+
+/* ============================= */
+/* Lista de denúncias            */
+/* ============================= */
+.denuncias-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.denuncia-card-admin {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.2rem 1.5rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.denuncia-card-admin:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+}
+
+/* Cabeçalho da denúncia */
+.denuncia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.denuncia-header h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1976d2;
+}
+
+/* Informações */
+.denuncia-info strong {
+  display: block;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  color: #333;
+}
+
+.denuncia-info p {
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.resposta-admin {
+  background: #f9fbe7;
+  padding: 0.6rem;
+  border-radius: 8px;
+  margin-top: 0.6rem;
+}
+
+/* Botão responder */
+.btn-responder {
+  display: inline-block;
+  margin-top: 0.8rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  background: #1976d2;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-responder:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+/* ============================= */
+/* Badges                        */
+/* ============================= */
+.badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.badge-primary {
+  background: #bbdefb;
+  color: #0d47a1;
+}
+
+.badge-success {
+  background: #c8e6c9;
+  color: #1b5e20;
+}
+
+.badge-secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* ============================= */
+/* Estado vazio                  */
+/* ============================= */
+.empty-state {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 40px;
+}
+
+/* ============================= */
+/* Paginação                     */
+/* ============================= */
+.pagination {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+}
+
+.page-item .page-link {
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  border: none;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.page-item .page-link:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+.page-item.disabled .page-link {
+  background: #90caf9;
+  cursor: not-allowed;
+}
+
+.page-item.active .page-link {
+  background: #0d47a1;
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 768px) {
+  .estatisticas-denuncias {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .denuncias-grid {
+    grid-template-columns: 1fr;
+  }
+}

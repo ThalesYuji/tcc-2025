@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { FaStar, FaRegCommentDots, FaArrowLeft } from "react-icons/fa";
+import "../styles/AvaliacaoContrato.css";
 
 export default function AvaliacaoContrato() {
   const { id } = useParams();
@@ -32,15 +33,11 @@ export default function AvaliacaoContrato() {
 
         setMinhaAvaliacao(minha || null);
         setAvaliacaoOposta(outra || null);
-      } catch (error) {
-        console.error(error);
+      } catch {
         setErro("Erro ao buscar avaliações ou contrato.");
       }
     }
-
-    if (usuarioLogado) {
-      buscarDados();
-    }
+    if (usuarioLogado) buscarDados();
   }, [id, usuarioLogado]);
 
   function traduzirErroAvaliacao(msg) {
@@ -49,19 +46,14 @@ export default function AvaliacaoContrato() {
       msg.toLowerCase().includes("already exists") ||
       msg.toLowerCase().includes("unique") ||
       msg.toLowerCase().includes("duplicada")
-    )) {
-      return "Você já enviou uma avaliação para este contrato.";
-    }
+    )) return "Você já enviou uma avaliação para este contrato.";
     if (typeof msg === "string" && (
       msg.toLowerCase().includes("permission") ||
       msg.toLowerCase().includes("not allowed") ||
       msg.toLowerCase().includes("unauthorized")
-    )) {
-      return "Você não tem permissão para avaliar este contrato.";
-    }
-    if (typeof msg === "string" && msg.toLowerCase().includes("nota")) {
+    )) return "Você não tem permissão para avaliar este contrato.";
+    if (typeof msg === "string" && msg.toLowerCase().includes("nota"))
       return "Nota inválida. Só é permitido de 1 a 5.";
-    }
     return typeof msg === "string" ? msg : "Erro ao enviar avaliação.";
   }
 
@@ -101,16 +93,16 @@ export default function AvaliacaoContrato() {
     }
   };
 
-  if (!contrato) return <p style={{ textAlign: "center" }}>Carregando contrato...</p>;
+  if (!contrato) {
+    return <div className="main-center">Carregando contrato...</div>;
+  }
 
   return (
     <div className="avaliacao-container">
       <div className="main-box">
-        <h2 className="avaliacao-title">
-          <span role="img" aria-label="clip">📋</span> Avaliação do Contrato
-        </h2>
+        <h2 className="avaliacao-title">📋 Avaliação do Contrato</h2>
 
-        {/* Bloco com informações do contrato */}
+        {/* Detalhes do contrato */}
         <div className="avaliacao-detalhes-box">
           <p><strong>Trabalho:</strong> {contrato.trabalho.titulo}</p>
           <p><strong>Cliente:</strong> {contrato.cliente.nome}</p>
@@ -118,16 +110,16 @@ export default function AvaliacaoContrato() {
           <p><strong>Status do contrato:</strong> {contrato.status}</p>
         </div>
 
-        <button onClick={() => navigate("/contratos")} className="btn-voltar">
+        <button onClick={() => navigate("/contratos")} className="btn btn-secondary">
           <FaArrowLeft /> Voltar para Contratos
         </button>
 
-        {erro && <p className="avaliacao-msg erro">{erro}</p>}
-        {mensagem && <p className="avaliacao-msg sucesso">{mensagem}</p>}
+        {erro && <p className="error-msg">{erro}</p>}
+        {mensagem && <p className="success-msg">{mensagem}</p>}
 
         {/* Avaliação enviada por mim */}
         {minhaAvaliacao && (
-          <div className="avaliacao-card minha">
+          <div className="avaliacao-card">
             <h4>Sua Avaliação</h4>
             <p><strong>Para:</strong> {minhaAvaliacao.avaliado?.nome}</p>
             <p><FaStar className="icone" /> <strong>Nota:</strong> {minhaAvaliacao.nota}</p>
@@ -145,7 +137,7 @@ export default function AvaliacaoContrato() {
           </div>
         )}
 
-        {/* Formulário para enviar avaliação */}
+        {/* Formulário de avaliação */}
         {!minhaAvaliacao && contrato.status === "concluido" && (
           <div className="avaliacao-card formulario">
             <h4>Enviar sua Avaliação</h4>
@@ -167,13 +159,13 @@ export default function AvaliacaoContrato() {
                 placeholder="O que achou do trabalho?"
               />
 
-              <button type="submit" className="btn-enviar">Enviar Avaliação</button>
+              <button type="submit" className="btn btn-primary">Enviar Avaliação</button>
             </form>
           </div>
         )}
 
         {contrato.status !== "concluido" && !minhaAvaliacao && (
-          <p className="avaliacao-msg aviso">
+          <p className="info-msg">
             Avaliações só são permitidas após a conclusão do contrato.
           </p>
         )}

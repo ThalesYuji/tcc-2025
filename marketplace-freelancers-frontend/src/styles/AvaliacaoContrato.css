@@ -1,0 +1,101 @@
+.avaliacao-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #f3f8fe, #f9fbff);
+  min-height: 100vh;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.avaliacao-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--cor-primaria);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Detalhes do contrato */
+.avaliacao-detalhes-box {
+  background: #f1f5f9;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.avaliacao-detalhes-box p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+}
+
+/* Cards de avaliações */
+.avaliacao-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--sombra-card);
+}
+.avaliacao-card h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--cor-secundaria);
+}
+.avaliacao-card p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+}
+.avaliacao-card .icone {
+  color: #f59e0b;
+  margin-right: 4px;
+}
+
+/* Formulário */
+.avaliacao-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.avaliacao-form label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+}
+.avaliacao-form select,
+.avaliacao-form textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.avaliacao-form select:focus,
+.avaliacao-form textarea:focus {
+  border-color: var(--cor-primaria);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+}
+
+/* Mensagens auxiliares */
+.info-msg {
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: #555;
+  font-style: italic;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .avaliacao-container {
+    padding: 20px 10px;
+  }
+  .avaliacao-title {
+    font-size: 1.5rem;
+  }
+  .avaliacao-form textarea {
+    min-height: 90px;
+  }
+}

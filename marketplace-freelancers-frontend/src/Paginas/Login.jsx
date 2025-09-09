@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
+import "../styles/Login.css"; // 🔹 estilos específicos da página
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -35,7 +36,7 @@ export default function Login() {
 
       localStorage.setItem("userId", userResponse.data.id);
 
-      // 🔹 Redireciona para a nova tela inicial (Home)
+      // 🔹 Redireciona para a Home inicial
       navigate("/home");
       window.location.reload();
     } catch (err) {
@@ -60,7 +61,7 @@ export default function Login() {
     }
   };
 
-  const erroCampo = erro ? "input-erro" : "";
+  const erroCampo = erro ? "input input-erro" : "input";
 
   return (
     <div className="login-bg">
@@ -84,7 +85,7 @@ export default function Login() {
 
         {/* 🔹 Lado direito (formulário) */}
         <div className="login-right">
-          <div className="login-box">
+          <div className="login-box card">
             <h3>Entrar</h3>
             <form onSubmit={handleLogin}>
               <input
@@ -103,16 +104,12 @@ export default function Login() {
                 required
                 className={erroCampo}
               />
-              <button type="submit" disabled={carregando}>
+              <button type="submit" className="btn btn-primary" disabled={carregando}>
                 {carregando ? "Entrando..." : "Entrar"}
               </button>
 
               {/* Mensagem de erro */}
-              {erro && (
-                <div className="error-msg" style={{ marginTop: 10 }}>
-                  {erro}
-                </div>
-              )}
+              {erro && <div className="error-msg">{erro}</div>}
             </form>
 
             <p className="cadastro-link">

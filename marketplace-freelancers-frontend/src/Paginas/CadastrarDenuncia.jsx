@@ -1,7 +1,9 @@
+// src/Paginas/CadastrarDenuncia.jsx
 import React, { useContext, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
+import "../styles/CadastrarDenuncia.css";
 
 export default function CadastrarDenuncia() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -13,7 +15,6 @@ export default function CadastrarDenuncia() {
   const [denunciado, setDenunciado] = useState(null);
   const token = localStorage.getItem("token");
 
-  // Recupera o ID do usuário denunciado da navegação com state
   useEffect(() => {
     const idDenunciado = location.state?.denunciado;
     if (!idDenunciado) {
@@ -25,7 +26,7 @@ export default function CadastrarDenuncia() {
       try {
         const res = await api.get(`/usuarios/${idDenunciado}/`);
         setDenunciado(res.data);
-      } catch (err) {
+      } catch {
         setErro("Erro ao buscar informações do usuário denunciado.");
       }
     }
@@ -46,22 +47,13 @@ export default function CadastrarDenuncia() {
     try {
       await api.post(
         "/denuncias/",
-        {
-          denunciado: denunciado.id,
-          motivo: motivo.trim(),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { denunciado: denunciado.id, motivo: motivo.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setSucesso("Denúncia enviada com sucesso!");
       setMotivo("");
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 2000);
+      setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {
       if (err.response?.data?.detail) {
         setErro(err.response.data.detail);
@@ -74,14 +66,13 @@ export default function CadastrarDenuncia() {
     }
   };
 
-  // Tratamento de carregamento ou erro
   if (!usuarioLogado) return <div className="main-center">Usuário não autenticado.</div>;
   if (!denunciado) return <div className="main-center">Carregando informações do usuário denunciado...</div>;
 
   return (
     <div className="main-center">
-      <div className="main-box" style={{ maxWidth: 600 }}>
-        <h2>🚨 Enviar Denúncia</h2>
+      <div className="main-box denuncia-box">
+        <h2 className="denuncia-title">🚨 Enviar Denúncia</h2>
 
         <p><strong>Você está denunciando:</strong></p>
         <ul>
@@ -89,43 +80,21 @@ export default function CadastrarDenuncia() {
           <li><b>Tipo de Conta:</b> {denunciado.tipo === "freelancer" ? "Freelancer" : "Cliente"}</li>
         </ul>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 18 }}>
-            <label htmlFor="motivo"><strong>Motivo da denúncia:</strong></label>
-            <textarea
-              id="motivo"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              rows={5}
-              placeholder="Descreva aqui o motivo da denúncia..."
-              style={{
-                width: "100%",
-                padding: 10,
-                borderRadius: 6,
-                border: "1px solid #ccc",
-                resize: "vertical"
-              }}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="denuncia-form">
+          <label htmlFor="motivo"><strong>Motivo da denúncia:</strong></label>
+          <textarea
+            id="motivo"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            rows={5}
+            placeholder="Descreva aqui o motivo da denúncia..."
+            className="denuncia-textarea"
+          />
 
-          {erro && <div className="alert alert-danger">{erro}</div>}
-          {sucesso && <div className="alert alert-success">{sucesso}</div>}
+          {erro && <div className="error-msg">{erro}</div>}
+          {sucesso && <div className="success-msg">{sucesso}</div>}
 
-          <button
-            type="submit"
-            style={{
-              background: "#e53935",
-              color: "#fff",
-              padding: "10px 26px",
-              border: "none",
-              borderRadius: 7,
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: 16,
-              boxShadow: "0 2px 6px #fde3e4",
-              marginTop: 12
-            }}
-          >
+          <button type="submit" className="btn btn-danger denuncia-btn">
             Enviar Denúncia
           </button>
         </form>

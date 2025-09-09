@@ -1,7 +1,9 @@
+// src/Paginas/Trabalhos.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import "../styles/Trabalhos.css";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -18,8 +20,8 @@ export default function Trabalhos() {
 
   const { usuarioLogado, carregando } = useContext(UsuarioContext);
 
+  // 🔹 Buscar habilidades e trabalhos na primeira carga
   useEffect(() => {
-    // 🔹 Buscar todas as habilidades no backend
     api.get("/habilidades/")
       .then(res => {
         if (Array.isArray(res.data) && res.data.length > 0) {
@@ -35,13 +37,12 @@ export default function Trabalhos() {
     // eslint-disable-next-line
   }, []);
 
+  // 🔹 Buscar trabalhos com filtros
   function buscarTrabalhos(filtros = {}) {
     let url = "/trabalhos/";
     let params = [];
-    if (filtros.busca !== undefined && filtros.busca.trim() !== "")
-      params.push(`busca=${encodeURIComponent(filtros.busca)}`);
-    if (filtros.habilidade !== undefined && filtros.habilidade)
-      params.push(`habilidade=${encodeURIComponent(filtros.habilidade)}`);
+    if (filtros.busca?.trim()) params.push(`busca=${encodeURIComponent(filtros.busca)}`);
+    if (filtros.habilidade) params.push(`habilidade=${encodeURIComponent(filtros.habilidade)}`);
     params.push(`page=${filtros.page || page}`);
     params.push(`page_size=${pageSize}`);
     if (params.length > 0) url += `?${params.join("&")}`;
@@ -55,12 +56,14 @@ export default function Trabalhos() {
       .catch(() => setErro("❌ Erro ao buscar trabalhos."));
   }
 
+  // 🔹 Formata data no padrão BR
   function formatarData(dataStr) {
     if (!dataStr) return "";
     const [ano, mes, dia] = dataStr.split("-");
     return `${dia}/${mes}/${ano}`;
   }
 
+  // 🔹 Filtros
   function filtrar(e) {
     e.preventDefault();
     setPage(1);
@@ -74,6 +77,7 @@ export default function Trabalhos() {
     buscarTrabalhos({ page: 1 });
   }
 
+  // 🔹 Paginação
   function anterior() {
     if (page > 1) {
       const newPage = page - 1;
@@ -90,27 +94,35 @@ export default function Trabalhos() {
     }
   }
 
+  // 🔹 Renderizações condicionais
   if (carregando) {
-    return <div className="main-center"><div className="main-box">🔄 Carregando trabalhos...</div></div>;
+    return (
+      <div className="main-center">
+        <div className="main-box">🔄 Carregando trabalhos...</div>
+      </div>
+    );
   }
 
   if (!usuarioLogado) {
-    return <div className="main-center"><div className="main-box error-msg">⚠️ Usuário não autenticado!</div></div>;
+    return (
+      <div className="main-center">
+        <div className="main-box error-msg">⚠️ Usuário não autenticado!</div>
+      </div>
+    );
   }
 
   return (
     <div className="main-center">
-      <div className="main-box" style={{ maxWidth: 900 }}>
-        <h2>🛠️ Trabalhos Disponíveis</h2>
+      <div className="main-box trabalhos-box">
+        <h2 className="trabalhos-title">🛠️ Trabalhos Disponíveis</h2>
 
         {/* Filtros */}
-        <form className="form-filtro" onSubmit={filtrar} style={{ marginBottom: 24 }}>
+        <form className="form-filtro" onSubmit={filtrar}>
           <input
             type="text"
             placeholder="Buscar por título, descrição, etc."
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            style={{ minWidth: 190 }}
           />
           <select value={habilidade} onChange={e => setHabilidade(e.target.value)}>
             <option value="">Todas Habilidades</option>
@@ -134,18 +146,17 @@ export default function Trabalhos() {
         {(usuarioLogado.tipo === "cliente" || usuarioLogado.is_superuser) && (
           <button
             className="btn-novo-trabalho"
-            style={{ marginBottom: 24 }}
             onClick={() => navigate("/trabalhos/novo")}
           >
             ➕ Novo Trabalho
           </button>
         )}
 
-        {erro && <div className="error-msg" style={{ marginBottom: 12 }}>{erro}</div>}
+        {erro && <div className="error-msg">{erro}</div>}
 
         {/* Lista */}
         {trabalhos.length === 0 ? (
-          <div style={{ color: "#666", marginTop: 20 }}>Nenhum trabalho encontrado.</div>
+          <div className="nenhum-registro">Nenhum trabalho encontrado.</div>
         ) : (
           <ul className="lista-trabalhos">
             {trabalhos.map((trabalho) => (
@@ -162,7 +173,7 @@ export default function Trabalhos() {
                     <div>
                       <b>Cliente:</b>{" "}
                       <span
-                        style={{ color: "#1976d2", textDecoration: "underline", cursor: "pointer" }}
+                        className="link-cliente"
                         onClick={() => navigate(`/perfil/${trabalho.cliente_id}`)}
                       >
                         {trabalho.nome_cliente}
@@ -180,7 +191,7 @@ export default function Trabalhos() {
                           href={`${BASE_URL}${trabalho.anexo}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: "#1976d2" }}
+                          className="link-anexo"
                         >
                           📎 Ver Anexo
                         </a>
@@ -188,8 +199,7 @@ export default function Trabalhos() {
                     )}
                   </div>
 
-                  {/* Botão único */}
-                  <div style={{ marginTop: 12 }}>
+                  <div className="btn-detalhes-container">
                     <button
                       className="btn-detalhes"
                       onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
@@ -205,9 +215,9 @@ export default function Trabalhos() {
 
         {/* Paginação */}
         {numPages > 1 && (
-          <div className="pagination" style={{ marginTop: 18 }}>
+          <div className="pagination">
             <button disabled={page <= 1} onClick={anterior}>⬅️ Anterior</button>
-            <span style={{ margin: "0 14px" }}>Página {page} de {numPages}</span>
+            <span>Página {page} de {numPages}</span>
             <button disabled={page >= numPages} onClick={proxima}>Próxima ➡️</button>
           </div>
         )}

@@ -1,0 +1,121 @@
+.denuncia-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #fef2f2, #fff);
+  min-height: 100vh;
+}
+
+.denuncia-box {
+  width: 100%;
+  max-width: 600px;
+  background: #fff;
+  border: 1px solid #fca5a5;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.15);
+}
+
+.denuncia-box h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.denuncia-box p {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.denuncia-box ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.denuncia-box ul li {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+/* Formulário */
+.denuncia-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.denuncia-form textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+  resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.denuncia-form textarea:focus {
+  border-color: #dc2626;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+/* Botão */
+.denuncia-form button {
+  background: #dc2626;
+  color: #fff;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.denuncia-form button:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+}
+
+/* Mensagens */
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.alert-danger {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .denuncia-box {
+    padding: 16px;
+  }
+
+  .denuncia-box h2 {
+    font-size: 1.5rem;
+  }
+}

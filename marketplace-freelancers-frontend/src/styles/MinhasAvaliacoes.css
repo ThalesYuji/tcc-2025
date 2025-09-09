@@ -1,0 +1,186 @@
+.avaliacoes-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  min-height: calc(100vh - 80px); /* considerando navbar fixa */
+}
+
+/* ============================= */
+/* Títulos                       */
+/* ============================= */
+.avaliacoes-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* ============================= */
+/* Mensagens                     */
+/* ============================= */
+.erro-msg {
+  background: #ffebee;
+  color: #c62828;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.success-msg {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ============================= */
+/* Abas                          */
+/* ============================= */
+.avaliacoes-tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.avaliacoes-tab {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  background: #e0e0e0;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.avaliacoes-tab:hover {
+  background: #d5d5d5;
+  transform: translateY(-2px);
+}
+
+.avaliacoes-tab.active {
+  background: #1976d2;
+  color: #fff;
+}
+
+/* ============================= */
+/* Tabela                        */
+/* ============================= */
+.avaliacoes-table-wrap {
+  overflow-x: auto;
+}
+
+.avaliacoes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.avaliacoes-table thead {
+  background: #1976d2;
+  color: #fff;
+}
+
+.avaliacoes-table th,
+.avaliacoes-table td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.avaliacoes-table th {
+  font-weight: 600;
+}
+
+.avaliacoes-table tbody tr:hover {
+  background: #f5f5f5;
+}
+
+/* Ajuste para célula de comentário */
+.avaliacoes-comentario {
+  max-width: 240px;
+  word-wrap: break-word;
+  white-space: pre-line;
+}
+
+/* ============================= */
+/* Estrelas                      */
+/* ============================= */
+.avaliacoes-estrelas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.estrela {
+  font-size: 1.1rem;
+}
+
+.estrela.cheia {
+  color: #fbc02d;
+}
+
+.estrela.vazia {
+  color: #ccc;
+}
+
+.nota-numero {
+  font-size: 0.85rem;
+  color: #555;
+  margin-left: 4px;
+}
+
+/* ============================= */
+/* Links                         */
+/* ============================= */
+.link-perfil {
+  color: #1976d2;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-perfil:hover {
+  color: #125ea8;
+}
+
+/* ============================= */
+/* Estado vazio                  */
+/* ============================= */
+.avaliacoes-vazio {
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 768px) {
+  .avaliacoes-tab {
+    flex: 1;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+
+  .avaliacoes-table th,
+  .avaliacoes-table td {
+    font-size: 0.85rem;
+    padding: 0.6rem;
+  }
+
+  .estrela {
+    font-size: 1rem;
+  }
+}

@@ -1,19 +1,21 @@
+// src/Paginas/DetalhesTrabalho.jsx
 import React, { useEffect, useState } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
 import { useParams, useNavigate } from "react-router-dom";
+import "../styles/DetalhesTrabalho.css";
 
 const BASE_URL = "http://localhost:8000";
 
-// 🔹 Função para cores do status
-function getStatusColor(status) {
+// 🔹 Função para classe do status
+function getStatusClass(status) {
   switch (status) {
-    case "aberto": return "green";
-    case "em_andamento": return "orange";
-    case "concluido": return "blue";
-    case "cancelado": return "red";
-    case "recusado": return "gray";
-    default: return "gray";
+    case "aberto": return "status-aberto";
+    case "em_andamento": return "status-andamento";
+    case "concluido": return "status-concluido";
+    case "cancelado": return "status-cancelado";
+    case "recusado": return "status-recusado";
+    default: return "status-default";
   }
 }
 
@@ -26,10 +28,10 @@ export default function DetalhesTrabalho() {
   const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
   const [formErro, setFormErro] = useState("");
   const [formSucesso, setFormSucesso] = useState("");
-  const [alerta, setAlerta] = useState(null); // 🔹 estado do alerta central
+  const [alerta, setAlerta] = useState(null);
   const navigate = useNavigate();
 
-  // 🔹 Buscar dados do trabalho + usuário logado
+  // 🔹 Buscar dados
   useEffect(() => {
     api.get(`/trabalhos/${id}/`)
       .then((response) => setTrabalho(response.data))
@@ -53,24 +55,38 @@ export default function DetalhesTrabalho() {
     return d.toLocaleString("pt-BR");
   }
 
-  // 🔹 Função para mostrar alerta central
+  // 🔹 Alerta central
   function mostrarAlerta(tipo, texto, destino = null) {
     setAlerta({ tipo, texto });
     setTimeout(() => {
       setAlerta(null);
       if (destino) navigate(destino);
-    }, 2000); // desaparece em 2s
+    }, 2000);
   }
 
-  // 🔹 Permissões de edição/exclusão
+  // 🔹 Permissões
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
     (usuarioLogado.id === trabalho.cliente_id || usuarioLogado.is_superuser);
 
+  const podeEnviarProposta =
+    usuarioLogado &&
+    usuarioLogado.tipo === "freelancer" &&
+    trabalho &&
+    trabalho.status === "aberto" &&
+    !trabalho.is_privado;
+
+  const podeAceitarOuRecusar =
+    usuarioLogado &&
+    trabalho &&
+    trabalho.is_privado &&
+    trabalho.freelancer === usuarioLogado.id &&
+    trabalho.status === "aberto";
+
+  // 🔹 Excluir trabalho
   const handleDelete = async () => {
-    const confirmar = window.confirm("Tem certeza que deseja excluir este trabalho?");
-    if (!confirmar) return;
+    if (!window.confirm("Tem certeza que deseja excluir este trabalho?")) return;
     try {
       await api.delete(`/trabalhos/${trabalho.id}/`);
       mostrarAlerta("sucesso", "🗑️ Trabalho excluído com sucesso!", "/trabalhos");
@@ -79,14 +95,7 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // ====== PROPOSTA (só para trabalhos públicos) ======
-  const podeEnviarProposta =
-    usuarioLogado &&
-    usuarioLogado.tipo === "freelancer" &&
-    trabalho &&
-    trabalho.status === "aberto" &&
-    !trabalho.is_privado;
-
+  // 🔹 Formulário proposta
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
     setFormErro("");
@@ -123,20 +132,12 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // ====== ACEITAR / RECUSAR (apenas freelancer alvo em trabalhos privados) ======
-  const podeAceitarOuRecusar =
-    usuarioLogado &&
-    trabalho &&
-    trabalho.is_privado &&
-    trabalho.freelancer === usuarioLogado.id &&
-    trabalho.status === "aberto";
-
+  // 🔹 Aceitar / Recusar
   const aceitarTrabalho = async () => {
     try {
       await api.post(`/trabalhos/${trabalho.id}/aceitar/`);
       mostrarAlerta("sucesso", "✅ Trabalho aceito e contrato criado!", "/contratos");
-    } catch (err) {
-      console.error(err.response?.data || err);
+    } catch {
       mostrarAlerta("erro", "❌ Erro ao aceitar o trabalho.");
     }
   };
@@ -145,98 +146,78 @@ export default function DetalhesTrabalho() {
     try {
       await api.post(`/trabalhos/${trabalho.id}/recusar/`);
       mostrarAlerta("info", "⚠️ Você recusou o trabalho.", "/trabalhos");
-    } catch (err) {
-      console.error(err.response?.data || err);
+    } catch {
       mostrarAlerta("erro", "❌ Erro ao recusar o trabalho.");
     }
   };
 
-  // ====== RENDER ======
+  // 🔹 Render
   if (erro) {
     return (
-      <div className="main-center">
-        <div className="main-box error-msg">{erro}</div>
+      <div className="detalhes-trabalho-container">
+        <div className="detalhes-trabalho-card error-msg">{erro}</div>
       </div>
     );
   }
 
   if (!trabalho) {
     return (
-      <div className="main-center">
-        <div className="main-box">🔄 Carregando trabalho...</div>
+      <div className="detalhes-trabalho-container">
+        <div className="detalhes-trabalho-card">🔄 Carregando trabalho...</div>
       </div>
     );
   }
 
   return (
-    <div className="main-center">
-      {/* ALERTA CENTRAL */}
+    <div className="detalhes-trabalho-container">
       {alerta && (
         <div className="alerta-overlay">
-          <div
-            className={`alerta-box ${
-              alerta.tipo === "sucesso"
-                ? "alerta-sucesso"
-                : alerta.tipo === "erro"
-                ? "alerta-erro"
-                : "alerta-info"
-            }`}
-          >
-            {alerta.texto}
-          </div>
+          <div className={`alerta-box alerta-${alerta.tipo}`}>{alerta.texto}</div>
         </div>
       )}
-      
-      <div className="main-box" style={{ maxWidth: 520 }}>
-        <h2 style={{ marginBottom: 18 }}>📄 Detalhes do Trabalho</h2>
-        <div><strong>Título:</strong> {trabalho.titulo}</div>
-        <div><strong>Descrição:</strong> {trabalho.descricao}</div>
-        <div><strong>Prazo:</strong> {formatarData(trabalho.prazo)}</div>
-        <div><strong>Orçamento:</strong> R$ {Number(trabalho.orcamento).toFixed(2)}</div>
-        <div>
-          <strong>Status:</strong>
-          <span style={{
-            background: getStatusColor(trabalho.status),
-            color: "#fff",
-            padding: "3px 10px",
-            borderRadius: 6,
-            marginLeft: 10,
-            fontWeight: 600,
-            textTransform: "capitalize"
-          }}>
+
+      <div className="detalhes-trabalho-card">
+        <h2>📄 Detalhes do Trabalho</h2>
+        <p><strong>Título:</strong> {trabalho.titulo}</p>
+        <p><strong>Descrição:</strong> {trabalho.descricao}</p>
+        <p><strong>Prazo:</strong> {formatarData(trabalho.prazo)}</p>
+        <p><strong>Orçamento:</strong> R$ {Number(trabalho.orcamento).toFixed(2)}</p>
+        <p>
+          <strong>Status:</strong>{" "}
+          <span className={`status-badge ${getStatusClass(trabalho.status)}`}>
             {trabalho.status}
           </span>
-        </div>
-        <div><strong>Cliente:</strong> {trabalho.nome_cliente}</div>
+        </p>
+        <p><strong>Cliente:</strong> {trabalho.nome_cliente}</p>
 
         {trabalho.habilidades_detalhes?.length > 0 && (
-          <div><strong>Habilidades:</strong> {trabalho.habilidades_detalhes.map(h => h.nome).join(", ")}</div>
+          <p><strong>Habilidades:</strong> {trabalho.habilidades_detalhes.map(h => h.nome).join(", ")}</p>
         )}
 
         {trabalho.criado_em && (
-          <div><strong>Criado em:</strong> {formatarDataHora(trabalho.criado_em)}</div>
+          <p><strong>Criado em:</strong> {formatarDataHora(trabalho.criado_em)}</p>
         )}
 
         {trabalho.atualizado_em && (
-          <div><strong>Atualizado em:</strong> {formatarDataHora(trabalho.atualizado_em)}</div>
+          <p><strong>Atualizado em:</strong> {formatarDataHora(trabalho.atualizado_em)}</p>
         )}
 
         {trabalho.anexo && (
-          <div>
+          <p>
             <strong>Anexo:</strong>{" "}
             <a
               href={`${BASE_URL}${trabalho.anexo}`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#1976d2" }}
+              className="link-anexo"
             >
               Ver arquivo
             </a>
-          </div>
+          </p>
         )}
 
-        {/* AÇÕES */}
-        <div className="btn-group-inline" style={{ margin: "20px 0" }}>
+        {/* Botões principais */}
+        <div className="btn-group-inline">
           <button onClick={() => navigate("/trabalhos")}>Voltar</button>
           {podeEditarOuExcluir() && (
             <>
@@ -246,31 +227,20 @@ export default function DetalhesTrabalho() {
           )}
         </div>
 
-        {/* FORMULÁRIO DE PROPOSTA (apenas trabalhos públicos) */}
+        {/* Formulário de proposta */}
         {podeEnviarProposta && (
-          <div style={{ marginTop: 24 }}>
+          <div className="proposta-container">
             <button onClick={abrirFormProposta}>✉️ Enviar Proposta</button>
 
             {showForm && (
-              <form
-                onSubmit={enviarProposta}
-                style={{
-                  marginTop: 14,
-                  background: "#f6f8fb",
-                  border: "1px solid #dde4ef",
-                  borderRadius: 10,
-                  padding: 18
-                }}
-              >
+              <form onSubmit={enviarProposta} className="proposta-form">
                 <textarea
                   placeholder="Mensagem para o cliente"
                   value={form.descricao}
                   onChange={e => setForm({ ...form, descricao: e.target.value })}
                   rows={3}
                   required
-                  style={{ width: "100%", marginBottom: 10 }}
                 />
-
                 <input
                   type="number"
                   placeholder="Valor (R$)"
@@ -278,19 +248,15 @@ export default function DetalhesTrabalho() {
                   onChange={e => setForm({ ...form, valor: e.target.value })}
                   min="1"
                   required
-                  style={{ marginBottom: 10, width: "100%" }}
                 />
-
                 <input
                   type="date"
                   value={form.prazo_estimado}
                   onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
                   required
-                  style={{ marginBottom: 10, width: "100%" }}
                 />
-
-                {formErro && <div className="error-msg" style={{ marginBottom: 10 }}>{formErro}</div>}
-                {formSucesso && <div className="success-msg" style={{ marginBottom: 10 }}>{formSucesso}</div>}
+                {formErro && <div className="error-msg">{formErro}</div>}
+                {formSucesso && <div className="success-msg">{formSucesso}</div>}
 
                 <div className="btn-group-inline">
                   <button type="submit">Enviar</button>
@@ -301,36 +267,13 @@ export default function DetalhesTrabalho() {
           </div>
         )}
 
-        {/* BOTÕES ACEITAR / RECUSAR (apenas freelancer alvo) */}
+        {/* Aceitar / Recusar */}
         {podeAceitarOuRecusar && (
-          <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
-            <button
-              onClick={aceitarTrabalho}
-              style={{
-                background: "#43a047",
-                color: "#fff",
-                border: "none",
-                borderRadius: 7,
-                padding: "10px 18px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
+          <div className="btn-group-inline">
+            <button className="btn-aceitar" onClick={aceitarTrabalho}>
               Aceitar Trabalho
             </button>
-
-            <button
-              onClick={recusarTrabalho}
-              style={{
-                background: "#e53935",
-                color: "#fff",
-                border: "none",
-                borderRadius: 7,
-                padding: "10px 18px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
+            <button className="btn-recusar" onClick={recusarTrabalho}>
               Recusar Trabalho
             </button>
           </div>

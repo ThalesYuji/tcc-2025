@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../Servicos/Api";
 import ModalRespostaDenuncia from "../Componentes/ModalRespostaDenuncia";
+import "../styles/PainelDenuncias.css";
 
 function Badge({ status }) {
   const map = {
@@ -92,29 +93,12 @@ export default function PainelDenuncias() {
   return (
     <div className="denuncias-container admin-denuncias">
       <div className="main-box">
-        <h1 className="denuncias-title">
-          <i className="fas fa-shield-alt"></i> 🚨 Painel de Denúncias
-        </h1>
+        <h1 className="denuncias-title">🚨 Painel de Denúncias</h1>
 
-        {erro && (
-          <div className="erro-msg">
-            <i className="fas fa-exclamation-triangle me-2"></i>
-            {erro}
-          </div>
-        )}
+        {erro && <div className="erro-msg">{erro}</div>}
 
         {/* Estatísticas */}
-        <div
-          className="estatisticas-denuncias"
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
+        <div className="estatisticas-denuncias">
           <div className="estatistica-card total">
             <strong>{estatisticas.total}</strong>
             <span>Total</span>
@@ -132,17 +116,11 @@ export default function PainelDenuncias() {
             <span>Resolvidas</span>
           </div>
           <button
-            className="btn btn-outline-primary"
+            className="btn-atualizar"
             onClick={carregarDenuncias}
             disabled={carregando}
-            style={{
-              height: "fit-content",
-              padding: "0.45rem 0.9rem",
-              fontSize: "0.85rem",
-              borderRadius: "8px",
-            }}
           >
-            <i className="fas fa-sync-alt me-2"></i> Atualizar
+            🔄 Atualizar
           </button>
         </div>
 
@@ -150,9 +128,8 @@ export default function PainelDenuncias() {
         <div className="denuncias-content">
           {denuncias.length === 0 ? (
             <div className="empty-state">
-              <i className="fas fa-inbox fa-3x text-muted mb-3"></i>
-              <div>Nenhuma denúncia encontrada</div>
-              <div>Quando usuários fizerem denúncias, elas aparecerão aqui.</div>
+              <p>Nenhuma denúncia encontrada.</p>
+              <p>Quando usuários fizerem denúncias, elas aparecerão aqui.</p>
             </div>
           ) : (
             <div className="denuncias-grid">
@@ -169,51 +146,45 @@ export default function PainelDenuncias() {
                     </div>
 
                     <div className="denuncia-info">
-                      <div>
-                        <strong>Contrato:</strong>
-                        <p>
-                          {denuncia.contrato_titulo ||
-                            denuncia.contrato?.titulo ||
-                            "-"}
-                        </p>
+                      <p>
+                        <strong>Contrato:</strong>{" "}
+                        {denuncia.contrato_titulo ||
+                          denuncia.contrato?.titulo ||
+                          "-"}
+                      </p>
+                      <p>
+                        <strong>Data:</strong> {data}
+                      </p>
+                      <p>
+                        <strong>Denunciante:</strong>{" "}
+                        {denuncia.denunciante?.nome || "-"}
+                      </p>
+                      <p>
+                        <strong>Denunciado:</strong>{" "}
+                        {denuncia.denunciado_detalhes?.nome ||
+                          denuncia.denunciado?.nome ||
+                          "-"}
+                      </p>
+                      <p>
+                        <strong>Motivo:</strong>{" "}
+                        {denuncia.motivo?.trim() ? denuncia.motivo : "-"}
+                      </p>
 
-                        <strong>Data:</strong>
-                        <p>{data}</p>
-
-                        <strong>Denunciante:</strong>
-                        <p className="link-perfil">
-                          {denuncia.denunciante?.nome || "-"}
-                        </p>
-
-                        <strong>Denunciado:</strong>
-                        <p className="link-perfil">
-                          {denuncia.denunciado_detalhes?.nome ||
-                            denuncia.denunciado?.nome ||
-                            "-"}
-                        </p>
-
-                        <strong>Motivo:</strong>
-                        <p>
-                          {denuncia.motivo?.trim() ? denuncia.motivo : "-"}
-                        </p>
-
-                        {denuncia.resposta_admin && (
-                          <div className="resposta-admin">
-                            <strong>Resposta do Admin:</strong>
-                            <p>{denuncia.resposta_admin}</p>
-                          </div>
-                        )}
-                      </div>
+                      {denuncia.resposta_admin && (
+                        <div className="resposta-admin">
+                          <strong>Resposta do Admin:</strong>
+                          <p>{denuncia.resposta_admin}</p>
+                        </div>
+                      )}
                     </div>
 
                     <button
                       className="btn-responder"
                       onClick={() => abrirModal(denuncia)}
                     >
-                      <i className="fas fa-reply"></i>
                       {denuncia.resposta_admin
-                        ? "Editar Resposta"
-                        : "Responder"}
+                        ? "✏️ Editar Resposta"
+                        : "💬 Responder"}
                     </button>
                   </div>
                 );
@@ -224,67 +195,16 @@ export default function PainelDenuncias() {
 
         {/* Paginação */}
         {totalPaginas > 1 && (
-          <div className="d-flex justify-content-center mt-4">
-            <ul
-              className="pagination"
-              style={{
-                display: "flex",
-                gap: "0.4rem",
-                padding: 0,
-                listStyle: "none",
-              }}
-            >
-              <li className={`page-item ${paginaAtual === 1 && "disabled"}`}>
-                <button
-                  className="page-link"
-                  style={{
-                    borderRadius: "8px",
-                    padding: "0.3rem 0.8rem",
-                    fontSize: "0.85rem",
-                  }}
-                  onClick={() => setPaginaAtual(paginaAtual - 1)}
-                >
-                  Anterior
-                </button>
-              </li>
-              {Array.from({ length: totalPaginas }, (_, i) => (
-                <li
-                  key={i + 1}
-                  className={`page-item ${
-                    paginaAtual === i + 1 ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="page-link"
-                    style={{
-                      borderRadius: "8px",
-                      padding: "0.3rem 0.8rem",
-                      fontSize: "0.85rem",
-                    }}
-                    onClick={() => setPaginaAtual(i + 1)}
-                  >
-                    {i + 1}
-                  </button>
-                </li>
-              ))}
-              <li
-                className={`page-item ${
-                  paginaAtual === totalPaginas && "disabled"
-                }`}
+          <div className="paginacao-denuncias">
+            {Array.from({ length: totalPaginas }, (_, i) => (
+              <button
+                key={i + 1}
+                className={`page-btn ${paginaAtual === i + 1 ? "ativo" : ""}`}
+                onClick={() => setPaginaAtual(i + 1)}
               >
-                <button
-                  className="page-link"
-                  style={{
-                    borderRadius: "8px",
-                    padding: "0.3rem 0.8rem",
-                    fontSize: "0.85rem",
-                  }}
-                  onClick={() => setPaginaAtual(paginaAtual + 1)}
-                >
-                  Próximo
-                </button>
-              </li>
-            </ul>
+                {i + 1}
+              </button>
+            ))}
           </div>
         )}
 

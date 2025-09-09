@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "../styles/CadastroUsuario.css";
 
 export default function CadastroUsuario() {
   const [form, setForm] = useState({
@@ -20,12 +21,11 @@ export default function CadastroUsuario() {
   const [sucesso, setSucesso] = useState("");
   const navigate = useNavigate();
 
-  // Máscara para telefone
+  // 🔹 Máscaras (telefone, CPF, CNPJ)
   function formatarTelefone(valor) {
     if (!valor) return "";
     let numeros = valor.replace(/\D/g, "");
     if (numeros.length > 11) numeros = numeros.slice(0, 11);
-
     if (numeros.length > 10) {
       return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
     } else if (numeros.length > 6) {
@@ -37,31 +37,22 @@ export default function CadastroUsuario() {
     }
   }
 
-  // Máscara para CPF
   function formatarCPF(valor) {
     if (!valor) return "";
     let numeros = valor.replace(/\D/g, "");
     if (numeros.length > 11) numeros = numeros.slice(0, 11);
-    return numeros.replace(
-      /^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/,
-      "$1.$2.$3-$4"
-    );
+    return numeros.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2}).*/, "$1.$2.$3-$4");
   }
 
-  // Máscara para CNPJ
   function formatarCNPJ(valor) {
     if (!valor) return "";
     let numeros = valor.replace(/\D/g, "");
     if (numeros.length > 14) numeros = numeros.slice(0, 14);
-    return numeros.replace(
-      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2}).*/,
-      "$1.$2.$3/$4-$5"
-    );
+    return numeros.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2}).*/, "$1.$2.$3/$4-$5");
   }
 
   function handleChange(e) {
     const { name, value, files } = e.target;
-
     if (name === "foto_perfil") {
       setForm({ ...form, [name]: files[0] });
     } else if (name === "telefone") {
@@ -91,13 +82,11 @@ export default function CadastroUsuario() {
     setErroGeral("");
     setSucesso("");
 
-    // VALIDAÇÃO DE SENHAS IGUAIS
     if (form.senha !== form.confirmarSenha) {
       setErros({ confirmarSenha: "As senhas não coincidem." });
       return;
     }
 
-    // Validação local da senha
     const errosSenha = validarSenhaLocal(form.senha);
     if (errosSenha.length > 0) {
       setErros({ password: `A senha deve conter: ${errosSenha.join(", ")}` });
@@ -112,7 +101,7 @@ export default function CadastroUsuario() {
 
     try {
       await axios.post("http://localhost:8000/api/usuarios/", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Cadastro realizado com sucesso! Redirecionando...");
       setTimeout(() => navigate("/login"), 1500);
@@ -124,10 +113,8 @@ export default function CadastroUsuario() {
           if (
             Array.isArray(mensagem) &&
             mensagem[0] &&
-            (
-              mensagem[0].toLowerCase().includes("already exists") ||
-              mensagem[0].toLowerCase().includes("unique")
-            )
+            (mensagem[0].toLowerCase().includes("already exists") ||
+              mensagem[0].toLowerCase().includes("unique"))
           ) {
             if (campo === "email") novosErros[campo] = "E-mail já cadastrado.";
             else if (campo === "cpf") novosErros[campo] = "CPF já cadastrado.";
@@ -139,12 +126,9 @@ export default function CadastroUsuario() {
           }
         });
         setErros(novosErros);
-
-        if (backendErros.detail) {
-          setErroGeral(backendErros.detail);
-        } else if (Object.keys(novosErros).length === 0) {
+        if (backendErros.detail) setErroGeral(backendErros.detail);
+        else if (Object.keys(novosErros).length === 0)
           setErroGeral("Erro ao cadastrar usuário. Verifique os campos.");
-        }
       } else {
         setErroGeral("Erro ao cadastrar usuário. Verifique os campos.");
       }
@@ -154,17 +138,20 @@ export default function CadastroUsuario() {
   return (
     <div className="login-bg">
       <div className="login-content">
+        {/* Lado esquerdo */}
         <div className="login-left">
           <img src="/profreelabr.png" alt="Logo ProFreelaBR" className="login-logo" />
           <h1 className="login-title">Crie sua conta no ProFreelaBR</h1>
           <h2 className="login-subtitle">Faça parte da maior comunidade de freelancers do Brasil</h2>
           <p>Cadastre-se grátis, preencha seus dados e comece agora mesmo a transformar seu talento em oportunidades!</p>
         </div>
+
+        {/* Lado direito */}
         <div className="login-right">
-          <div className="login-box">
+          <div className="login-box card">
             <h3>Cadastrar</h3>
             <form onSubmit={handleSubmit} encType="multipart/form-data" className="form-cadastro-doisblocos">
-              {/* BLOCO 1 - DADOS DE ACESSO */}
+              {/* BLOCO 1 */}
               <h4>Dados de Acesso</h4>
               <div className="form-row">
                 <input
@@ -174,7 +161,7 @@ export default function CadastroUsuario() {
                   value={form.nome}
                   onChange={handleChange}
                   required
-                  className={erros.nome ? "input-erro" : ""}
+                  className={`input ${erros.nome ? "input-erro" : ""}`}
                 />
                 <input
                   type="email"
@@ -183,9 +170,10 @@ export default function CadastroUsuario() {
                   value={form.email}
                   onChange={handleChange}
                   required
-                  className={erros.email ? "input-erro" : ""}
+                  className={`input ${erros.email ? "input-erro" : ""}`}
                 />
               </div>
+
               <div className="form-row">
                 <input
                   type="password"
@@ -194,7 +182,7 @@ export default function CadastroUsuario() {
                   value={form.senha}
                   onChange={handleChange}
                   required
-                  className={erros.password ? "input-erro" : ""}
+                  className={`input ${erros.password ? "input-erro" : ""}`}
                 />
                 <input
                   type="password"
@@ -203,15 +191,16 @@ export default function CadastroUsuario() {
                   value={form.confirmarSenha}
                   onChange={handleChange}
                   required
-                  className={erros.confirmarSenha ? "input-erro" : ""}
+                  className={`input ${erros.confirmarSenha ? "input-erro" : ""}`}
                 />
               </div>
+
               {erros.password && <div className="error-msg">{erros.password}</div>}
               {erros.confirmarSenha && <div className="error-msg">{erros.confirmarSenha}</div>}
 
-              <hr style={{ margin: "16px 0" }} />
+              <hr />
 
-              {/* BLOCO 2 - PERFIL/DOCUMENTOS */}
+              {/* BLOCO 2 */}
               <h4>Perfil e Documentos</h4>
               <div className="form-row">
                 <select
@@ -219,8 +208,7 @@ export default function CadastroUsuario() {
                   value={form.tipo}
                   onChange={handleChange}
                   required
-                  className={erros.tipo ? "input-erro" : ""}
-                  style={{ minWidth: 120 }}
+                  className={`input ${erros.tipo ? "input-erro" : ""}`}
                 >
                   <option value="freelancer">Freelancer</option>
                   <option value="cliente">Cliente</option>
@@ -232,10 +220,11 @@ export default function CadastroUsuario() {
                   value={form.telefone}
                   onChange={handleChange}
                   required
-                  className={erros.telefone ? "input-erro" : ""}
                   maxLength="15"
+                  className={`input ${erros.telefone ? "input-erro" : ""}`}
                 />
               </div>
+
               <div className="form-row">
                 <input
                   type="text"
@@ -244,8 +233,8 @@ export default function CadastroUsuario() {
                   value={form.cpf}
                   onChange={handleChange}
                   required
-                  className={erros.cpf ? "input-erro" : ""}
                   maxLength="14"
+                  className={`input ${erros.cpf ? "input-erro" : ""}`}
                 />
                 {form.tipo === "cliente" && (
                   <input
@@ -255,31 +244,36 @@ export default function CadastroUsuario() {
                     value={form.cnpj}
                     onChange={handleChange}
                     required
-                    className={erros.cnpj ? "input-erro" : ""}
                     maxLength="18"
+                    className={`input ${erros.cnpj ? "input-erro" : ""}`}
                   />
                 )}
               </div>
+
               {erros.cpf && <div className="error-msg">{erros.cpf}</div>}
               {erros.cnpj && <div className="error-msg">{erros.cnpj}</div>}
               {erros.telefone && <div className="error-msg">{erros.telefone}</div>}
 
-              <div className="form-row" style={{ flexDirection: "column", gap: 3 }}>
+              <div className="form-row form-col">
                 <label className="input-label">Foto de Perfil (opcional):</label>
                 <input
                   type="file"
                   name="foto_perfil"
                   onChange={handleChange}
                   accept="image/*"
-                  className={`input-file-box ${erros.foto_perfil ? "input-erro" : ""}`}
+                  className={`input ${erros.foto_perfil ? "input-erro" : ""}`}
                 />
                 {erros.foto_perfil && <div className="error-msg">{erros.foto_perfil}</div>}
               </div>
 
-              <button type="submit">Cadastrar</button>
+              <button type="submit" className="btn btn-primary">
+                Cadastrar
+              </button>
+
               {sucesso && <div className="success-msg">{sucesso}</div>}
               {erroGeral && <div className="error-msg">{erroGeral}</div>}
             </form>
+
             <p className="cadastro-link">
               Já tem conta? <a href="/login">Entrar</a>
             </p>

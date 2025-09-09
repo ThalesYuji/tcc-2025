@@ -1,0 +1,188 @@
+.contratos-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f9fafb;
+  min-height: calc(100vh - 80px); /* considerando navbar fixa */
+}
+
+.contratos-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* ============================= */
+/* Mensagens                     */
+/* ============================= */
+.contratos-msg {
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.contratos-msg.erro {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.contratos-msg.sucesso {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.contratos-vazio {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+}
+
+/* ============================= */
+/* Lista de contratos            */
+/* ============================= */
+.contratos-lista {
+  display: grid;
+  gap: 16px;
+}
+
+.contrato-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.contrato-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.contrato-card p {
+  margin: 0.3rem 0;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+/* ============================= */
+/* Status                        */
+/* ============================= */
+.status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-ativo {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-concluido {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-cancelado {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* ============================= */
+/* Botões e Ações                */
+/* ============================= */
+.btn-chat,
+.btn-pagar,
+.btn-avaliar {
+  display: inline-block;
+  margin-top: 0.8rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  text-decoration: none;
+}
+
+/* Chat */
+.btn-chat {
+  background: #1976d2;
+  color: #fff;
+}
+.btn-chat:hover {
+  background: #125ea8;
+  transform: translateY(-2px);
+}
+
+/* Pagar */
+.btn-pagar {
+  background: #2e7d32;
+  color: #fff;
+}
+.btn-pagar:hover {
+  background: #1b5e20;
+  transform: translateY(-2px);
+}
+
+/* Avaliar */
+.btn-avaliar {
+  background: #ffca28;
+  color: #333;
+}
+.btn-avaliar:hover {
+  background: #fbc02d;
+  transform: translateY(-2px);
+}
+
+/* ============================= */
+/* Pagamento                     */
+/* ============================= */
+.contrato-pagamento {
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.contrato-pagamento.PAGO {
+  color: #2e7d32;
+}
+
+.contrato-pagamento.PENDENTE {
+  color: #c62828;
+}
+
+.contrato-info {
+  font-size: 0.9rem;
+  margin-top: 0.8rem;
+  color: #555;
+}
+
+/* ============================= */
+/* Responsividade                */
+/* ============================= */
+@media (max-width: 768px) {
+  .contrato-card {
+    padding: 1rem;
+  }
+
+  .contrato-card p {
+    font-size: 0.85rem;
+  }
+
+  .btn-chat,
+  .btn-pagar,
+  .btn-avaliar {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+}

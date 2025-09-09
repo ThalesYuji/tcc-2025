@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import { FaArrowLeft } from "react-icons/fa";
 import { FaPix, FaBarcode, FaCreditCard, FaRegCreditCard } from "react-icons/fa6";
+import "../styles/PagamentoContrato.css";
 
 export default function PagamentoContrato() {
   const { id } = useParams();
@@ -24,7 +25,7 @@ export default function PagamentoContrato() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setContrato(response.data);
-      } catch (error) {
+      } catch {
         setErro("Erro ao carregar contrato para pagamento.");
       } finally {
         setCarregando(false);
@@ -47,7 +48,7 @@ export default function PagamentoContrato() {
       contrato: contrato?.id,
       cliente: contrato?.cliente?.id,
       valor: contrato?.valor,
-      metodo: metodo,
+      metodo,
     };
 
     try {
@@ -59,7 +60,7 @@ export default function PagamentoContrato() {
       setTimeout(() => navigate("/contratos"), 2000);
     } catch (error) {
       let msg = "Erro ao registrar pagamento.";
-      if (error.response && error.response.data) {
+      if (error.response?.data) {
         if (typeof error.response.data === "string") {
           msg = error.response.data;
         } else if (error.response.data.detail) {
@@ -73,15 +74,29 @@ export default function PagamentoContrato() {
     }
   };
 
-  if (carregando) return <p style={{ textAlign: "center" }}>Carregando contrato...</p>;
-  if (!contrato) return <p style={{ textAlign: "center", color: "red" }}>Contrato não encontrado.</p>;
+  // 🔹 Render
+  if (carregando) {
+    return (
+      <div className="main-center">
+        <div className="main-box">🔄 Carregando contrato...</div>
+      </div>
+    );
+  }
+
+  if (!contrato) {
+    return (
+      <div className="main-center">
+        <div className="main-box error-msg">❌ Contrato não encontrado.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="pagamento-container">
       <div className="main-box">
         <h2 className="pagamento-title">💳 Pagamento do Contrato</h2>
 
-        {/* 🔹 Box com detalhes do contrato */}
+        {/* 🔹 Detalhes */}
         <div className="contrato-detalhes-grid">
           <p><strong>Trabalho:</strong> {contrato.trabalho.titulo}</p>
           <p><strong>Cliente:</strong> {contrato.cliente.nome}</p>
@@ -92,7 +107,7 @@ export default function PagamentoContrato() {
         {erro && <p className="pagamento-msg erro">{erro}</p>}
         {sucesso && <p className="pagamento-msg sucesso">{sucesso}</p>}
 
-        {/* 🔹 Escolha do método */}
+        {/* 🔹 Métodos */}
         <div className="pagamento-form">
           <h4>Escolha a forma de pagamento:</h4>
           <div className="pagamento-opcoes">
@@ -120,13 +135,14 @@ export default function PagamentoContrato() {
         </div>
 
         {/* 🔹 Botões */}
-        <button onClick={confirmarPagamento} className="btn-confirmar">
-          Confirmar Pagamento
-        </button>
-
-        <button onClick={() => navigate("/contratos")} className="btn-voltar">
-          <FaArrowLeft /> Voltar para Contratos
-        </button>
+        <div className="btn-group-inline" style={{ marginTop: 20 }}>
+          <button onClick={confirmarPagamento} className="btn-confirmar">
+            Confirmar Pagamento
+          </button>
+          <button onClick={() => navigate("/contratos")} className="btn-voltar">
+            <FaArrowLeft /> Voltar
+          </button>
+        </div>
       </div>
     </div>
   );

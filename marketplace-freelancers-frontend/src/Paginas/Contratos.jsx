@@ -3,11 +3,12 @@ import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, Link } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import "../styles/Contratos.css";
 
 export default function Contratos() {
   const [contratos, setContratos] = useState([]);
   const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState(""); // ✅ agora será usado
+  const [sucesso, setSucesso] = useState("");
   const userId = parseInt(localStorage.getItem("userId"));
   const token = localStorage.getItem("token");
 
@@ -42,13 +43,14 @@ export default function Contratos() {
   return (
     <div className="contratos-container">
       <div className="main-box">
-        {/* 🔹 Título padronizado */}
+        {/* 🔹 Título */}
         <h2 className="contratos-title">📝 Meus Contratos</h2>
 
-        {/* Mensagens de feedback */}
+        {/* 🔹 Mensagens */}
         {erro && <p className="contratos-msg erro">{erro}</p>}
         {sucesso && <p className="contratos-msg sucesso">{sucesso}</p>}
 
+        {/* 🔹 Nenhum contrato */}
         {contratos.length === 0 && (
           <p className="contratos-vazio">Você ainda não possui contratos.</p>
         )}
@@ -63,7 +65,9 @@ export default function Contratos() {
 
             return (
               <div key={contrato.id} className="contrato-card">
-                <p><strong>Trabalho:</strong> {contrato.trabalho.titulo}</p>
+                <p>
+                  <strong>Trabalho:</strong> {contrato.trabalho.titulo}
+                </p>
                 <p>
                   <strong>Status:</strong>{" "}
                   <span className={`status-badge ${contrato.status}`}>
@@ -73,8 +77,11 @@ export default function Contratos() {
                 <p><strong>Cliente:</strong> {contrato.cliente.nome}</p>
                 <p><strong>Freelancer:</strong> {contrato.freelancer.nome}</p>
                 <p><strong>Início:</strong> {contrato.data_inicio}</p>
-                {contrato.data_fim && <p><strong>Fim:</strong> {contrato.data_fim}</p>}
-                {/* Botão para Chat */}
+                {contrato.data_fim && (
+                  <p><strong>Fim:</strong> {contrato.data_fim}</p>
+                )}
+
+                {/* 🔹 Botão Chat */}
                 <Link
                   to={`/contratos/${contrato.id}/chat`}
                   className="btn-chat"
@@ -82,12 +89,15 @@ export default function Contratos() {
                 >
                   💬 Abrir Chat
                 </Link>
-                {/* Área de Pagamento */}
+
+                {/* 🔹 Área de pagamento */}
                 {contrato.status === "ativo" ? (
                   souCliente && usuarioLogado?.tipo === "cliente" ? (
                     <>
                       {contrato.pagamento ? (
-                        <p className={`contrato-pagamento ${contrato.pagamento.status}`}>
+                        <p
+                          className={`contrato-pagamento ${contrato.pagamento.status}`}
+                        >
                           Pagamento: {contrato.pagamento.metodo.toUpperCase()} |{" "}
                           Status: {contrato.pagamento.status.toUpperCase()}
                         </p>
@@ -97,9 +107,9 @@ export default function Contratos() {
                             setSucesso("Redirecionando para pagamento...");
                             navigate(`/contratos/${contrato.id}/pagamento`);
                           }}
-                          className="btn btn-success"
+                          className="btn-pagar"
                         >
-                          Pagar
+                          💰 Pagar
                         </button>
                       )}
                     </>
@@ -109,10 +119,12 @@ export default function Contratos() {
                     </p>
                   )
                 ) : (
-                  <p className="contrato-info">Este contrato já foi finalizado.</p>
+                  <p className="contrato-info">
+                    Este contrato já foi finalizado.
+                  </p>
                 )}
 
-                {/* Avaliação */}
+                {/* 🔹 Avaliação */}
                 {contrato.status === "concluido" &&
                   (souCliente || souFreelancer) &&
                   !jaAvaliei && (
@@ -121,9 +133,9 @@ export default function Contratos() {
                         setSucesso("Redirecionando para avaliação...");
                         navigate(`/contratos/${contrato.id}/avaliacao`);
                       }}
-                      className="btn btn-warning ms-2"
+                      className="btn-avaliar"
                     >
-                      Avaliar
+                      ⭐ Avaliar
                     </button>
                   )}
               </div>

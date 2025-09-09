@@ -1,6 +1,8 @@
+// src/Paginas/Dashboard.jsx
 import React, { useContext, useEffect, useState } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
+import "../styles/Dashboard.css";
 
 export default function Dashboard() {
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -18,18 +20,18 @@ export default function Dashboard() {
         if (usuarioLogado?.tipo === "freelancer") {
           const res = await api.get("/propostas/");
           novaResumo.enviadas = res.data.length;
-          novaResumo.aceitas = res.data.filter(p => p.status === "aceita").length;
-          novaResumo.recusadas = res.data.filter(p => p.status === "recusada").length;
+          novaResumo.aceitas = res.data.filter((p) => p.status === "aceita").length;
+          novaResumo.recusadas = res.data.filter((p) => p.status === "recusada").length;
         }
 
         if (usuarioLogado?.tipo === "cliente") {
           const res = await api.get("/propostas/");
           novaResumo.recebidas = res.data.length;
-          novaResumo.pendentes = res.data.filter(p => p.status === "pendente").length;
-          novaResumo.aceitas = res.data.filter(p => p.status === "aceita").length;
+          novaResumo.pendentes = res.data.filter((p) => p.status === "pendente").length;
+          novaResumo.aceitas = res.data.filter((p) => p.status === "aceita").length;
         }
 
-        // Busca avaliações recebidas
+        // 🔹 Busca avaliações recebidas
         const avaliacoesRes = await api.get("/avaliacoes/");
         const minhasRecebidas = avaliacoesRes.data.filter(
           (a) => a.avaliado.id === usuarioLogado.id
@@ -45,7 +47,7 @@ export default function Dashboard() {
         novaResumo.totalAvaliacoes = minhasRecebidas.length;
 
         setResumo(novaResumo);
-      } catch (err) {
+      } catch {
         setErro("Erro ao carregar o resumo. Tente novamente mais tarde.");
         setResumo(null);
       }
@@ -71,27 +73,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="main-center">
-      <div className="main-box" style={{ maxWidth: 480 }}>
-        <h2 style={{ marginBottom: 18 }}>
-          👋 Bem-vindo, {usuarioLogado.nome || usuarioLogado.username || usuarioLogado.email}!
+    <div className="dashboard-container">
+      <div className="dashboard-card">
+        <h2>
+          👋 Bem-vindo,{" "}
+          {usuarioLogado.nome || usuarioLogado.username || usuarioLogado.email}!
         </h2>
 
-        <p style={{ marginBottom: 18 }}>
+        <p>
           Tipo de conta:{" "}
           <strong>
             {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
           </strong>
         </p>
 
-        {erro && (
-          <div className="error-msg" style={{ marginBottom: 10 }}>
-            {erro}
-          </div>
-        )}
+        {erro && <div className="error-msg">{erro}</div>}
 
         {resumo && (
-          <div>
+          <>
             <h3>📊 Resumo:</h3>
             <ul>
               {usuarioLogado.tipo === "freelancer" ? (
@@ -123,25 +122,22 @@ export default function Dashboard() {
                 Média de avaliação:{" "}
                 {resumo.totalAvaliacoes > 0 ? (
                   <>
-                    <strong>
-                      {resumo.mediaAvaliacao.toFixed(1)} de 5
-                    </strong>{" "}
-                    ({resumo.totalAvaliacoes}{" "}
+                    <strong>{resumo.mediaAvaliacao.toFixed(1)} de 5</strong> (
+                    {resumo.totalAvaliacoes}{" "}
                     {resumo.totalAvaliacoes === 1
                       ? "avaliação"
-                      : "avaliações"})
+                      : "avaliações"}
+                    )
                   </>
                 ) : (
                   "Nenhuma avaliação recebida ainda."
                 )}
               </li>
             </ul>
-          </div>
+          </>
         )}
 
-        <p style={{ marginTop: 16, color: "#1976d2" }}>
-          Use o menu acima para navegar pelo sistema.
-        </p>
+        <p className="hint-text">Use o menu acima para navegar pelo sistema.</p>
       </div>
     </div>
   );
