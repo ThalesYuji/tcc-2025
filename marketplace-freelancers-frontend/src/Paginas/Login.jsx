@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
-import "../styles/Login.css"; // 🔹 estilos específicos da página
+import "../styles/Login.css"; // estilos específicos da página
+import { FaEnvelope, FaLock } from "react-icons/fa"; // ícones para inputs
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -77,7 +78,7 @@ export default function Login() {
           <h2 className="login-subtitle">
             Conecte-se aos melhores freelancers do Brasil
           </h2>
-          <p>
+          <p className="login-text">
             Encontre oportunidades, faça networking e transforme seu talento em
             resultados reais.
           </p>
@@ -86,25 +87,37 @@ export default function Login() {
         {/* 🔹 Lado direito (formulário) */}
         <div className="login-right">
           <div className="login-box card">
-            <h3>Entrar</h3>
+            <h3 className="form-title">Entrar</h3>
             <form onSubmit={handleLogin}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="E-mail"
-                required
-                className={erroCampo}
-              />
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Senha"
-                required
-                className={erroCampo}
-              />
-              <button type="submit" className="btn btn-primary" disabled={carregando}>
+              <div className="input-group">
+                <FaEnvelope className="input-icon" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-mail"
+                  required
+                  className={erroCampo}
+                />
+              </div>
+
+              <div className="input-group">
+                <FaLock className="input-icon" />
+                <input
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Senha"
+                  required
+                  className={erroCampo}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={carregando}
+              >
                 {carregando ? "Entrando..." : "Entrar"}
               </button>
 
@@ -113,7 +126,7 @@ export default function Login() {
             </form>
 
             <p className="cadastro-link">
-              Não tem conta? <a href="/cadastro">Cadastre-se</a>
+              Ainda não tem uma conta? <a href="/cadastro">Cadastre-se</a>
             </p>
           </div>
         </div>

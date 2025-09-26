@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 
 from .models import Proposta
 from .serializers import PropostaSerializer, AlterarStatusSerializer
@@ -24,13 +25,13 @@ class PropostaViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.is_superuser:
-            return Proposta.objects.all()
+            return Proposta.objects.all().order_by('-data_envio')
 
         if user.tipo == 'freelancer':
-            return Proposta.objects.filter(freelancer=user)
+            return Proposta.objects.filter(freelancer=user).order_by('-data_envio')
 
         if user.tipo == 'cliente':
-            return Proposta.objects.filter(trabalho__cliente=user)
+            return Proposta.objects.filter(trabalho__cliente=user).order_by('-data_envio')
 
         return Proposta.objects.none()
 
@@ -49,12 +50,10 @@ class PropostaViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """
         Bloqueia atualização direta do status por esse endpoint.
+        🔥 CORRIGIDO: Raise exception ao invés de return Response
         """
         if 'status' in self.request.data:
-            return Response(
-                {"erro": "O status deve ser alterado apenas via endpoint específico."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError("O status deve ser alterado apenas via endpoint específico.")
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):

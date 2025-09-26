@@ -1,60 +1,33 @@
+# usuarios/serializers.py
+
 from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
-from .models import Usuario
-from notificacoes.models import Notificacao  # <-- Import atualizado
 import re
+from .models import Usuario
+from notificacoes.models import Notificacao
+from avaliacoes.models import Avaliacao
+from trabalhos.models import Trabalho  # 🔹 para contar trabalhos
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(
-        validators=[
-            UniqueValidator(
-                queryset=Usuario.objects.all(),
-                message="E-mail já cadastrado."
-            )
-        ]
-    )
-    cpf = serializers.CharField(
-        validators=[
-            UniqueValidator(
-                queryset=Usuario.objects.all(),
-                message="CPF já cadastrado."
-            )
-        ]
-    )
-    cnpj = serializers.CharField(
-        required=False,
-        validators=[
-            UniqueValidator(
-                queryset=Usuario.objects.all(),
-                message="CNPJ já cadastrado."
-            )
-        ]
-    )
-    telefone = serializers.CharField(
-        required=True,
-        validators=[
-            UniqueValidator(
-                queryset=Usuario.objects.all(),
-                message="Telefone já cadastrado."
-            )
-        ]
-    )
-    
+    email = serializers.EmailField(required=True)
+    cpf = serializers.CharField(required=True)
+    cnpj = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    telefone = serializers.CharField(required=True)
+
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
-    # 🔹 Ajustado: agora devolve URL absoluta da imagem
     foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
     notificacao_email = serializers.BooleanField(required=False)
+
+    tipo = serializers.CharField(read_only=True)
 
     class Meta:
         model = Usuario
         fields = '__all__'
 
-    # 🔹 Normalizar dados antes de salvar no banco
+    # ===================== NORMALIZAÇÃO =====================
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
 
-        # Remove caracteres não numéricos de CPF, CNPJ e telefone
         if 'cpf' in data and data['cpf']:
             data['cpf'] = re.sub(r'\D', '', data['cpf'])
         if 'cnpj' in data and data['cnpj']:
@@ -64,6 +37,45 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         return data
 
+    # ===================== VALIDATORS ÚNICOS =====================
+    def validate_email(self, value):
+        qs = Usuario.objects.filter(email=value)
+        if self.instance:
+            qs = qs.exclude(id=self.instance.id)
+        if qs.exists():
+            raise serializers.ValidationError("E-mail já cadastrado.")
+        return value
+
+    def validate_cpf(self, value):
+        value = re.sub(r'\D', '', value or '')
+        qs = Usuario.objects.filter(cpf=value)
+        if self.instance:
+            qs = qs.exclude(id=self.instance.id)
+        if qs.exists():
+            raise serializers.ValidationError("CPF já cadastrado.")
+        return value
+
+    def validate_cnpj(self, value):
+        value = re.sub(r'\D', '', value or '')
+        if not value:
+            return value
+        qs = Usuario.objects.filter(cnpj=value)
+        if self.instance:
+            qs = qs.exclude(id=self.instance.id)
+        if qs.exists():
+            raise serializers.ValidationError("CNPJ já cadastrado.")
+        return value
+
+    def validate_telefone(self, value):
+        value = re.sub(r'\D', '', value or '')
+        qs = Usuario.objects.filter(telefone=value)
+        if self.instance:
+            qs = qs.exclude(id=self.instance.id)
+        if qs.exists():
+            raise serializers.ValidationError("Telefone já cadastrado.")
+        return value
+
+    # ===================== PASSWORD =====================
     def create(self, validated_data):
         password = validated_data.pop('password')
         validated_data.pop('groups', None)
@@ -92,10 +104,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
         return password
 
+    # ===================== VALIDAÇÃO CPF/CNPJ POR TIPO =====================
     def validate(self, data):
-        tipo = data.get('tipo')
-        cpf = data.get('cpf')
-        cnpj = data.get('cnpj')
+        tipo = data.get('tipo') or (self.instance.tipo if self.instance else None)
+        cpf = data.get('cpf') or (self.instance.cpf if self.instance else None)
+        cnpj = data.get('cnpj') or (self.instance.cnpj if self.instance else None)
         senha = data.get('password')
 
         if senha:
@@ -128,16 +141,19 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         if tipo == 'freelancer':
             if not cpf:
-                raise serializers.ValidationError("Freelancers devem fornecer CPF.")
+                raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF."})
             if not validar_cpf(cpf):
-                raise serializers.ValidationError("CPF inválido.")
+                raise serializers.ValidationError({"cpf": "CPF inválido."})
+
         elif tipo == 'cliente':
-            if not cpf or not cnpj:
-                raise serializers.ValidationError("Clientes devem fornecer CPF e CNPJ.")
+            if not cpf:
+                raise serializers.ValidationError({"cpf": "CPF é obrigatório para clientes."})
+            if not cnpj:
+                raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para clientes."})
             if not validar_cpf(cpf):
-                raise serializers.ValidationError("CPF inválido.")
+                raise serializers.ValidationError({"cpf": "CPF inválido."})
             if not validar_cnpj(cnpj):
-                raise serializers.ValidationError("CNPJ inválido.")
+                raise serializers.ValidationError({"cnpj": "CNPJ inválido."})
 
         return data
 
@@ -174,3 +190,28 @@ class NotificacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notificacao
         fields = ['id', 'mensagem', 'lida', 'data_criacao', 'link']
+
+
+class UsuarioPublicoSerializer(serializers.ModelSerializer):
+    nota_media = serializers.SerializerMethodField()
+    trabalhos_publicados = serializers.SerializerMethodField()
+    trabalhos_concluidos = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = [
+            "id", "nome", "tipo", "foto_perfil", "bio",
+            "nota_media", "trabalhos_publicados", "trabalhos_concluidos"
+        ]
+
+    def get_nota_media(self, obj):
+        avaliacoes = Avaliacao.objects.filter(avaliado=obj)
+        if not avaliacoes.exists():
+            return None
+        return round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
+
+    def get_trabalhos_publicados(self, obj):
+        return obj.trabalhos_publicados.count() if obj.tipo == "cliente" else None
+
+    def get_trabalhos_concluidos(self, obj):
+        return obj.trabalhos_direcionados.filter(status="concluido").count() if obj.tipo == "freelancer" else None

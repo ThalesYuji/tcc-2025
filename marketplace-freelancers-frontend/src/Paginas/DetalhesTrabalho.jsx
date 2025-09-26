@@ -7,15 +7,28 @@ import "../styles/DetalhesTrabalho.css";
 
 const BASE_URL = "http://localhost:8000";
 
-// 🔹 Função para classe do status
+// Função para classe do status
 function getStatusClass(status) {
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case "aberto": return "status-aberto";
-    case "em_andamento": return "status-andamento";
-    case "concluido": return "status-concluido";
+    case "em_andamento": return "status-em-andamento";
+    case "concluido": 
+    case "concluído": return "status-concluido";
     case "cancelado": return "status-cancelado";
     case "recusado": return "status-recusado";
     default: return "status-default";
+  }
+}
+
+function getStatusIcon(status) {
+  switch (status?.toLowerCase()) {
+    case "aberto": return "bi-unlock";
+    case "em_andamento": return "bi-clock";
+    case "concluido": 
+    case "concluído": return "bi-check-circle";
+    case "cancelado": return "bi-x-circle";
+    case "recusado": return "bi-x-circle";
+    default: return "bi-question-circle";
   }
 }
 
@@ -29,22 +42,29 @@ export default function DetalhesTrabalho() {
   const [formErro, setFormErro] = useState("");
   const [formSucesso, setFormSucesso] = useState("");
   const [alerta, setAlerta] = useState(null);
+  const [carregando, setCarregando] = useState(true);
   const navigate = useNavigate();
 
-  // 🔹 Buscar dados
+  // Buscar dados
   useEffect(() => {
-    api.get(`/trabalhos/${id}/`)
-      .then((response) => setTrabalho(response.data))
-      .catch(() => setErro("❌ Erro ao buscar o trabalho."));
-
-    getUsuarioLogado()
-      .then(setUsuarioLogado)
-      .catch(() => setUsuarioLogado(null));
+    Promise.all([
+      api.get(`/trabalhos/${id}/`),
+      getUsuarioLogado().catch(() => null)
+    ])
+      .then(([trabalhoResponse, usuario]) => {
+        setTrabalho(trabalhoResponse.data);
+        setUsuarioLogado(usuario);
+        setCarregando(false);
+      })
+      .catch(() => {
+        setErro("Erro ao buscar o trabalho.");
+        setCarregando(false);
+      });
   }, [id]);
 
-  // 🔹 Utilidades de data
+  // Utilidades de data
   function formatarData(dataStr) {
-    if (!dataStr) return "";
+    if (!dataStr) return "Não definido";
     const [ano, mes, dia] = dataStr.split("-");
     return `${dia}/${mes}/${ano}`;
   }
@@ -55,16 +75,23 @@ export default function DetalhesTrabalho() {
     return d.toLocaleString("pt-BR");
   }
 
-  // 🔹 Alerta central
+  function formatarOrcamento(valor) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
+  }
+
+  // Alerta central
   function mostrarAlerta(tipo, texto, destino = null) {
     setAlerta({ tipo, texto });
     setTimeout(() => {
       setAlerta(null);
       if (destino) navigate(destino);
-    }, 2000);
+    }, 2500);
   }
 
-  // 🔹 Permissões
+  // Permissões
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
@@ -84,18 +111,18 @@ export default function DetalhesTrabalho() {
     trabalho.freelancer === usuarioLogado.id &&
     trabalho.status === "aberto";
 
-  // 🔹 Excluir trabalho
+  // Excluir trabalho
   const handleDelete = async () => {
     if (!window.confirm("Tem certeza que deseja excluir este trabalho?")) return;
     try {
       await api.delete(`/trabalhos/${trabalho.id}/`);
-      mostrarAlerta("sucesso", "🗑️ Trabalho excluído com sucesso!", "/trabalhos");
+      mostrarAlerta("sucesso", "Trabalho excluído com sucesso!", "/trabalhos");
     } catch {
-      mostrarAlerta("erro", "❌ Erro ao excluir trabalho.");
+      mostrarAlerta("erro", "Erro ao excluir trabalho.");
     }
   };
 
-  // 🔹 Formulário proposta
+  // Formulário proposta
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
     setFormErro("");
@@ -121,163 +148,400 @@ export default function DetalhesTrabalho() {
         valor: form.valor,
         prazo_estimado: form.prazo_estimado,
       });
-      setFormSucesso("✅ Proposta enviada com sucesso!");
+      setFormSucesso("Proposta enviada com sucesso!");
       setShowForm(false);
+      setTimeout(() => setFormSucesso(""), 3000);
     } catch (err) {
       const mensagem =
         err.response?.data?.erro ||
         err.response?.data?.detail ||
         "Erro ao enviar proposta. Tente novamente.";
-      setFormErro(`❌ ${mensagem}`);
+      setFormErro(mensagem);
     }
   };
 
-  // 🔹 Aceitar / Recusar
+  // Aceitar / Recusar
   const aceitarTrabalho = async () => {
     try {
       await api.post(`/trabalhos/${trabalho.id}/aceitar/`);
-      mostrarAlerta("sucesso", "✅ Trabalho aceito e contrato criado!", "/contratos");
+      mostrarAlerta("sucesso", "Trabalho aceito e contrato criado!", "/contratos");
     } catch {
-      mostrarAlerta("erro", "❌ Erro ao aceitar o trabalho.");
+      mostrarAlerta("erro", "Erro ao aceitar o trabalho.");
     }
   };
 
   const recusarTrabalho = async () => {
     try {
       await api.post(`/trabalhos/${trabalho.id}/recusar/`);
-      mostrarAlerta("info", "⚠️ Você recusou o trabalho.", "/trabalhos");
+      mostrarAlerta("info", "Você recusou o trabalho.", "/trabalhos");
     } catch {
-      mostrarAlerta("erro", "❌ Erro ao recusar o trabalho.");
+      mostrarAlerta("erro", "Erro ao recusar o trabalho.");
     }
   };
 
-  // 🔹 Render
+  // Estados de loading e erro
+  if (carregando) {
+    return (
+      <div className="detalhes-trabalho-page page-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <h3>Carregando detalhes...</h3>
+          <p>Buscando informações do trabalho</p>
+        </div>
+      </div>
+    );
+  }
+
   if (erro) {
     return (
-      <div className="detalhes-trabalho-container">
-        <div className="detalhes-trabalho-card error-msg">{erro}</div>
+      <div className="detalhes-trabalho-page page-container">
+        <div className="dashboard-error">
+          <div className="error-icon">⚠️</div>
+          <h3 className="error-title">Erro ao Carregar</h3>
+          <p className="error-message">{erro}</p>
+          <button 
+            className="btn gradient-btn"
+            onClick={() => navigate("/trabalhos")}
+          >
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Trabalhos
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!trabalho) {
     return (
-      <div className="detalhes-trabalho-container">
-        <div className="detalhes-trabalho-card">🔄 Carregando trabalho...</div>
+      <div className="detalhes-trabalho-page page-container">
+        <div className="dashboard-error">
+          <div className="error-icon">🔍</div>
+          <h3 className="error-title">Trabalho Não Encontrado</h3>
+          <p className="error-message">O trabalho solicitado não foi encontrado.</p>
+          <button 
+            className="btn gradient-btn"
+            onClick={() => navigate("/trabalhos")}
+          >
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Trabalhos
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="detalhes-trabalho-container">
+    <div className="detalhes-trabalho-page page-container fade-in">
+      {/* Alerta Overlay */}
       {alerta && (
         <div className="alerta-overlay">
-          <div className={`alerta-box alerta-${alerta.tipo}`}>{alerta.texto}</div>
+          <div className={`alerta-box alerta-${alerta.tipo}`}>
+            <i className={`bi ${
+              alerta.tipo === 'sucesso' ? 'bi-check-circle' : 
+              alerta.tipo === 'erro' ? 'bi-x-circle' : 'bi-info-circle'
+            }`}></i>
+            {alerta.texto}
+          </div>
         </div>
       )}
 
-      <div className="detalhes-trabalho-card">
-        <h2>📄 Detalhes do Trabalho</h2>
-        <p><strong>Título:</strong> {trabalho.titulo}</p>
-        <p><strong>Descrição:</strong> {trabalho.descricao}</p>
-        <p><strong>Prazo:</strong> {formatarData(trabalho.prazo)}</p>
-        <p><strong>Orçamento:</strong> R$ {Number(trabalho.orcamento).toFixed(2)}</p>
-        <p>
-          <strong>Status:</strong>{" "}
-          <span className={`status-badge ${getStatusClass(trabalho.status)}`}>
-            {trabalho.status}
-          </span>
-        </p>
-        <p><strong>Cliente:</strong> {trabalho.nome_cliente}</p>
-
-        {trabalho.habilidades_detalhes?.length > 0 && (
-          <p><strong>Habilidades:</strong> {trabalho.habilidades_detalhes.map(h => h.nome).join(", ")}</p>
-        )}
-
-        {trabalho.criado_em && (
-          <p><strong>Criado em:</strong> {formatarDataHora(trabalho.criado_em)}</p>
-        )}
-
-        {trabalho.atualizado_em && (
-          <p><strong>Atualizado em:</strong> {formatarDataHora(trabalho.atualizado_em)}</p>
-        )}
-
-        {trabalho.anexo && (
-          <p>
-            <strong>Anexo:</strong>{" "}
-            <a
-              href={`${BASE_URL}${trabalho.anexo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="link-anexo"
-            >
-              Ver arquivo
-            </a>
-          </p>
-        )}
-
-        {/* Botões principais */}
-        <div className="btn-group-inline">
-          <button onClick={() => navigate("/trabalhos")}>Voltar</button>
-          {podeEditarOuExcluir() && (
-            <>
-              <button onClick={() => navigate(`/trabalhos/editar/${trabalho.id}`)}>Editar</button>
-              <button className="btn-excluir" onClick={handleDelete}>Excluir</button>
-            </>
-          )}
+      {/* Header */}
+      <div className="detalhes-header">
+        <div className="detalhes-nav">
+          <button 
+            className="btn-voltar"
+            onClick={() => navigate("/trabalhos")}
+          >
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Trabalhos
+          </button>
         </div>
+        
+        <div className="detalhes-title-section">
+          <div className="title-with-status">
+            <h1 className="detalhes-title">
+              <i className="bi bi-briefcase"></i>
+              {trabalho.titulo}
+            </h1>
+            <div className={`trabalho-status-badge ${getStatusClass(trabalho.status)}`}>
+              <i className={`bi ${getStatusIcon(trabalho.status)}`}></i>
+              {trabalho.status}
+            </div>
+          </div>
+          <p className="detalhes-subtitle">
+            Publicado por {trabalho.nome_cliente} em {formatarDataHora(trabalho.criado_em)}
+          </p>
+        </div>
+      </div>
 
-        {/* Formulário de proposta */}
-        {podeEnviarProposta && (
-          <div className="proposta-container">
-            <button onClick={abrirFormProposta}>✉️ Enviar Proposta</button>
+      {/* Conteúdo Principal */}
+      <div className="detalhes-content">
+        {/* Card Principal */}
+        <div className="detalhes-main-card modern-card">
+          <div className="detalhes-card-header">
+            <h2>
+              <i className="bi bi-file-text"></i>
+              Descrição do Projeto
+            </h2>
+          </div>
+          
+          <div className="detalhes-card-body">
+            <div className="trabalho-descricao-completa">
+              {trabalho.descricao || "Nenhuma descrição fornecida."}
+            </div>
 
-            {showForm && (
-              <form onSubmit={enviarProposta} className="proposta-form">
-                <textarea
-                  placeholder="Mensagem para o cliente"
-                  value={form.descricao}
-                  onChange={e => setForm({ ...form, descricao: e.target.value })}
-                  rows={3}
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Valor (R$)"
-                  value={form.valor}
-                  onChange={e => setForm({ ...form, valor: e.target.value })}
-                  min="1"
-                  required
-                />
-                <input
-                  type="date"
-                  value={form.prazo_estimado}
-                  onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
-                  required
-                />
-                {formErro && <div className="error-msg">{formErro}</div>}
-                {formSucesso && <div className="success-msg">{formSucesso}</div>}
-
-                <div className="btn-group-inline">
-                  <button type="submit">Enviar</button>
-                  <button type="button" onClick={() => setShowForm(false)}>Cancelar</button>
+            {/* Informações em Grid */}
+            <div className="trabalho-info-grid">
+              <div className="info-item">
+                <div className="info-icon">
+                  <i className="bi bi-currency-dollar"></i>
                 </div>
-              </form>
+                <div className="info-content">
+                  <span className="info-label">Orçamento</span>
+                  <span className="info-value trabalho-orcamento">
+                    {formatarOrcamento(trabalho.orcamento)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-item">
+                <div className="info-icon">
+                  <i className="bi bi-calendar-event"></i>
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Prazo</span>
+                  <span className="info-value">
+                    {formatarData(trabalho.prazo)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-item">
+                <div className="info-icon">
+                  <i className="bi bi-person"></i>
+                </div>
+                <div className="info-content">
+                  <span className="info-label">Cliente</span>
+                  <span 
+                    className="info-value cliente-link"
+                    onClick={() => navigate(`/perfil/${trabalho.cliente_id}`)}
+                  >
+                    {trabalho.nome_cliente}
+                  </span>
+                </div>
+              </div>
+
+              {trabalho.is_privado && (
+                <div className="info-item">
+                  <div className="info-icon">
+                    <i className="bi bi-lock"></i>
+                  </div>
+                  <div className="info-content">
+                    <span className="info-label">Tipo</span>
+                    <span className="info-value">
+                      <span className="badge-privado">Trabalho Privado</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Habilidades */}
+            {trabalho.habilidades_detalhes?.length > 0 && (
+              <div className="trabalho-habilidades-section">
+                <h3>
+                  <i className="bi bi-tools"></i>
+                  Habilidades Necessárias
+                </h3>
+                <div className="habilidades-list">
+                  {trabalho.habilidades_detalhes.map((hab, index) => (
+                    <span key={index} className="habilidade-tag">
+                      {hab.nome}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Anexo */}
+            {trabalho.anexo && (
+              <div className="trabalho-anexo-section">
+                <h3>
+                  <i className="bi bi-paperclip"></i>
+                  Arquivo Anexo
+                </h3>
+                <a
+                  href={`${BASE_URL}${trabalho.anexo}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="anexo-link"
+                >
+                  <i className="bi bi-download"></i>
+                  Baixar Arquivo
+                </a>
+              </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Aceitar / Recusar */}
-        {podeAceitarOuRecusar && (
-          <div className="btn-group-inline">
-            <button className="btn-aceitar" onClick={aceitarTrabalho}>
-              Aceitar Trabalho
-            </button>
-            <button className="btn-recusar" onClick={recusarTrabalho}>
-              Recusar Trabalho
-            </button>
+        {/* Card de Ações */}
+        <div className="detalhes-actions-card modern-card">
+          <div className="detalhes-card-header">
+            <h2>
+              <i className="bi bi-gear"></i>
+              Ações Disponíveis
+            </h2>
           </div>
-        )}
+          
+          <div className="detalhes-card-body">
+            {/* Botões de Gerenciamento */}
+            {podeEditarOuExcluir() && (
+              <div className="action-group">
+                <h4>Gerenciar Trabalho</h4>
+                <div className="btn-group-actions">
+                  <button 
+                    className="btn-action btn-primary-action"
+                    onClick={() => navigate(`/trabalhos/editar/${trabalho.id}`)}
+                  >
+                    <i className="bi bi-pencil"></i>
+                    Editar
+                  </button>
+                  <button 
+                    className="btn-action btn-danger-action" 
+                    onClick={handleDelete}
+                  >
+                    <i className="bi bi-trash"></i>
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Proposta */}
+            {podeEnviarProposta && (
+              <div className="action-group">
+                <h4>Interessado no Projeto?</h4>
+                <button 
+                  className="btn-action btn-success-action full-width"
+                  onClick={abrirFormProposta}
+                >
+                  <i className="bi bi-send"></i>
+                  Enviar Proposta
+                </button>
+
+                {showForm && (
+                  <div className="proposta-form-container">
+                    <div className="proposta-form-header">
+                      <h4>
+                        <i className="bi bi-send"></i>
+                        Nova Proposta
+                      </h4>
+                    </div>
+                    
+                    <form onSubmit={enviarProposta} className="proposta-form">
+                      <div className="form-group">
+                        <label>Mensagem para o Cliente</label>
+                        <textarea
+                          placeholder="Descreva sua proposta e experiência relevante..."
+                          value={form.descricao}
+                          onChange={e => setForm({ ...form, descricao: e.target.value })}
+                          rows={4}
+                          className="form-control"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Valor Proposto</label>
+                          <div className="input-with-icon">
+                            <i className="bi bi-currency-dollar"></i>
+                            <input
+                              type="number"
+                              placeholder="0,00"
+                              value={form.valor}
+                              onChange={e => setForm({ ...form, valor: e.target.value })}
+                              className="form-control"
+                              min="1"
+                              step="0.01"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Prazo Estimado</label>
+                          <input
+                            type="date"
+                            value={form.prazo_estimado}
+                            onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
+                            className="form-control"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {formErro && <div className="error-message">{formErro}</div>}
+                      {formSucesso && <div className="success-message">{formSucesso}</div>}
+
+                      <div className="form-actions">
+                        <button type="submit" className="btn-action btn-primary-action">
+                          <i className="bi bi-send"></i>
+                          Enviar Proposta
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-action btn-secondary-action"
+                          onClick={() => setShowForm(false)}
+                        >
+                          <i className="bi bi-x"></i>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Aceitar / Recusar */}
+            {podeAceitarOuRecusar && (
+              <div className="action-group">
+                <h4>Trabalho Privado</h4>
+                <p className="action-description">
+                  Este é um trabalho privado direcionado a você. Escolha sua ação:
+                </p>
+                <div className="btn-group-actions">
+                  <button 
+                    className="btn-action btn-success-action"
+                    onClick={aceitarTrabalho}
+                  >
+                    <i className="bi bi-check-circle"></i>
+                    Aceitar Trabalho
+                  </button>
+                  <button 
+                    className="btn-action btn-danger-action"
+                    onClick={recusarTrabalho}
+                  >
+                    <i className="bi bi-x-circle"></i>
+                    Recusar Trabalho
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Estado quando não há ações disponíveis */}
+            {!podeEditarOuExcluir() && !podeEnviarProposta && !podeAceitarOuRecusar && (
+              <div className="no-actions">
+                <div className="no-actions-icon">
+                  <i className="bi bi-info-circle"></i>
+                </div>
+                <h4>Nenhuma Ação Disponível</h4>
+                <p>Você não tem permissões para realizar ações neste trabalho.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
+
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -20,6 +21,7 @@ class UsuarioManager(BaseUserManager):
             raise ValueError('Superusuário precisa ter is_superuser=True.')
         return self.create_user(email, password, **extra_fields)
 
+
 class Usuario(AbstractBaseUser, PermissionsMixin):
     TIPO_USUARIO = (
         ('freelancer', 'Freelancer'),
@@ -35,6 +37,11 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     foto_perfil = models.ImageField(upload_to='fotos_perfil/', null=True, blank=True)
     nota_media = models.FloatField(null=True, blank=True)
     notificacao_email = models.BooleanField(default=True)
+
+    # 🔹 Novo campo para descrição do perfil público
+    bio = models.TextField(blank=True, null=True)
+
+    # Flags de autenticação
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 

@@ -1,113 +1,586 @@
 .home-wrapper {
-  animation: fadeIn 0.5s ease-in-out;
+  background: var(--cor-fundo);
+  min-height: 100vh;
+  animation: fadeIn 0.6s ease-out;
 }
 
-/* ============================
-   Banner de boas-vindas
-   ============================ */
-.card-banner {
-  background: linear-gradient(135deg, var(--cor-primaria), #42a5f5);
-  border-radius: 16px;
-  padding: 2.5rem 1.5rem;
-  box-shadow: var(--sombra-card);
+/* ==============================
+   HERO SECTION MODERNA
+   ============================== */
+.hero-section {
   text-align: center;
-  color: #fff;
-}
-.card-banner h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 0.6rem;
-}
-.card-banner p {
-  font-size: 1.1rem;
-  opacity: 0.95;
-  margin-bottom: 0;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-xl) 0;
+  position: relative;
 }
 
-/* ============================
-   Atalhos principais
-   ============================ */
-.shortcut-tile {
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border-radius: var(--radius-xl);
+  z-index: -1;
+}
+
+.welcome-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-size: 1.125rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-md);
+}
+
+.user-greeting {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-sucesso) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--space-md);
+  line-height: 1.2;
+}
+
+.hero-description {
+  font-size: 1.125rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-xl);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: var(--sombra-lg);
+  transition: all var(--transition-normal);
+  text-decoration: none;
+}
+
+.hero-cta:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: var(--sombra-xl);
+  filter: brightness(1.05);
+}
+
+/* ==============================
+   SEÇÃO DE ATALHOS MODERNIZADA
+   ============================== */
+.shortcuts-section {
+  margin-bottom: var(--space-3xl);
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-lg);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.shortcut-card {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-md);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .6rem;
-  height: 100%;
-  border-radius: 14px;
-  padding: 1.6rem 0.8rem;
-  font-weight: 600;
   text-align: center;
-  box-shadow: var(--sombra-card);
-  transition: transform 0.25s, box-shadow 0.25s;
-}
-.shortcut-tile i {
-  font-size: 2rem;
-}
-.shortcut-tile:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  min-height: 140px;
+  border: 1px solid var(--borda-light);
+  box-shadow: var(--sombra-md);
+  transition: all var(--transition-normal);
   text-decoration: none;
+  position: relative;
+  overflow: hidden;
 }
 
-/* ============================
-   Cards de oportunidades
-   ============================ */
-.opp-card {
-  border: none;
-  border-radius: 14px;
-  box-shadow: var(--sombra-card);
-  transition: transform 0.25s, box-shadow 0.25s;
+.shortcut-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
 }
-.opp-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+
+.shortcut-card:hover::before {
+  left: 100%;
 }
-.opp-card .card-title {
-  font-size: 1.1rem;
-  font-weight: 700;
+
+.shortcut-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--sombra-xl);
+  border-color: var(--cor-primaria);
+  background: linear-gradient(135deg, var(--superficie-card) 0%, rgba(59, 130, 246, 0.02) 100%);
+}
+
+.shortcut-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+  margin-bottom: var(--space-md);
+  transition: all var(--transition-normal);
+  box-shadow: var(--sombra-md);
+}
+
+.shortcut-card:hover .shortcut-icon {
+  transform: scale(1.15) rotate(8deg);
+  box-shadow: var(--sombra-lg);
+}
+
+.shortcut-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--cor-secundaria);
+  margin: 0;
+  transition: color var(--transition-fast);
+}
+
+.shortcut-card:hover .shortcut-label {
   color: var(--cor-primaria);
 }
-.opp-card .card-text {
-  font-size: 0.95rem;
-  color: #555;
+
+/* ==============================
+   SEÇÃO DE OPORTUNIDADES
+   ============================== */
+.opportunities-section {
+  margin-bottom: var(--space-3xl);
 }
 
-/* ============================
-   Responsividade
-   ============================ */
-@media (max-width: 1024px) {
-  .card-banner h2 {
-    font-size: 1.6rem;
+.opportunities-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+}
+
+.opportunities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-xl);
+}
+
+/* Cards de trabalho */
+.job-card {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+  position: relative;
+}
+
+.job-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-sucesso) 100%);
+}
+
+.job-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--sombra-xl);
+  border-color: var(--cor-primaria);
+}
+
+.job-card-body {
+  padding: var(--space-xl);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.job-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-md);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.job-description {
+  color: var(--cor-texto-light);
+  line-height: 1.6;
+  margin-bottom: var(--space-lg);
+  flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.job-actions {
+  margin-top: auto;
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* Cards de freelancer */
+.freelancer-card {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+  position: relative;
+}
+
+.freelancer-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--sombra-xl);
+  border-color: var(--cor-primaria);
+}
+
+.freelancer-card-body {
+  padding: var(--space-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.freelancer-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 3px solid var(--borda-light);
+  box-shadow: var(--sombra-md);
+  margin-bottom: var(--space-lg);
+  transition: all var(--transition-normal);
+}
+
+.freelancer-card:hover .freelancer-avatar {
+  transform: scale(1.05);
+  border-color: var(--cor-primaria);
+  box-shadow: var(--sombra-lg);
+}
+
+.freelancer-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-md);
+}
+
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  min-height: 60px;
+  align-items: center;
+}
+
+.no-skills-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-sm);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--borda-medium);
+  width: 100%;
+  min-height: 50px;
+}
+
+.rating-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-lg);
+}
+
+.rating-stars {
+  color: var(--cor-aviso);
+  font-size: 1rem;
+}
+
+.freelancer-actions {
+  margin-top: auto;
+}
+
+/* ==============================
+   PAGINAÇÃO REDESENHADA
+   ============================== */
+.pagination-container {
+  margin-top: var(--space-3xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--borda-light);
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  background: var(--superficie-card);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--borda-light);
+  font-weight: 500;
+  color: var(--cor-texto);
+  box-shadow: var(--sombra-sm);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  border: 1px solid var(--borda-light);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  box-shadow: var(--sombra-sm);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--cor-primaria);
+  color: white;
+  border-color: var(--cor-primaria);
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--superficie-hover);
+}
+
+/* ==============================
+   FOOTER MODERNIZADO
+   ============================== */
+.home-footer {
+  background: var(--superficie-card);
+  border-top: 1px solid var(--borda-light);
+  padding: var(--space-xl);
+  margin-top: var(--space-3xl);
+  text-align: center;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: var(--cor-texto-light);
+  font-size: 0.95rem;
+}
+
+.footer-logo {
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-sucesso) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==============================
+   ESTADOS ESPECIAIS
+   ============================== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: var(--space-md);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--borda-light);
+  border-top: 3px solid var(--cor-primaria);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-opportunities {
+  text-align: center;
+  padding: var(--space-3xl);
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--borda-light);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-lg);
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-sm);
+}
+
+.empty-description {
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-lg);
+}
+
+.error-container {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+/* ==============================
+   ANIMAÇÕES ESPECÍFICAS
+   ============================== */
+.opportunities-grid .modern-card {
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.opportunities-grid .modern-card:nth-child(1) { animation-delay: 0.1s; }
+.opportunities-grid .modern-card:nth-child(2) { animation-delay: 0.2s; }
+.opportunities-grid .modern-card:nth-child(3) { animation-delay: 0.3s; }
+.opportunities-grid .modern-card:nth-child(4) { animation-delay: 0.4s; }
+.opportunities-grid .modern-card:nth-child(5) { animation-delay: 0.5s; }
+.opportunities-grid .modern-card:nth-child(6) { animation-delay: 0.6s; }
+
+.shortcuts-grid .shortcut-card {
+  animation: scaleIn 0.4s ease-out forwards;
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.shortcuts-grid .shortcut-card:nth-child(1) { animation-delay: 0.1s; }
+.shortcuts-grid .shortcut-card:nth-child(2) { animation-delay: 0.2s; }
+.shortcuts-grid .shortcut-card:nth-child(3) { animation-delay: 0.3s; }
+.shortcuts-grid .shortcut-card:nth-child(4) { animation-delay: 0.4s; }
+.shortcuts-grid .shortcut-card:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes scaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
-  .card-banner p {
+}
+
+/* ==============================
+   RESPONSIVIDADE ESPECÍFICA
+   ============================== */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: var(--space-lg) 0;
+  }
+  
+  .user-greeting {
+    font-size: 2rem;
+  }
+  
+  .hero-description {
     font-size: 1rem;
   }
+  
+  .shortcuts-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+  }
+  
+  .opportunities-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+  
+  .opportunities-header {
+    flex-direction: column;
+    gap: var(--space-md);
+    text-align: center;
+  }
+  
+  .pagination-controls {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
 }
-@media (max-width: 768px) {
-  .card-banner {
-    padding: 2rem 1rem;
-  }
-  .shortcut-tile {
-    padding: 1.2rem 0.6rem;
-    font-size: 0.9rem;
-  }
-  .shortcut-tile i {
-    font-size: 1.8rem;
-  }
-}
+
 @media (max-width: 480px) {
-  .card-banner h2 {
-    font-size: 1.3rem;
+  .user-greeting {
+    font-size: 1.75rem;
   }
-  .card-banner p {
-    font-size: 0.95rem;
+  
+  .shortcuts-grid {
+    grid-template-columns: 1fr;
   }
-  .shortcut-tile {
-    padding: 1rem 0.5rem;
-    font-size: 0.85rem;
+  
+  .shortcut-card {
+    min-height: 100px;
+    padding: var(--space-lg) var(--space-sm);
   }
-  .shortcut-tile i {
-    font-size: 1.6rem;
+  
+  .job-card-body,
+  .freelancer-card-body {
+    padding: var(--space-lg);
+  }
+  
+  .hero-cta {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: 0.9rem;
   }
 }

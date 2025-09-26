@@ -1,198 +1,467 @@
-/* ================================
-   Estilo do Modal de Resposta
-   ================================ */
+/* src/styles/ModalRespostaDenuncia.css - Redesign Moderno */
 
-/* Fundo do modal */
+/* ==============================
+   MODAL OVERLAY
+   ============================== */
 .modal-bg {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9998;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  animation: modalFadeIn 0.3s ease-out;
 }
 
-/* Caixa central */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==============================
+   MODAL CONTAINER
+   ============================== */
 .modal-box {
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
-  padding: 24px 26px;
-  max-width: 600px;
+  background: var(--superficie-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--sombra-xl);
   width: 95%;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease-in-out;
+  max-width: 700px;
+  border: 1px solid var(--borda-light);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+  position: relative;
 }
 
-/* Header */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Barra colorida no topo */
+.modal-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--cor-erro) 0%, #DC2626 100%);
+}
+
+/* ==============================
+   HEADER DO MODAL
+   ============================== */
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  padding: var(--space-xl);
+  background: var(--superficie-hover);
+  border-bottom: 1px solid var(--borda-light);
 }
 
 .modal-header h3 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #1976d2;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.modal-header h3 i {
+  color: var(--cor-erro);
+  font-size: 1.25rem;
 }
 
 .btn-close-modal {
   background: transparent;
   border: none;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   cursor: pointer;
-  color: #555;
-  transition: color 0.2s;
-}
-.btn-close-modal:hover {
-  color: #d32f2f;
+  color: var(--cor-texto-light);
+  transition: all var(--transition-fast);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Informações da denúncia */
+.btn-close-modal:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--cor-erro);
+  transform: scale(1.1);
+}
+
+/* ==============================
+   INFORMAÇÕES DA DENÚNCIA
+   ============================== */
 .denuncia-info-modal {
-  margin-bottom: 18px;
+  padding: var(--space-xl);
+  border-bottom: 1px solid var(--borda-light);
 }
 
 .denuncia-info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg);
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
+  gap: var(--space-xs);
 }
 
 .info-label {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #555;
-  margin-bottom: 2px;
+  color: var(--cor-texto-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .info-value {
-  font-size: 0.95rem;
-  color: #333;
+  font-size: 1rem;
+  color: var(--cor-texto);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
 }
 
 .info-value.denunciante {
-  color: #1976d2;
-  font-weight: 600;
-}
-.info-value.denunciado {
-  color: #d32f2f;
+  color: var(--cor-primaria);
   font-weight: 600;
 }
 
-/* Formulário */
+.info-value.denunciado {
+  color: var(--cor-erro);
+  font-weight: 600;
+}
+
+/* ==============================
+   MENSAGENS DE STATUS
+   ============================== */
+.modal-messages {
+  padding: 0 var(--space-xl);
+}
+
+.error-msg,
+.success-msg {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+.error-msg i,
+.success-msg i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.error-msg {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.success-msg {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================
+   FORMULÁRIO
+   ============================== */
+.modal-form {
+  padding: var(--space-xl);
+}
+
+.form-group {
+  margin-bottom: var(--space-lg);
+}
+
 .form-label {
   font-weight: 600;
-  color: #223146;
-  margin-bottom: 4px;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-sm);
   display: block;
+  font-size: 0.95rem;
 }
 
 .form-select,
 .form-control {
   width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid #dde4ef;
-  border-radius: 8px;
+  padding: var(--space-md);
+  border: 2px solid var(--borda-light);
+  border-radius: var(--radius-md);
   font-size: 0.95rem;
-  outline: none;
-  transition: border 0.2s;
+  font-family: inherit;
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  transition: all var(--transition-fast);
 }
 
 .form-select:focus,
 .form-control:focus {
-  border-color: #1976d2;
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-control {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
 }
 
 .form-text {
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--cor-texto-light);
+  margin-top: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
-/* Botões */
+.form-text i {
+  color: var(--cor-primaria);
+}
+
+/* Status select styling */
+.form-select option {
+  padding: var(--space-sm);
+}
+
+/* ==============================
+   BOTÕES DO MODAL
+   ============================== */
 .modal-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  border-top: 1px solid var(--borda-light);
+  background: var(--superficie-hover);
 }
 
 .modal-buttons .btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
   border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
+  border-radius: var(--radius-md);
   font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: all var(--transition-normal);
+  min-width: 120px;
+  box-shadow: var(--sombra-sm);
 }
 
-.modal-buttons .btn-secondary {
-  background: #ccc;
-  color: #223146;
-}
-.modal-buttons .btn-secondary:hover {
-  background: #bbb;
+.modal-buttons .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
 }
 
-.modal-buttons .btn-primary {
-  background: #1976d2;
-  color: #fff;
-}
-.modal-buttons .btn-primary:hover:not(:disabled) {
-  background: #125ea8;
-  transform: translateY(-2px);
+.modal-buttons .btn:active {
+  transform: translateY(0);
 }
 
-.modal-buttons .btn:disabled {
-  background: #9cbbe6;
+.btn-secondary {
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  border: 2px solid var(--borda-medium);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--superficie-hover);
+  border-color: var(--cor-primaria);
+  color: var(--cor-primaria);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-primary:disabled {
+  background: var(--cor-neutro);
   cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
-/* Mensagens */
-.error-msg,
-.text-danger {
-  color: #d32f2f;
-  font-size: 0.9rem;
-  margin: 8px 0;
-  font-weight: 600;
+.btn-primary:disabled:hover {
+  box-shadow: var(--sombra-sm);
 }
 
-.success-msg,
-.text-success {
-  color: #2e7d32;
-  font-size: 0.9rem;
-  margin: 8px 0;
-  font-weight: 600;
+/* Loading state no botão */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
 }
 
-/* Animação */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-/* Responsividade */
-@media (max-width: 600px) {
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ==============================
+   RESPONSIVIDADE
+   ============================== */
+@media (max-width: 768px) {
   .modal-box {
-    padding: 20px;
+    margin: var(--space-md);
+    max-width: none;
   }
-
+  
+  .modal-header,
+  .denuncia-info-modal,
+  .modal-form {
+    padding: var(--space-lg);
+  }
+  
+  .modal-buttons {
+    padding: var(--space-lg);
+    flex-direction: column;
+  }
+  
+  .modal-buttons .btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
   .denuncia-info-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+  
+  .modal-header h3 {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-box {
+    margin: var(--space-sm);
+  }
+  
+  .modal-header,
+  .denuncia-info-modal,
+  .modal-form,
+  .modal-buttons {
+    padding: var(--space-md);
+  }
+  
+  .btn-close-modal {
+    width: 36px;
+    height: 36px;
+    font-size: 1.25rem;
+  }
+}
+
+/* ==============================
+   ACESSIBILIDADE
+   ============================== */
+.modal-box:focus {
+  outline: 2px solid var(--cor-primaria);
+  outline-offset: 2px;
+}
+
+.form-select:focus,
+.form-control:focus {
+  outline: 2px solid var(--cor-primaria);
+  outline-offset: -2px;
+}
+
+/* Melhor contraste para texto importante */
+.info-value.denunciante,
+.info-value.denunciado {
+  font-weight: 700;
+}
+
+/* ==============================
+   ESTADOS ESPECIAIS
+   ============================== */
+.modal-box.closing {
+  animation: modalSlideOut 0.2s ease-in forwards;
+}
+
+@keyframes modalSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+.modal-bg.closing {
+  animation: modalFadeOut 0.2s ease-in forwards;
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }

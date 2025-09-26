@@ -2,7 +2,15 @@ import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { FiLogOut, FiUser, FiSettings } from "react-icons/fi";
-import { FaShieldAlt, FaExclamationTriangle } from "react-icons/fa";
+import { 
+  FaShieldAlt, 
+  FaExclamationTriangle, 
+  FaHome, 
+  FaBriefcase, 
+  FaFileAlt, 
+  FaHandshake, 
+  FaStar 
+} from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
 import "../styles/Navbar.css";
 
@@ -28,7 +36,12 @@ export default function Navbar() {
   const rotaAtiva = (rota) =>
     location.pathname === rota ? "nav-btn active" : "nav-btn";
 
-  const fotoPerfil = usuarioLogado?.foto_perfil || "/icone-usuario.png";
+  const fotoPerfil = usuarioLogado?.foto_perfil || "";
+
+  const navegarPara = (rota) => {
+    navigate(rota);
+    setMenuAberto(false); // Fecha o menu quando navega
+  };
 
   return (
     <nav className="navbar">
@@ -36,7 +49,9 @@ export default function Navbar() {
       <div
         className="nav-brand"
         role="button"
-        onClick={() => navigate("/dashboard")}
+        onClick={() => navegarPara("/home")}
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && navegarPara("/dashboard")}
       >
         <img
           src="/profreelabr.png"
@@ -45,104 +60,145 @@ export default function Navbar() {
         />
       </div>
 
-      {/* Links */}
+      {/* Links de Navegação - CENTRALIZADOS */}
       <div className="nav-links">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className={rotaAtiva("/dashboard")}
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => navigate("/trabalhos")}
-          className={rotaAtiva("/trabalhos")}
-        >
-          Trabalhos
-        </button>
-
-        {(usuarioLogado.tipo === "freelancer" ||
-          usuarioLogado.tipo === "cliente") && (
+        <div className="nav-links-main">
           <button
-            onClick={() => navigate("/propostas")}
-            className={rotaAtiva("/propostas")}
+            onClick={() => navegarPara("/dashboard")}
+            className={rotaAtiva("/dashboard")}
+            title="Dashboard"
           >
-            {usuarioLogado.tipo === "freelancer"
-              ? "Minhas Propostas"
-              : "Propostas Recebidas"}
+            <FaHome />
+            <span>Dashboard</span>
           </button>
-        )}
 
-        {(usuarioLogado.tipo === "freelancer" ||
-          usuarioLogado.tipo === "cliente") && (
           <button
-            onClick={() => navigate("/contratos")}
-            className={rotaAtiva("/contratos")}
+            onClick={() => navegarPara("/trabalhos")}
+            className={rotaAtiva("/trabalhos")}
+            title="Trabalhos"
           >
-            Contratos
+            <FaBriefcase />
+            <span>Trabalhos</span>
           </button>
-        )}
 
-        {(usuarioLogado.tipo === "freelancer" ||
-          usuarioLogado.tipo === "cliente") && (
-          <button
-            onClick={() => navigate("/avaliacoes")}
-            className={rotaAtiva("/avaliacoes")}
-          >
-            Minhas Avaliações
-          </button>
-        )}
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+            <button
+              onClick={() => navegarPara("/propostas")}
+              className={rotaAtiva("/propostas")}
+              title={usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
+            >
+              <FaFileAlt />
+              <span>Propostas</span>
+            </button>
+          )}
 
-        {/* Denúncias */}
-        {usuarioLogado.is_superuser ? (
-          <button
-            onClick={() => navigate("/painel-denuncias")}
-            className={rotaAtiva("/painel-denuncias")}
-          >
-            <FaShieldAlt style={{ marginRight: 6 }} />
-            Painel Denúncias
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate("/minhas-denuncias")}
-            className={rotaAtiva("/minhas-denuncias")}
-          >
-            <FaExclamationTriangle style={{ marginRight: 6 }} />
-            Minhas Denúncias
-          </button>
-        )}
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+            <button
+              onClick={() => navegarPara("/contratos")}
+              className={rotaAtiva("/contratos")}
+              title="Contratos"
+            >
+              <FaHandshake />
+              <span>Contratos</span>
+            </button>
+          )}
 
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+            <button
+              onClick={() => navegarPara("/avaliacoes")}
+              className={rotaAtiva("/avaliacoes")}
+              title="Avaliações"
+            >
+              <FaStar />
+              <span>Avaliações</span>
+            </button>
+          )}
+
+          {/* Denúncias */}
+          {usuarioLogado.is_superuser ? (
+            <button
+              onClick={() => navegarPara("/painel-denuncias")}
+              className={rotaAtiva("/painel-denuncias")}
+              title="Painel de Denúncias"
+            >
+              <FaShieldAlt />
+              <span>Denúncias</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navegarPara("/minhas-denuncias")}
+              className={rotaAtiva("/minhas-denuncias")}
+              title="Minhas Denúncias"
+            >
+              <FaExclamationTriangle />
+              <span>Denúncias</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Área Direita - Notificações e Menu Usuário */}
+      <div className="nav-actions">
         {/* Notificações */}
         <NotificacoesDropdown />
 
         {/* Menu do usuário */}
         <div className="menu-usuario" ref={menuRef}>
-          <img
-            src={fotoPerfil}
-            alt="Foto de perfil do usuário"
-            className="avatar"
-            role="button"
-            onClick={() => setMenuAberto(!menuAberto)}
-          />
+          {fotoPerfil ? (
+            <img
+              src={fotoPerfil}
+              alt="Foto de perfil"
+              className="avatar"
+              role="button"
+              tabIndex={0}
+              onClick={() => setMenuAberto(!menuAberto)}
+              onKeyDown={(e) => e.key === 'Enter' && setMenuAberto(!menuAberto)}
+            />
+          ) : (
+            <div
+              className="avatar"
+              role="button"
+              tabIndex={0}
+              onClick={() => setMenuAberto(!menuAberto)}
+              onKeyDown={(e) => e.key === 'Enter' && setMenuAberto(!menuAberto)}
+              title={usuarioLogado?.nome || usuarioLogado?.username}
+            >
+              {usuarioLogado?.nome
+                ? usuarioLogado.nome[0].toUpperCase()
+                : usuarioLogado.username[0].toUpperCase()}
+            </div>
+          )}
+          
           {menuAberto && (
             <div className="menu-dropdown">
-              <div className="usuario-nome">{usuarioLogado?.nome}</div>
+              <div className="usuario-nome">
+                {usuarioLogado?.nome || usuarioLogado?.username}
+                <div style={{ fontSize: '0.8rem', opacity: '0.7', fontWeight: '400' }}>
+                  {usuarioLogado?.tipo === 'freelancer' ? 'Freelancer' : 
+                   usuarioLogado?.tipo === 'cliente' ? 'Cliente' : 
+                   usuarioLogado?.is_superuser ? 'Administrador' : 'Usuário'}
+                </div>
+              </div>
 
-              <button onClick={() => navigate("/conta")}>
-                <FiSettings /> Conta
+              <button onClick={() => navegarPara("/conta")}>
+                <FiSettings />
+                Configurações da Conta
               </button>
 
-              <button onClick={() => navigate(`/perfil/${usuarioLogado.id}`)}>
-                <FiUser /> Ver perfil
+              <button onClick={() => navegarPara(`/perfil/${usuarioLogado.id}`)}>
+                <FiUser />
+                Ver Meu Perfil
               </button>
 
               <button
                 onClick={() => {
                   localStorage.removeItem("token");
                   localStorage.removeItem("userId");
-                  navigate("/login", { replace: true }); // 🔹 mais seguro
+                  navigate("/login", { replace: true });
                 }}
               >
-                <FiLogOut /> Sair
+                <FiLogOut />
+                Sair da Conta
               </button>
             </div>
           )}

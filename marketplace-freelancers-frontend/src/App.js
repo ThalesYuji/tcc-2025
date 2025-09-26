@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./Paginas/Login";
@@ -52,7 +53,7 @@ function App() {
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<CadastroUsuario />} />
-          <Route path="/perfil/:id" element={<PerfilPublico />} />
+          <Route path="/perfil/:id" element={<PerfilPublico />} /> {/* 🔹 agora público */}
 
           {/* Rotas protegidas */}
           <Route
@@ -64,7 +65,7 @@ function App() {
                   <div className="app-container">
                     <Routes>
                       <Route path="/home" element={<HomeInicial />} /> {/* 🔹 nova primeira tela */}
-                      <Route path="/dashboard" element={<Dashboard />} /> {/* continua existindo */}
+                      <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/trabalhos" element={<Trabalhos />} />
                       <Route path="/trabalhos/novo" element={<CadastroTrabalho />} />
                       <Route path="/trabalhos/editar/:id" element={<EditarTrabalho />} />
@@ -80,7 +81,7 @@ function App() {
                       <Route path="/minhas-denuncias" element={<MinhasDenuncias />} />
                       <Route path="/notificacoes" element={<HistoricoNotificacoes />} />
                       <Route path="/contratos/:contratoId/chat" element={<ChatContrato />} />
-                      <Route path="*" element={<Navigate to="/home" replace />} /> {/* 🔹 agora redireciona para Home */}
+                      <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                   </div>
                 </>

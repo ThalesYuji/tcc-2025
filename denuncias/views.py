@@ -1,16 +1,18 @@
 from rest_framework import viewsets, permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser  # ✅ inclui JSONParser
 
-from .models import Denuncia
+from .models import Denuncia, DenunciaProva
 from .serializers import DenunciaSerializer
 from notificacoes.utils import enviar_notificacao
+
 
 class DenunciaViewSet(viewsets.ModelViewSet):
     """
     Endpoints:
-    /denuncias/               -> denúncias enviadas pelo usuário logado
-    /denuncias/?tipo=enviadas -> denúncias enviadas
+    /denuncias/                -> denúncias enviadas pelo usuário logado
+    /denuncias/?tipo=enviadas  -> denúncias enviadas
     /denuncias/?tipo=recebidas -> denúncias recebidas
     Admin pode ver todas passando tipo=todas.
     """
@@ -19,6 +21,9 @@ class DenunciaViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
+    # ✅ aceita multipart (anexos) e json (respostas admin)
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def get_queryset(self):
         user = self.request.user
         tipo = (self.request.query_params.get("tipo") or "").lower()
@@ -26,6 +31,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
         base = (
             Denuncia.objects
             .select_related("denunciante", "denunciado")
+            .prefetch_related("provas")
             .order_by("-data_criacao")
         )
 
@@ -49,32 +55,19 @@ class DenunciaViewSet(viewsets.ModelViewSet):
 
         instancia = serializer.save(denunciante=user)
 
-        mensagem = "Você recebeu uma denúncia no seu perfil. Clique para visualizar."
+        arquivos = self.request.FILES.getlist("provas")
+        if not arquivos:
+            raise ValidationError("É obrigatório anexar ao menos uma prova (print).")
+
+        for arquivo in arquivos:
+            if arquivo.size > 5 * 1024 * 1024:
+                raise ValidationError("Cada arquivo deve ter no máximo 5MB.")
+            if not arquivo.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                raise ValidationError("Apenas imagens JPG ou PNG são permitidas.")
+            DenunciaProva.objects.create(denuncia=instancia, arquivo=arquivo)
+
         enviar_notificacao(
             usuario=denunciado,
-            mensagem=mensagem[:255],
+            mensagem="Você recebeu uma denúncia no seu perfil. Clique para visualizar."[:255],
             link=f"/minhas-denuncias?id={instancia.id}"
         )
-
-    def update(self, request, *args, **kwargs):
-        instancia = self.get_object()
-        resposta_anterior = instancia.resposta_admin
-
-        response = super().update(request, *args, **kwargs)
-        instancia.refresh_from_db()
-
-        if instancia.resposta_admin and instancia.resposta_admin != resposta_anterior:
-            if instancia.denunciante:
-                enviar_notificacao(
-                    usuario=instancia.denunciante,
-                    mensagem=f"Sua denúncia sobre '{instancia.denunciado.nome}' foi respondida: {instancia.resposta_admin}"[:255],
-                    link=f"/minhas-denuncias?id={instancia.id}"
-                )
-            if instancia.denunciado:
-                enviar_notificacao(
-                    usuario=instancia.denunciado,
-                    mensagem=f"Você recebeu uma resposta de denúncia feita contra seu perfil: {instancia.resposta_admin}"[:255],
-                    link=f"/minhas-denuncias?id={instancia.id}"
-                )
-
-        return response

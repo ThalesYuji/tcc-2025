@@ -1,121 +1,821 @@
-.denuncia-container {
-  display: flex;
-  justify-content: center;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, #fef2f2, #fff);
+/* ==============================
+   CADASTRAR DENÚNCIA - SEGUINDO PADRÃO DOS TRABALHOS
+   ============================== */
+
+.denuncia-page {
+  background: var(--cor-fundo);
   min-height: 100vh;
+  animation: fadeIn 0.6s ease-out;
 }
 
-.denuncia-box {
-  width: 100%;
-  max-width: 600px;
-  background: #fff;
-  border: 1px solid #fca5a5;
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.15);
-}
-
-.denuncia-box h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #dc2626;
-  margin-bottom: 20px;
+/* ==============================
+   HEADER DA PÁGINA - IGUAL AOS TRABALHOS
+   ============================== */
+.denuncia-header {
   text-align: center;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-xl) 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-.denuncia-box p {
-  font-size: 1rem;
-  margin-bottom: 10px;
+.denuncia-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+  border-radius: var(--radius-xl);
+  z-index: -1;
 }
 
-.denuncia-box ul {
-  list-style: none;
-  padding: 0;
-  margin-bottom: 20px;
+.denuncia-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  white-space: nowrap;
 }
 
-.denuncia-box ul li {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-  font-size: 0.95rem;
+.denuncia-title span {
+  white-space: nowrap;
 }
 
-/* Formulário */
-.denuncia-form label {
-  display: block;
-  margin-bottom: 6px;
+.denuncia-title-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2rem;
+  box-shadow: var(--sombra-md);
+  flex-shrink: 0;
+}
+
+.denuncia-subtitle {
+  font-size: 1.125rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-xl);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ==============================
+   CONTAINER PRINCIPAL
+   ============================== */
+.denuncia-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+/* ==============================
+   CARD USUÁRIO DENUNCIADO - SEGUINDO PADRÃO DOS CARDS
+   ============================== */
+.usuario-denunciado {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  overflow: hidden;
+  margin-bottom: var(--space-2xl);
+  position: relative;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+  animation-delay: 0.1s;
+}
+
+.usuario-denunciado::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+}
+
+.usuario-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--borda-light);
+  background: var(--superficie-hover);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.section-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+  box-shadow: var(--sombra-md);
+  flex-shrink: 0;
+}
+
+.section-info {
+  flex: 1;
+}
+
+.section-title {
+  font-size: 1.25rem;
   font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-xs) 0;
+  line-height: 1.3;
+}
+
+.section-subtitle {
   font-size: 0.95rem;
-  color: #444;
+  color: var(--cor-texto-light);
+  margin: 0;
+  line-height: 1.4;
 }
 
-.denuncia-form textarea {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 0.95rem;
-  resize: vertical;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.usuario-body {
+  padding: var(--space-lg);
 }
 
-.denuncia-form textarea:focus {
-  border-color: #dc2626;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+.usuario-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg);
 }
 
-/* Botão */
-.denuncia-form button {
-  background: #dc2626;
-  color: #fff;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--cor-erro);
+}
+
+.info-label {
+  font-size: 0.875rem;
   font-weight: 600;
+  color: var(--cor-texto-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
   font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-  margin-top: 10px;
-  width: 100%;
+  font-weight: 600;
+  color: var(--cor-secundaria);
 }
 
-.denuncia-form button:hover {
-  background: #b91c1c;
-  transform: translateY(-2px);
+/* ==============================
+   ALERTA INFORMATIVO - IGUAL ÀS PROPOSTAS
+   ============================== */
+.info-alert {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+  animation-delay: 0.2s;
 }
 
-/* Mensagens */
-.alert {
-  padding: 10px 14px;
-  border-radius: 8px;
+.info-alert i {
+  color: var(--cor-primaria);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.info-alert-content {
+  flex: 1;
+}
+
+.info-alert h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cor-primaria);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.info-alert p {
+  margin: 0;
   font-size: 0.9rem;
-  margin-bottom: 12px;
+  color: var(--cor-texto);
+  line-height: 1.5;
 }
 
-.alert-danger {
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+/* ==============================
+   FORMULÁRIO PRINCIPAL - SEGUINDO PADRÃO DOS CARDS
+   ============================== */
+.denuncia-form-card {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  overflow: hidden;
+  position: relative;
+  animation: slideInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+  animation-delay: 0.3s;
+}
+
+.denuncia-form-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+}
+
+.form-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--borda-light);
+  background: var(--superficie-hover);
+}
+
+.form-header-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.form-header-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.form-header-text h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.form-header-text p {
+  font-size: 0.875rem;
+  color: var(--cor-texto-light);
+  margin: 0;
+}
+
+/* ==============================
+   MENSAGENS - IGUAL ÀS PROPOSTAS
+   ============================== */
+.denuncia-messages {
+  padding: var(--space-lg) var(--space-lg) 0;
+}
+
+.alert-success,
+.alert-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  font-weight: 500;
+  animation: messageSlideIn 0.3s ease-out;
 }
 
 .alert-success {
-  background: #dcfce7;
-  border: 1px solid #bbf7d0;
-  color: #166534;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--cor-sucesso);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-  .denuncia-box {
-    padding: 16px;
-  }
+.alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--cor-erro);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
 
-  .denuncia-box h2 {
+/* ==============================
+   FORMULÁRIO
+   ============================== */
+.denuncia-form {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cor-texto);
+  margin-bottom: var(--space-sm);
+}
+
+.form-label i {
+  color: var(--cor-erro);
+  font-size: 0.9rem;
+}
+
+.form-label .required {
+  color: var(--cor-erro);
+  font-size: 0.875rem;
+  margin-left: var(--space-xs);
+}
+
+/* ==============================
+   TEXTAREA - SEGUINDO PADRÃO DOS FILTROS
+   ============================== */
+.denuncia-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-md);
+  border: 2px solid var(--borda-light);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  background: var(--superficie-card);
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.denuncia-textarea:focus {
+  outline: none;
+  border-color: var(--cor-erro);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.denuncia-textarea::placeholder {
+  color: var(--cor-texto-light);
+}
+
+.textarea-counter {
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--cor-texto-light);
+  margin-top: var(--space-xs);
+}
+
+/* ==============================
+   UPLOAD DE ARQUIVOS - MODERNO
+   ============================== */
+.file-upload-area {
+  position: relative;
+  border: 2px dashed var(--borda-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  text-align: center;
+  transition: all var(--transition-fast);
+  background: var(--superficie-hover);
+  cursor: pointer;
+}
+
+.file-upload-area:hover {
+  border-color: var(--cor-erro);
+  background: rgba(239, 68, 68, 0.02);
+  transform: scale(1.01);
+}
+
+.file-upload-area.dragover {
+  border-color: var(--cor-erro);
+  background: rgba(239, 68, 68, 0.05);
+  transform: scale(1.02);
+}
+
+.file-upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.upload-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.75rem;
+  box-shadow: var(--sombra-md);
+}
+
+.upload-text h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.upload-text p {
+  font-size: 0.9rem;
+  color: var(--cor-texto-light);
+  margin: 0;
+}
+
+.file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ==============================
+   PREVIEW DE ARQUIVOS - IGUAL AOS TRABALHOS
+   ============================== */
+.preview-provas {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--borda-light);
+}
+
+.preview-provas h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-md) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.preview-provas h4 i {
+  color: var(--cor-sucesso);
+}
+
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.file-preview {
+  background: var(--superficie-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.file-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-md);
+}
+
+.file-preview img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.file-name {
+  font-size: 0.75rem;
+  color: var(--cor-texto);
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.remove-file {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  width: 24px;
+  height: 24px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all var(--transition-fast);
+}
+
+.remove-file:hover {
+  background: var(--cor-erro);
+  transform: scale(1.1);
+}
+
+/* ==============================
+   FOOTER DO FORMULÁRIO
+   ============================== */
+.form-footer {
+  padding: var(--space-lg);
+  border-top: 1px solid var(--borda-light);
+  background: var(--superficie-hover);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+/* ==============================
+   BOTÕES - SEGUINDO PADRÃO DOS TRABALHOS
+   ============================== */
+.btn-cancelar {
+  flex: 0.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  border: 1px solid var(--borda-medium);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  min-height: 48px;
+  text-decoration: none;
+  box-shadow: var(--sombra-sm);
+}
+
+.btn-cancelar:hover {
+  background: var(--superficie-hover);
+  border-color: var(--cor-primaria);
+  color: var(--cor-primaria);
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+
+.btn-denuncia {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #DC2626 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--sombra-sm);
+  min-height: 48px;
+}
+
+.btn-denuncia:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+  filter: brightness(1.05);
+}
+
+.btn-denuncia:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+/* ==============================
+   LOADING STATES - IGUAL ÀS NOTIFICAÇÕES
+   ============================== */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl);
+  text-align: center;
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--borda-light);
+  box-shadow: var(--sombra-md);
+  min-height: 400px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--borda-light);
+  border-top: 3px solid var(--cor-erro);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--space-lg);
+}
+
+.loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  margin: 0;
+}
+
+.loading-container h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.loading-container p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--cor-texto-light);
+}
+
+/* ==============================
+   ESTADOS DE ERRO - IGUAL ÀS OUTRAS PÁGINAS
+   ============================== */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl);
+  text-align: center;
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--borda-light);
+  box-shadow: var(--sombra-md);
+  min-height: 400px;
+}
+
+.error-state i {
+  font-size: 3rem;
+  color: var(--cor-erro);
+  margin-bottom: var(--space-lg);
+  opacity: 0.7;
+}
+
+.error-state h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.error-state p {
+  color: var(--cor-texto-light);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ==============================
+   ANIMAÇÕES - IGUAL ÀS OUTRAS PÁGINAS
+   ============================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes messageSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==============================
+   RESPONSIVIDADE - SEGUINDO PADRÃO
+   ============================== */
+@media (max-width: 768px) {
+  .denuncia-container {
+    padding: 0 var(--space-md);
+  }
+  
+  .denuncia-title {
+    font-size: 1.875rem;
+    /* Mantém o layout em linha no mobile também */
+  }
+  
+  .denuncia-title-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-md);
+  }
+  
+  .section-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+  
+  .usuario-info {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+  
+  .files-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .denuncia-title {
+    font-size: 1.5rem;
+  }
+  
+  .denuncia-form,
+  .usuario-body,
+  .form-header {
+    padding: var(--space-md);
+  }
+  
+  .info-alert {
+    padding: var(--space-md);
+  }
+  
+  .files-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .upload-icon {
+    width: 56px;
+    height: 56px;
     font-size: 1.5rem;
   }
 }

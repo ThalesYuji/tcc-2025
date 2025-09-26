@@ -2,10 +2,14 @@ from pathlib import Path
 from datetime import timedelta
 import os
 
+# ------------------------
 # Caminho base do projeto
+# ------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ------------------------
 # ⚠️ Segurança
+# ------------------------
 SECRET_KEY = 'django-insecure-)ava3u%8_xl%&kcf-l2xwo*tr!mbv(_irqp8d&az55#0c)5t*r'
 DEBUG = True
 ALLOWED_HOSTS = []
@@ -138,7 +142,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    # 🔹 Paginação Global
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 6,  # número padrão de itens por página
 }
 
 SIMPLE_JWT = {

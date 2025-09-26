@@ -1,141 +1,636 @@
+/* src/styles/PagamentoContrato.css - Layout Expandido */
+
 .pagamento-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 20px;
+  background: var(--cor-fundo);
   min-height: 100vh;
-  background: #f5f7fa;
+  padding: var(--space-xl) var(--space-lg);
+  animation: fadeIn 0.6s ease-out;
 }
 
-/* Caixa principal */
-.main-box {
-  background: #fff;
-  padding: 28px 30px;
-  border-radius: 14px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
-  width: 100%;
-  max-width: 600px;
-}
-.pagamento-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #223146;
-  margin-bottom: 20px;
+/* ==============================
+   CABEÇALHO DA PÁGINA
+   ============================== */
+.pagamento-header {
   text-align: center;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-xl) 0;
+  position: relative;
+}
+
+.pagamento-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border-radius: var(--radius-xl);
+  z-index: -1;
+}
+
+.pagamento-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.pagamento-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  box-shadow: var(--sombra-lg);
+}
+
+.pagamento-subtitle {
+  color: var(--cor-texto-light);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* ==============================
+   GRID PRINCIPAL
+   ============================== */
+.pagamento-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--space-2xl);
+}
+
+/* ==============================
+   ÁREA PRINCIPAL (ESQUERDA)
+   ============================== */
+.pagamento-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
 }
 
 /* Detalhes do contrato */
-.contrato-detalhes-grid {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
-  font-size: 15px;
-  color: #333;
-}
-.contrato-detalhes-grid strong {
-  color: #223146;
+.contrato-detalhes {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
 }
 
-/* Mensagens */
-.pagamento-msg {
-  font-size: 14px;
+.contrato-detalhes h3 {
+  font-size: 1.5rem;
   font-weight: 600;
-  margin: 10px 0;
-  text-align: center;
-}
-.pagamento-msg.erro {
-  color: #d32f2f;
-}
-.pagamento-msg.sucesso {
-  color: #2e7d32;
-}
-
-/* Bloco de opções de pagamento */
-.pagamento-form h4 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: #223146;
-}
-.pagamento-opcoes {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.opcao-box {
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-xl) 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border: 1.5px solid #dde4ef;
-  border-radius: 10px;
-  background: #f9fafc;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 15px;
-  color: #333;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-.opcao-box input {
-  display: none;
-}
-.opcao-box .icone {
-  font-size: 20px;
-  color: #1976d2;
-}
-.opcao-box:hover {
-  border-color: #1976d2;
-  background: #f0f7ff;
-  transform: translateY(-2px);
-}
-.opcao-box.ativo {
-  border-color: #1976d2;
-  background: #1976d2;
-  color: #fff;
-}
-.opcao-box.ativo .icone {
-  color: #fff;
+  gap: var(--space-sm);
 }
 
-/* Botões */
-.btn-confirmar,
-.btn-voltar {
-  width: 100%;
-  padding: 12px 0;
-  border: none;
-  border-radius: 8px;
+.contrato-detalhes h3 i {
+  color: var(--cor-primaria);
+  font-size: 1.25rem;
+}
+
+.detalhes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-xl);
+}
+
+.detalhe-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--cor-primaria);
+}
+
+.detalhe-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cor-texto-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detalhe-valor {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  word-break: break-word;
+}
+
+.detalhe-valor.preco {
+  font-size: 1.75rem;
+  color: var(--cor-sucesso);
   font-weight: 700;
-  font-size: 15px;
+}
+
+/* Métodos de pagamento */
+.pagamento-form {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+}
+
+.pagamento-form h4 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pagamento-form h4 i {
+  color: var(--cor-primaria);
+  font-size: 1.25rem;
+}
+
+.pagamento-opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.opcao-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  background: var(--superficie-hover);
+  border: 2px solid var(--borda-light);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.25s ease;
-  margin-top: 12px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  transition: all var(--transition-normal);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--cor-texto);
+  min-height: 100px;
 }
-.btn-confirmar {
-  background: #1976d2;
-  color: #fff;
+
+.opcao-box:hover {
+  border-color: var(--cor-primaria);
+  background: rgba(59, 130, 246, 0.03);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
 }
-.btn-confirmar:hover {
-  background: #125ea8;
+
+.opcao-box.ativo {
+  border-color: var(--cor-primaria);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+  color: var(--cor-primaria);
+  box-shadow: var(--sombra-lg);
   transform: translateY(-2px);
 }
+
+.opcao-box input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opcao-box .icone {
+  width: 56px;
+  height: 56px;
+  background: var(--superficie-card);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--cor-primaria);
+  transition: all var(--transition-fast);
+  box-shadow: var(--sombra-sm);
+  flex-shrink: 0;
+}
+
+.opcao-box.ativo .icone {
+  background: var(--cor-primaria);
+  color: white;
+  transform: scale(1.05);
+}
+
+.opcao-info {
+  flex: 1;
+}
+
+.opcao-titulo {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: var(--space-xs);
+  color: var(--cor-secundaria);
+}
+
+.opcao-descricao {
+  font-size: 0.9rem;
+  color: var(--cor-texto-light);
+  line-height: 1.4;
+}
+
+.opcao-box.ativo .opcao-titulo {
+  color: var(--cor-primaria);
+}
+
+/* Radio button customizado */
+.opcao-box::after {
+  content: '';
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--borda-medium);
+  border-radius: 50%;
+  background: var(--superficie-card);
+  transition: all var(--transition-fast);
+}
+
+.opcao-box.ativo::after {
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+  transform: scale(1.1);
+}
+
+.opcao-box.ativo::before {
+  content: '✓';
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 1;
+}
+
+/* ==============================
+   SIDEBAR (DIREITA)
+   ============================== */
+.pagamento-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Resumo do pagamento */
+.resumo-pagamento {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  position: sticky;
+  top: var(--space-lg);
+}
+
+.resumo-pagamento h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-lg) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.resumo-pagamento h4 i {
+  color: var(--cor-primaria);
+}
+
+.resumo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--borda-light);
+}
+
+.resumo-item:last-child {
+  border-bottom: none;
+  padding-top: var(--space-lg);
+  margin-top: var(--space-sm);
+  border-top: 2px solid var(--borda-light);
+}
+
+.resumo-label {
+  font-weight: 500;
+  color: var(--cor-texto);
+}
+
+.resumo-valor {
+  font-weight: 600;
+  color: var(--cor-secundaria);
+}
+
+.resumo-total .resumo-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+}
+
+.resumo-total .resumo-valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cor-sucesso);
+}
+
+/* ==============================
+   MENSAGENS DE STATUS
+   ============================== */
+.pagamento-msg {
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+.pagamento-msg i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.pagamento-msg.erro {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.pagamento-msg.sucesso {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ==============================
+   ÁREA DE AÇÕES - BOTÕES CORRIGIDOS
+   ============================== */
+.pagamento-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  align-items: center;
+  justify-content: stretch;
+}
+
+.btn-confirmar,
 .btn-voltar {
-  background: #ccc;
-  color: #223146;
+  flex: 1;
+  padding: var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  box-shadow: var(--sombra-sm);
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.btn-confirmar {
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+}
+
+.btn-confirmar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
+  filter: brightness(1.05);
+}
+
+.btn-confirmar:disabled {
+  background: var(--cor-neutro);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.6;
+}
+
+.btn-voltar {
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  border: 2px solid var(--borda-medium);
+}
+
+.btn-voltar:hover:not(:disabled) {
+  background: var(--superficie-hover);
+  border-color: var(--cor-primaria);
+  color: var(--cor-primaria);
+  transform: translateY(-2px);
+}
+
+/* ==============================
+   LOADING STATES
+   ============================== */
+.pagamento-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl);
+  text-align: center;
+  color: var(--cor-texto-light);
+  min-height: 400px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--borda-light);
+  border-top: 3px solid var(--cor-primaria);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--space-lg);
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+  margin: 0;
+}
+
+/* ==============================
+   RESPONSIVIDADE
+   ============================== */
+@media (max-width: 1024px) {
+  .pagamento-content {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+  
+  .resumo-pagamento {
+    position: static;
+  }
+  
+  .detalhes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pagamento-opcoes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pagamento-container {
+    padding: var(--space-lg) var(--space-md);
+  }
+  
+  .pagamento-title {
+    font-size: 1.75rem;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .pagamento-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+  
+  .detalhes-grid {
+    gap: var(--space-md);
+  }
+  
+  .detalhe-item {
+    padding: var(--space-md);
+  }
+  
+  .pagamento-actions {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .btn-confirmar,
+  .btn-voltar {
+    flex: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagamento-container {
+    padding: var(--space-md) var(--space-sm);
+  }
+  
+  .pagamento-title {
+    font-size: 1.5rem;
+  }
+  
+  .contrato-detalhes,
+  .pagamento-form,
+  .resumo-pagamento {
+    padding: var(--space-lg);
+  }
+  
+  .opcao-box {
+    padding: var(--space-lg);
+    min-height: 80px;
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-sm);
+  }
+  
+  .opcao-box .icone {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+}
+
+/* ==============================
+   ANIMAÇÕES
+   ============================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes messageSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.opcao-box {
+  animation: slideInUp 0.4s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.opcao-box:nth-child(1) { animation-delay: 0.1s; }
+.opcao-box:nth-child(2) { animation-delay: 0.2s; }
+.opcao-box:nth-child(3) { animation-delay: 0.3s; }
+.opcao-box:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes slideInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==============================
+   ESTADOS ESPECIAIS
+   ============================== */
+.main-center {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
-}
-.btn-voltar:hover {
-  background: #b3b3b3;
-  transform: translateY(-2px);
+  min-height: 100vh;
+  padding: var(--space-lg);
 }
 
-/* Responsividade */
-@media (max-width: 600px) {
-  .main-box {
-    padding: 20px;
-  }
+.error-msg {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border: 2px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  text-align: center;
+  font-weight: 500;
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-size: 1.1rem;
 }

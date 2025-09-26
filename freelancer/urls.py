@@ -14,7 +14,7 @@ from pagamentos.views import PagamentoViewSet
 from avaliacoes.views import AvaliacaoViewSet
 from mensagens.views import MensagemViewSet
 from denuncias.views import DenunciaViewSet
-from notificacoes.views import NotificacaoViewSet  # ✅ Import correto
+from notificacoes.views import NotificacaoViewSet
 
 # Suporte a arquivos de mídia
 from django.conf import settings
@@ -22,14 +22,14 @@ from django.conf.urls.static import static
 
 # Roteador central
 router = DefaultRouter()
-router.register(r'usuarios', UsuarioViewSet, basename='usuario')
+router.register(r'usuarios', UsuarioViewSet, basename='usuarios')  # ✅ corrigido (plural)
 router.register(r'propostas', PropostaViewSet)
-router.register(r'contratos', ContratoViewSet, basename='contrato')  # ✅ corrigido
+router.register(r'contratos', ContratoViewSet, basename='contrato')
 router.register(r'pagamentos', PagamentoViewSet)
 router.register(r'avaliacoes', AvaliacaoViewSet)
 router.register(r'mensagens', MensagemViewSet, basename='mensagem')
 router.register(r'denuncias', DenunciaViewSet)
-router.register(r'notificacoes', NotificacaoViewSet, basename='notificacao')  # ✅ Agora centralizado
+router.register(r'notificacoes', NotificacaoViewSet, basename='notificacao')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
