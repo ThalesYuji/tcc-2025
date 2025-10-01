@@ -86,7 +86,7 @@ export default function Login() {
 
         {/* 🔹 Lado direito (formulário) */}
         <div className="login-right">
-          <div className="login-box card">
+          <div className="login-box">  {/* REMOVIDO "card" */}
             <h3 className="form-title">Entrar</h3>
             <form onSubmit={handleLogin}>
               <div className="input-group">

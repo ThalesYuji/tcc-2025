@@ -1,4 +1,4 @@
-// src/Paginas/Conta.jsx - Redesign Moderno
+// src/Paginas/Conta.jsx - Redesign Moderno e Limpo
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -23,7 +23,6 @@ export default function Conta() {
   // Notificações
   const [notificacaoEmail, setNotificacaoEmail] = useState(usuarioLogado?.notificacao_email ?? true);
   const [carregandoNotificacao, setCarregandoNotificacao] = useState(false);
-  const [feedbackNotificacao, setFeedbackNotificacao] = useState("");
 
   // Exclusão de conta
   const [showModalExcluir, setShowModalExcluir] = useState(false);
@@ -37,12 +36,8 @@ export default function Conta() {
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
-  const [feedbackSenha, setFeedbackSenha] = useState("");
   const [erroSenha, setErroSenha] = useState("");
   const [carregandoSenha, setCarregandoSenha] = useState(false);
-
-  // Feedback global da troca de senha
-  const [feedbackTrocaSenha, setFeedbackTrocaSenha] = useState("");
 
   const fileInputRef = useRef(null);
 
@@ -145,6 +140,7 @@ export default function Conta() {
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
       setFeedback("Dados atualizados com sucesso!");
+      setTimeout(() => setFeedback(""), 5000);
     } catch (err) {
       let msg = "Erro ao atualizar dados.";
       if (err.response?.data) {
@@ -165,14 +161,13 @@ export default function Conta() {
   async function handleToggleNotificacao(e) {
     const novoValor = e.target.checked;
     setCarregandoNotificacao(true);
-    setFeedbackNotificacao("");
     try {
       await api.patch(`/usuarios/me/`, { notificacao_email: novoValor });
       setNotificacaoEmail(novoValor);
-      setFeedbackNotificacao("Preferência de notificação atualizada!");
-      setTimeout(() => setFeedbackNotificacao(""), 4000);
+      setFeedback("Preferência de notificação atualizada!");
+      setTimeout(() => setFeedback(""), 4000);
     } catch {
-      setFeedbackNotificacao("Erro ao atualizar preferência.");
+      setErro("Erro ao atualizar preferência.");
     }
     setCarregandoNotificacao(false);
   }
@@ -181,7 +176,6 @@ export default function Conta() {
     e.preventDefault();
     setCarregandoSenha(true);
     setErroSenha("");
-    setFeedbackSenha("");
 
     try {
       await api.post(`/usuarios/me/alterar_senha/`, {
@@ -189,12 +183,13 @@ export default function Conta() {
         nova_senha: novaSenha,
         confirmar_nova_senha: confirmarNovaSenha,
       });
-      setFeedbackTrocaSenha("Senha alterada com sucesso!");
+      setFeedback("Senha alterada com sucesso!");
       setErroSenha("");
       setSenhaAtual("");
       setNovaSenha("");
       setConfirmarNovaSenha("");
       setExibirTrocaSenha(false);
+      setTimeout(() => setFeedback(""), 5000);
     } catch (err) {
       let msg = "Erro ao alterar senha.";
       if (err.response?.data) {
@@ -245,460 +240,435 @@ export default function Conta() {
   if (!usuarioLogado) return null;
 
   return (
-    <div className="conta-container">
-      <div className="conta-main">
+    <div className="conta-page">
+      <div className="conta-container">
         
-        {/* Header */}
-        <div className="conta-header">
-          <h1 className="conta-title">
-            <div className="conta-icon">
-              <i className="bi bi-person-circle"></i>
+        {/* Header com avatar e info básica */}
+        <div className="conta-header-profile">
+          <div className="profile-banner">
+            <div className="banner-gradient"></div>
+          </div>
+          
+          <div className="profile-header-content">
+            <div className="profile-avatar-wrapper">
+              <div className="avatar-ring">
+                <img src={previewFoto} alt="Foto de perfil" className="profile-avatar-large" />
+              </div>
+              {editando && (
+                <button 
+                  className="avatar-edit-btn" 
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Alterar foto"
+                >
+                  <i className="bi bi-camera-fill"></i>
+                </button>
+              )}
+              <input
+                type="file"
+                name="foto_perfil"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleChange}
+                style={{ display: 'none' }}
+              />
             </div>
-            Minha Conta
-          </h1>
-          <p className="conta-subtitle">
-            Gerencie suas informações pessoais e configurações
-          </p>
+
+            <div className="profile-info-header">
+              <h1 className="profile-name">{usuarioLogado.nome}</h1>
+              <p className="profile-email">{usuarioLogado.email}</p>
+              <div className="profile-meta">
+                <span className={`user-badge ${usuarioLogado.tipo}`}>
+                  <i className={`bi ${usuarioLogado.tipo === 'freelancer' ? 'bi-briefcase' : 'bi-person'}`}></i>
+                  {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                </span>
+                {typeof notaMedia !== "undefined" && notaMedia !== null && (
+                  <span className="rating-badge">
+                    <i className="bi bi-star-fill"></i>
+                    {notaMedia.toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="profile-actions-header">
+              <button
+                className="btn-secondary-outline"
+                onClick={() => window.open(`/perfil/${usuarioLogado.id}`, "_blank")}
+              >
+                <i className="bi bi-eye"></i>
+                Ver Perfil Público
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Feedback Global */}
         {feedback && (
-          <div className="feedback-msg success">
-            <i className="bi bi-check-circle"></i>
-            {feedback}
+          <div className="alert alert-success">
+            <i className="bi bi-check-circle-fill"></i>
+            <span>{feedback}</span>
           </div>
         )}
         
         {erro && (
-          <div className="feedback-msg error">
-            <i className="bi bi-exclamation-circle"></i>
-            {erro}
+          <div className="alert alert-error">
+            <i className="bi bi-exclamation-circle-fill"></i>
+            <span>{erro}</span>
           </div>
         )}
 
-        {feedbackTrocaSenha && (
-          <div className="feedback-msg success">
-            <i className="bi bi-check-circle"></i>
-            {feedbackTrocaSenha}
-          </div>
-        )}
-
-        <div className="conta-content">
+        {/* Layout em grid */}
+        <div className="conta-grid">
           
-          {/* Card Principal - Informações Pessoais */}
-          <div className="conta-card">
-            <div className="card-header">
-              <div className="card-header-content">
-                <div className="card-icon">
-                  <i className="bi bi-person"></i>
-                </div>
-                <div>
-                  <h2>Informações Pessoais</h2>
-                  <p>Seus dados básicos e informações de contato</p>
-                </div>
-              </div>
-              {!editando && (
-                <button className="btn-icon" onClick={handleEditar} title="Editar informações">
-                  <i className="bi bi-pencil"></i>
-                </button>
-              )}
-            </div>
-
-            <div className="card-body">
-              {/* Avatar */}
-              <div className="profile-avatar-section">
-                <div className="avatar-container" onClick={() => editando && fileInputRef.current?.click()}>
-                  <img src={previewFoto} alt="Foto de perfil" className="profile-avatar" />
-                  {editando && (
-                    <div className="avatar-badge">
-                      <i className="bi bi-camera"></i>
-                    </div>
-                  )}
-                </div>
-                {editando && (
-                  <input
-                    type="file"
-                    name="foto_perfil"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleChange}
-                    style={{ display: 'none' }}
-                  />
+          {/* Coluna Esquerda - Informações principais */}
+          <div className="conta-main-column">
+            
+            {/* Card de Informações Pessoais */}
+            <div className="card">
+              <div className="card-header-simple">
+                <h2>
+                  <i className="bi bi-person-circle"></i>
+                  Informações Pessoais
+                </h2>
+                {!editando && (
+                  <button className="btn-icon-header" onClick={handleEditar}>
+                    <i className="bi bi-pencil"></i>
+                  </button>
                 )}
               </div>
 
-              {editando ? (
-                <form onSubmit={handleSalvar} className="profile-form">
-                  <div className="form-grid">
-                    <div className="form-group">
-                      <label>Nome completo</label>
-                      <input
-                        type="text"
-                        name="nome"
-                        value={form.nome}
+              <div className="card-body">
+                {editando ? (
+                  <form onSubmit={handleSalvar} className="form-edit">
+                    <div className="form-row">
+                      <div className="form-field">
+                        <label>Nome completo</label>
+                        <input
+                          type="text"
+                          name="nome"
+                          value={form.nome}
+                          onChange={handleChange}
+                          className="input-field"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="form-field">
+                        <label>Telefone</label>
+                        <input
+                          type="text"
+                          name="telefone"
+                          value={form.telefone}
+                          onChange={handleChange}
+                          className="input-field"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-field">
+                      <label>Bio</label>
+                      <textarea
+                        name="bio"
+                        value={form.bio}
                         onChange={handleChange}
-                        className="form-control"
-                        required
+                        className="input-field"
+                        placeholder="Conte um pouco sobre você..."
+                        rows="4"
                       />
                     </div>
-                    
-                    <div className="form-group">
-                      <label>Telefone</label>
-                      <input
-                        type="text"
-                        name="telefone"
-                        value={form.telefone}
-                        onChange={handleChange}
-                        className="form-control"
-                        required
-                      />
+
+                    <div className="form-actions-inline">
+                      <button type="submit" className="btn-primary" disabled={carregando}>
+                        {carregando ? (
+                          <>
+                            <div className="spinner-small"></div>
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-check-lg"></i>
+                            Salvar Alterações
+                          </>
+                        )}
+                      </button>
+                      <button type="button" onClick={handleCancelar} className="btn-ghost" disabled={carregando}>
+                        Cancelar
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Bio</label>
-                    <textarea
-                      name="bio"
-                      value={form.bio}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="Escreva uma breve descrição sobre você"
-                      rows="3"
-                    />
-                  </div>
-
-                  <div className="form-actions">
-                    <button type="submit" className="btn btn-primary" disabled={carregando}>
-                      {carregando ? (
-                        <>
-                          <div className="spinner"></div>
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <i className="bi bi-check"></i>
-                          Salvar Alterações
-                        </>
-                      )}
-                    </button>
-                    <button type="button" onClick={handleCancelar} className="btn btn-ghost" disabled={carregando}>
-                      <i className="bi bi-x"></i>
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="profile-info">
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <span className="info-label">Nome</span>
+                  </form>
+                ) : (
+                  <div className="info-list">
+                    <div className="info-row">
+                      <span className="info-label">
+                        <i className="bi bi-person"></i>
+                        Nome
+                      </span>
                       <span className="info-value">{usuarioLogado.nome}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">Email</span>
+                    <div className="info-row">
+                      <span className="info-label">
+                        <i className="bi bi-envelope"></i>
+                        Email
+                      </span>
                       <span className="info-value">{usuarioLogado.email}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">Tipo</span>
-                      <span className="info-value">
-                        <span className={`user-type ${usuarioLogado.tipo}`}>
-                          {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-                        </span>
+                    <div className="info-row">
+                      <span className="info-label">
+                        <i className="bi bi-phone"></i>
+                        Telefone
                       </span>
+                      <span className="info-value">{formatarTelefone(usuarioLogado.telefone)}</span>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">CPF</span>
+                    <div className="info-row">
+                      <span className="info-label">
+                        <i className="bi bi-credit-card"></i>
+                        CPF
+                      </span>
                       <span className="info-value">{usuarioLogado.cpf}</span>
                     </div>
                     {usuarioLogado.cnpj && (
-                      <div className="info-item">
-                        <span className="info-label">CNPJ</span>
+                      <div className="info-row">
+                        <span className="info-label">
+                          <i className="bi bi-building"></i>
+                          CNPJ
+                        </span>
                         <span className="info-value">{usuarioLogado.cnpj}</span>
                       </div>
                     )}
-                    <div className="info-item">
-                      <span className="info-label">Telefone</span>
-                      <span className="info-value">{formatarTelefone(usuarioLogado.telefone)}</span>
-                    </div>
                     {usuarioLogado.bio && (
-                      <div className="info-item full-width">
-                        <span className="info-label">Bio</span>
-                        <span className="info-value">{usuarioLogado.bio}</span>
-                      </div>
-                    )}
-                    {typeof notaMedia !== "undefined" && (
-                      <div className="info-item">
-                        <span className="info-label">Avaliação</span>
-                        <span className="info-value rating">
-                          {notaMedia ? (
-                            <>
-                              <div className="stars">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <i
-                                    key={star}
-                                    className={`bi ${star <= Math.round(notaMedia) ? 'bi-star-fill' : 'bi-star'}`}
-                                  />
-                                ))}
-                              </div>
-                              <span>{notaMedia.toFixed(2)}</span>
-                            </>
-                          ) : (
-                            "Sem avaliações"
-                          )}
+                      <div className="info-row-full">
+                        <span className="info-label">
+                          <i className="bi bi-chat-left-text"></i>
+                          Bio
                         </span>
+                        <p className="info-value-bio">{usuarioLogado.bio}</p>
                       </div>
                     )}
                   </div>
-
-                  <div className="profile-actions">
-                    <button
-                      className="btn btn-outline"
-                      onClick={() => window.open(`/perfil/${usuarioLogado.id}`, "_blank")}
-                    >
-                      <i className="bi bi-eye"></i>
-                      Ver Perfil Público
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Card de Configurações */}
-          <div className="conta-card">
-            <div className="card-header">
-              <div className="card-header-content">
-                <div className="card-icon">
-                  <i className="bi bi-gear"></i>
-                </div>
-                <div>
-                  <h2>Configurações</h2>
-                  <p>Preferências e configurações da conta</p>
-                </div>
+                )}
               </div>
             </div>
 
-            <div className="card-body">
-              {/* Notificações */}
-              <div className="config-section">
-                <h3>Notificações</h3>
-                <div className="toggle-group">
-                  <label className="toggle-item">
+            {/* Card de Avaliações */}
+            {usuarioLogado.tipo === 'freelancer' && (
+              <div className="card">
+                <div className="card-header-simple">
+                  <h2>
+                    <i className="bi bi-star-fill"></i>
+                    Avaliações Recebidas
+                  </h2>
+                  {avaliacoes.length > 0 && (
+                    <span className="badge-count">{avaliacoes.length}</span>
+                  )}
+                </div>
+
+                <div className="card-body">
+                  {avaliacoes.length === 0 ? (
+                    <div className="empty-message">
+                      <i className="bi bi-star"></i>
+                      <p>Você ainda não recebeu avaliações</p>
+                    </div>
+                  ) : (
+                    <div className="reviews-list">
+                      {avaliacoes.slice(0, 5).map((av) => (
+                        <div key={av.id} className="review-item">
+                          <div className="review-header">
+                            <div className="review-stars">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <i
+                                  key={star}
+                                  className={`bi ${star <= av.nota ? 'bi-star-fill' : 'bi-star'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="review-author">{av.avaliador?.nome || "Anônimo"}</span>
+                          </div>
+                          {av.comentario && (
+                            <p className="review-comment">"{av.comentario}"</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Coluna Direita - Configurações e ações */}
+          <div className="conta-sidebar-column">
+            
+            {/* Card de Configurações */}
+            <div className="card">
+              <div className="card-header-simple">
+                <h2>
+                  <i className="bi bi-gear"></i>
+                  Configurações
+                </h2>
+              </div>
+
+              <div className="card-body">
+                
+                {/* Notificações */}
+                <div className="setting-section">
+                  <div className="setting-header">
+                    <i className="bi bi-bell"></i>
+                    <span>Notificações</span>
+                  </div>
+                  <label className="toggle-switch">
                     <input
                       type="checkbox"
                       checked={!!notificacaoEmail}
                       onChange={handleToggleNotificacao}
                       disabled={carregandoNotificacao}
                     />
-                    <div className="toggle-slider"></div>
-                    <div className="toggle-content">
-                      <span className="toggle-title">Notificações por e-mail</span>
-                      <span className="toggle-description">Receber atualizações sobre contratos e mensagens</span>
-                    </div>
+                    <span className="toggle-slider-custom"></span>
+                    <span className="toggle-label">Receber emails</span>
                   </label>
-                  {feedbackNotificacao && (
-                    <div className="config-feedback">
-                      <i className="bi bi-check-circle"></i>
-                      {feedbackNotificacao}
-                    </div>
-                  )}
                 </div>
-              </div>
 
-              {/* Troca de Senha */}
-              <div className="config-section">
-                <h3>Segurança</h3>
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => setExibirTrocaSenha(!exibirTrocaSenha)}
-                >
-                  <i className="bi bi-shield-lock"></i>
-                  {exibirTrocaSenha ? "Cancelar Alteração" : "Alterar Senha"}
-                </button>
+                {/* Segurança */}
+                <div className="setting-section">
+                  <div className="setting-header">
+                    <i className="bi bi-shield-lock"></i>
+                    <span>Segurança</span>
+                  </div>
+                  <button
+                    className="btn-text"
+                    onClick={() => setExibirTrocaSenha(!exibirTrocaSenha)}
+                  >
+                    <i className="bi bi-key"></i>
+                    {exibirTrocaSenha ? "Cancelar" : "Alterar Senha"}
+                  </button>
 
-                {exibirTrocaSenha && (
-                  <div className="password-form-wrapper">
+                  {exibirTrocaSenha && (
                     <form onSubmit={handleTrocarSenha} className="password-form">
-                      <div className="form-group">
+                      <div className="form-field">
                         <label>Senha atual</label>
                         <input
                           type="password"
                           value={senhaAtual}
                           onChange={(e) => setSenhaAtual(e.target.value)}
-                          className="form-control"
+                          className="input-field"
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className="form-field">
                         <label>Nova senha</label>
                         <input
                           type="password"
                           value={novaSenha}
                           onChange={(e) => setNovaSenha(e.target.value)}
-                          className="form-control"
+                          className="input-field"
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Confirmar nova senha</label>
+                      <div className="form-field">
+                        <label>Confirmar senha</label>
                         <input
                           type="password"
                           value={confirmarNovaSenha}
                           onChange={(e) => setConfirmarNovaSenha(e.target.value)}
-                          className="form-control"
+                          className="input-field"
                           required
                         />
                       </div>
-                      <div className="form-actions">
-                        <button type="submit" className="btn btn-primary" disabled={carregandoSenha}>
-                          {carregandoSenha ? (
-                            <>
-                              <div className="spinner"></div>
-                              Alterando...
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-check"></i>
-                              Alterar Senha
-                            </>
-                          )}
-                        </button>
-                      </div>
                       {erroSenha && (
-                        <div className="feedback-msg error">
+                        <div className="alert-mini alert-error">
                           <i className="bi bi-exclamation-circle"></i>
                           {erroSenha}
                         </div>
                       )}
-                      {feedbackSenha && (
-                        <div className="feedback-msg success">
-                          <i className="bi bi-check-circle"></i>
-                          {feedbackSenha}
-                        </div>
-                      )}
+                      <button type="submit" className="btn-primary btn-sm" disabled={carregandoSenha}>
+                        {carregandoSenha ? (
+                          <>
+                            <div className="spinner-small"></div>
+                            Alterando...
+                          </>
+                        ) : (
+                          "Confirmar"
+                        )}
+                      </button>
                     </form>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                  )}
+                </div>
 
-          {/* Card de Avaliações */}
-          <div className="conta-card">
-            <div className="card-header">
-              <div className="card-header-content">
-                <div className="card-icon">
-                  <i className="bi bi-star"></i>
-                </div>
-                <div>
-                  <h2>Avaliações Recebidas</h2>
-                  <p>Feedback dos seus clientes e parceiros</p>
-                </div>
               </div>
             </div>
 
-            <div className="card-body">
-              {avaliacoes.length === 0 ? (
-                <div className="empty-state">
-                  <i className="bi bi-star"></i>
-                  <h3>Nenhuma avaliação ainda</h3>
-                  <p>Complete seus primeiros trabalhos para receber avaliações</p>
-                </div>
-              ) : (
-                <div className="avaliacoes-list">
-                  {avaliacoes.map((av) => (
-                    <div key={av.id} className="avaliacao-item">
-                      <div className="avaliacao-header">
-                        <div className="avaliacao-rating">
-                          <div className="stars">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <i
-                                key={star}
-                                className={`bi ${star <= av.nota ? 'bi-star-fill' : 'bi-star'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="rating-text">{av.nota}/5</span>
-                        </div>
-                        <span className="avaliador">Por {av.avaliador?.nome || "Usuário"}</span>
-                      </div>
-                      {av.comentario && (
-                        <div className="avaliacao-comentario">
-                          <p>"{av.comentario}"</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Card de Zona de Perigo */}
-          <div className="conta-card danger-zone">
-            <div className="card-header">
-              <div className="card-header-content">
-                <div className="card-icon danger">
+            {/* Card de Zona de Perigo */}
+            <div className="card card-danger">
+              <div className="card-header-simple">
+                <h2>
                   <i className="bi bi-exclamation-triangle"></i>
-                </div>
-                <div>
-                  <h2>Zona de Perigo</h2>
-                  <p>Ações irreversíveis da conta</p>
-                </div>
+                  Zona de Perigo
+                </h2>
               </div>
-            </div>
 
-            <div className="card-body">
-              <div className="danger-section">
-                <div className="danger-content">
+              <div className="card-body">
+                <div className="danger-info">
                   <h3>Excluir Conta</h3>
-                  <p>Esta ação é irreversível. Todos os seus dados serão permanentemente removidos.</p>
+                  <p>Esta ação é permanente e não pode ser desfeita.</p>
                 </div>
                 <button
-                  className="btn btn-danger"
+                  className="btn-danger-outline"
                   onClick={() => setShowModalExcluir(true)}
                 >
                   <i className="bi bi-trash"></i>
-                  Excluir Conta
+                  Excluir Minha Conta
                 </button>
               </div>
             </div>
-          </div>
 
+          </div>
         </div>
 
         {/* Modal de Exclusão */}
         {showModalExcluir && (
-          <div className="modal-overlay">
-            <div className="modal-content">
+          <div className="modal-overlay" onClick={() => setShowModalExcluir(false)}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>Confirmar Exclusão da Conta</h3>
-                <button className="modal-close" onClick={() => setShowModalExcluir(false)}>
-                  <i className="bi bi-x"></i>
+                <h3>Confirmar Exclusão</h3>
+                <button className="modal-close-btn" onClick={() => setShowModalExcluir(false)}>
+                  <i className="bi bi-x-lg"></i>
                 </button>
               </div>
-              <div className="modal-body">
-                <div className="warning-message">
-                  <i className="bi bi-exclamation-triangle"></i>
-                  <p>Esta ação é <strong>irreversível</strong>. Todos os seus dados, contratos e avaliações serão permanentemente excluídos.</p>
+              <div className="modal-content">
+                <div className="warning-box">
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <p>Esta ação é <strong>irreversível</strong>. Todos os seus dados serão permanentemente excluídos.</p>
                 </div>
                 <form onSubmit={handleExcluirConta}>
-                  <div className="form-group">
+                  <div className="form-field">
                     <label>Digite sua senha para confirmar:</label>
                     <input
                       type="password"
                       value={senhaExcluir}
                       onChange={(e) => setSenhaExcluir(e.target.value)}
-                      className="form-control"
-                      placeholder="Sua senha atual"
+                      className="input-field"
+                      placeholder="Senha atual"
                       required
                     />
                   </div>
+                  {erroExcluir && (
+                    <div className="alert-mini alert-error">
+                      <i className="bi bi-exclamation-circle"></i>
+                      {erroExcluir}
+                    </div>
+                  )}
+                  {feedbackExcluir && (
+                    <div className="alert-mini alert-success">
+                      <i className="bi bi-check-circle"></i>
+                      {feedbackExcluir}
+                    </div>
+                  )}
                   <div className="modal-actions">
-                    <button type="submit" className="btn btn-danger" disabled={excluindo}>
+                    <button type="submit" className="btn-danger" disabled={excluindo}>
                       {excluindo ? (
                         <>
-                          <div className="spinner"></div>
+                          <div className="spinner-small"></div>
                           Excluindo...
                         </>
                       ) : (
@@ -710,25 +680,13 @@ export default function Conta() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost"
+                      className="btn-ghost"
                       onClick={() => setShowModalExcluir(false)}
                       disabled={excluindo}
                     >
                       Cancelar
                     </button>
                   </div>
-                  {erroExcluir && (
-                    <div className="feedback-msg error">
-                      <i className="bi bi-exclamation-circle"></i>
-                      {erroExcluir}
-                    </div>
-                  )}
-                  {feedbackExcluir && (
-                    <div className="feedback-msg success">
-                      <i className="bi bi-check-circle"></i>
-                      {feedbackExcluir}
-                    </div>
-                  )}
                 </form>
               </div>
             </div>

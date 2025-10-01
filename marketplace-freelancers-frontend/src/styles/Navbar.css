@@ -9,11 +9,11 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  background: var(--superficie-card);
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   padding: var(--space-md) var(--space-xl);
   height: 80px;
   box-shadow: var(--sombra-md);
-  border-bottom: 1px solid var(--borda-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
 }
 
@@ -429,23 +429,4 @@
 .avatar:focus {
   outline: 2px solid var(--cor-primaria);
   outline-offset: 4px;
-}
-
-/* ==============================
-   DARK MODE SUPPORT
-   ============================== */
-@media (prefers-color-scheme: dark) {
-  .navbar {
-    background: rgba(30, 41, 59, 0.95);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .menu-dropdown {
-    background: rgba(30, 41, 59, 0.95);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .menu-dropdown::before {
-    border-bottom-color: rgba(30, 41, 59, 0.95);
-  }
 }

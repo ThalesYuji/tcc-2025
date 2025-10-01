@@ -204,7 +204,7 @@ export default function DetalhesTrabalho() {
             onClick={() => navigate("/trabalhos")}
           >
             <i className="bi bi-arrow-left"></i>
-            Voltar aos Trabalhos
+            Voltar para Trabalhos
           </button>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function DetalhesTrabalho() {
             onClick={() => navigate("/trabalhos")}
           >
             <i className="bi bi-arrow-left"></i>
-            Voltar aos Trabalhos
+            Voltar para Trabalhos
           </button>
         </div>
       </div>
@@ -253,7 +253,7 @@ export default function DetalhesTrabalho() {
             onClick={() => navigate("/trabalhos")}
           >
             <i className="bi bi-arrow-left"></i>
-            Voltar aos Trabalhos
+            Voltar para Trabalhos
           </button>
         </div>
         

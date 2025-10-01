@@ -40,7 +40,7 @@ export default function Navbar() {
 
   const navegarPara = (rota) => {
     navigate(rota);
-    setMenuAberto(false); // Fecha o menu quando navega
+    setMenuAberto(false);
   };
 
   return (
@@ -51,7 +51,7 @@ export default function Navbar() {
         role="button"
         onClick={() => navegarPara("/home")}
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && navegarPara("/dashboard")}
+        onKeyDown={(e) => e.key === 'Enter' && navegarPara("/home")}
       >
         <img
           src="/profreelabr.png"
@@ -63,15 +63,6 @@ export default function Navbar() {
       {/* Links de Navegação - CENTRALIZADOS */}
       <div className="nav-links">
         <div className="nav-links-main">
-          <button
-            onClick={() => navegarPara("/dashboard")}
-            className={rotaAtiva("/dashboard")}
-            title="Dashboard"
-          >
-            <FaHome />
-            <span>Dashboard</span>
-          </button>
-
           <button
             onClick={() => navegarPara("/trabalhos")}
             className={rotaAtiva("/trabalhos")}
@@ -179,6 +170,11 @@ export default function Navbar() {
                    usuarioLogado?.is_superuser ? 'Administrador' : 'Usuário'}
                 </div>
               </div>
+
+              <button onClick={() => navegarPara("/dashboard")}>
+                <FaHome />
+                Dashboard
+              </button>
 
               <button onClick={() => navegarPara("/conta")}>
                 <FiSettings />

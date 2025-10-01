@@ -1,61 +1,37 @@
-// src/Paginas/PerfilPublico.jsx - Redesign Moderno
+// src/Paginas/PerfilPublico.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useParams, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import "../styles/PerfilPublico.css";
 
-function StarRating({ rating, size = "md" }) {
-  const sizes = {
-    sm: "0.875rem",
-    md: "1rem", 
-    lg: "1.25rem"
-  };
-
+function StarRating({ rating, className = "stars-container" }) {
   return (
-    <div className="star-rating" style={{ fontSize: sizes[size] }}>
+    <div className={className}>
       {[1, 2, 3, 4, 5].map((star) => (
         <i
           key={star}
           className={`bi ${star <= Math.round(rating) ? 'bi-star-fill' : 'bi-star'}`}
-          style={{ color: star <= Math.round(rating) ? '#fbbf24' : '#d1d5db' }}
         />
       ))}
     </div>
   );
 }
 
-function Badge({ type, children }) {
-  const badgeClasses = {
-    top: "badge-top",
-    verified: "badge-verified",
-    new: "badge-new"
-  };
-
-  return (
-    <div className={`user-badge ${badgeClasses[type] || ''}`}>
-      {children}
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, color = "primary" }) {
-  return (
-    <div className={`stat-card ${color}`}>
-      <div className="stat-icon">
-        <i className={icon}></i>
-      </div>
-      <div className="stat-content">
-        <span className="stat-value">{value}</span>
-        <span className="stat-label">{label}</span>
-      </div>
-    </div>
-  );
-}
-
 function formatarDataBR(dataStr) {
   if (!dataStr) return "";
-  return new Date(dataStr).toLocaleDateString("pt-BR");
+  return new Date(dataStr).toLocaleDateString("pt-BR", {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+function formatarNumero(num) {
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k';
+  }
+  return num.toString();
 }
 
 export default function PerfilPublico() {
@@ -68,6 +44,11 @@ export default function PerfilPublico() {
   const [notaMedia, setNotaMedia] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [activeTab, setActiveTab] = useState("sobre");
+  const [mostrarAlerta, setMostrarAlerta] = useState(false);
+  
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const avaliacoesPorPagina = 4;
 
   const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
@@ -77,9 +58,7 @@ export default function PerfilPublico() {
         setCarregando(true);
         setErro("");
 
-        // Dados do usuário (perfil público)
         const resp = await api.get(`/usuarios/${id}/perfil_publico/`);
-
         if (resp.data && resp.data.id) {
           setUsuario(resp.data);
           setNotaMedia(resp.data.nota_media || null);
@@ -88,12 +67,11 @@ export default function PerfilPublico() {
           return;
         }
 
-        // Avaliações públicas recebidas
         const avs = await api.get(`/usuarios/${id}/avaliacoes_publicas/`);
         setAvaliacoes(avs.data);
       } catch (err) {
         console.error("Erro ao buscar perfil:", err);
-        setErro("Erro ao carregar o perfil. Tente novamente.");
+        setErro("Erro ao carregar o perfil.");
       } finally {
         setCarregando(false);
       }
@@ -104,31 +82,59 @@ export default function PerfilPublico() {
     }
   }, [id]);
 
-  // Loading state
+  const handleCompartilhar = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `Perfil de ${usuario.nome}`,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      setMostrarAlerta(true);
+      setTimeout(() => setMostrarAlerta(false), 3000);
+    }
+  };
+
+  const totalPaginas = Math.ceil(avaliacoes.length / avaliacoesPorPagina);
+  const indiceInicial = (paginaAtual - 1) * avaliacoesPorPagina;
+  const indiceFinal = indiceInicial + avaliacoesPorPagina;
+  const avaliacoesPaginadas = avaliacoes.slice(indiceInicial, indiceFinal);
+
+  const proximaPagina = () => {
+    if (paginaAtual < totalPaginas) {
+      setPaginaAtual(paginaAtual + 1);
+    }
+  };
+
+  const paginaAnterior = () => {
+    if (paginaAtual > 1) {
+      setPaginaAtual(paginaAtual - 1);
+    }
+  };
+
   if (carregando) {
     return (
-      <div className="perfil-container">
-        <div className="perfil-main">
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
+      <div className="perfil-redesign-container">
+        <div className="page-container">
+          <div className="loading-modern">
+            <div className="loading-spinner-modern"></div>
             <h3>Carregando perfil</h3>
-            <p>Buscando informações do usuário...</p>
+            <p>Aguarde um momento...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (erro || !usuario) {
     return (
-      <div className="perfil-container">
-        <div className="perfil-main">
-          <div className="error-state">
+      <div className="perfil-redesign-container">
+        <div className="page-container">
+          <div className="error-modern">
             <i className="bi bi-person-x"></i>
             <h3>Perfil não encontrado</h3>
             <p>{erro || "O usuário que você está procurando não foi encontrado."}</p>
-            <button className="btn btn-primary" onClick={() => navigate("/home")}>
+            <button className="action-btn primary" onClick={() => navigate("/home")}>
               <i className="bi bi-house"></i>
               Voltar ao início
             </button>
@@ -138,254 +144,506 @@ export default function PerfilPublico() {
     );
   }
 
-  // Avatar com tratamento de URL
   const fotoPerfil = usuario.foto_perfil
     ? usuario.foto_perfil.startsWith("http")
       ? usuario.foto_perfil
       : `${BASE_URL}${usuario.foto_perfil}`
     : "/icone-usuario.png";
 
-  // Verificar se é usuário top (freelancer com nota >= 4.5)
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
-  const isNewUser = new Date() - new Date(usuario.date_joined || usuario.created_at) < 30 * 24 * 60 * 60 * 1000; // Menos de 30 dias
+  const isNewUser = new Date() - new Date(usuario.date_joined || usuario.created_at) < 30 * 24 * 60 * 60 * 1000;
+
+  // Distribuição de notas
+  const distribuicaoNotas = [5, 4, 3, 2, 1].map(nota => {
+    const count = avaliacoes.filter(av => Math.round(av.nota) === nota).length;
+    const percentual = avaliacoes.length > 0 ? (count / avaliacoes.length) * 100 : 0;
+    return { nota, count, percentual };
+  });
 
   return (
-    <div className="perfil-container">
-      <div className="perfil-main">
-        
-        {/* Header com navegação */}
-        <div className="perfil-header">
-          <button className="btn-back" onClick={() => navigate(-1)}>
-            <i className="bi bi-arrow-left"></i>
-            Voltar
+    <div className="perfil-redesign-container">
+      {/* Toast de Alerta */}
+      {mostrarAlerta && (
+        <div className="toast-alert success">
+          <div className="toast-icon">
+            <i className="bi bi-check-circle-fill"></i>
+          </div>
+          <div className="toast-content">
+            <div className="toast-title">Link copiado!</div>
+            <div className="toast-message">O link do perfil foi copiado para a área de transferência</div>
+          </div>
+          <button className="toast-close" onClick={() => setMostrarAlerta(false)}>
+            <i className="bi bi-x"></i>
           </button>
-          <h1 className="perfil-title">Perfil Público</h1>
-          <div className="header-spacer"></div>
+        </div>
+      )}
+
+      <div className="page-container fade-in">
+        
+        {/* Header Padronizado - Seguindo padrão Dashboard */}
+        <div className="perfil-header-section">
+          <h1 className="perfil-title">
+            <div className="perfil-title-icon">
+              <i className="bi bi-person-circle"></i>
+            </div>
+            Perfil do Usuário
+          </h1>
+          <p className="perfil-subtitle">
+            Visualize informações profissionais e avaliações
+          </p>
         </div>
 
-        <div className="perfil-content">
-          
-          {/* Card Principal - Informações do Usuário */}
-          <div className="perfil-card main-card">
-            <div className="profile-header">
-              <div className="profile-avatar-section">
-                <div className="avatar-wrapper">
-                  <img src={fotoPerfil} alt="Foto de perfil" className="profile-avatar-large" />
-                  {isTopUser && (
-                    <Badge type="top">
-                      <i className="bi bi-star-fill"></i>
-                      TOP
-                    </Badge>
-                  )}
-                  {isNewUser && (
-                    <Badge type="new">
-                      <i className="bi bi-person-plus"></i>
-                      NOVO
-                    </Badge>
-                  )}
+        {/* Card Principal do Perfil */}
+        <div className="perfil-card-main">
+          <div className="avatar-section">
+            <div className="avatar-container">
+              <img src={fotoPerfil} alt={usuario.nome} className="perfil-avatar-img" />
+              
+              {isTopUser && (
+                <div className="badge-top-profile">
+                  <i className="bi bi-award-fill"></i>
+                  TOP
                 </div>
-                <div className="profile-info">
-                  <h2 className="profile-name">{usuario.nome}</h2>
-                  <div className="profile-type">
-                    <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
-                    {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-                  </div>
-                  {notaMedia && (
-                    <div className="profile-rating">
-                      <StarRating rating={notaMedia} size="lg" />
-                      <span className="rating-value">{notaMedia.toFixed(1)}</span>
-                      <span className="rating-count">({avaliacoes.length} avaliações)</span>
+              )}
+              
+              {isNewUser && (
+                <div className="badge-new-profile">
+                  <i className="bi bi-star-fill"></i>
+                  NOVO
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="info-section">
+            <h2 className="perfil-name">{usuario.nome}</h2>
+            
+            <div className="perfil-user-type">
+              <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
+              {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+            </div>
+
+            {notaMedia && (
+              <div className="rating-display">
+                <StarRating rating={notaMedia} />
+                <span className="rating-number">{notaMedia.toFixed(1)}</span>
+                <span className="rating-count-text">({avaliacoes.length} avaliações)</span>
+              </div>
+            )}
+
+            <div className="stats-mini-grid">
+              {usuario.tipo === "freelancer" && (
+                <div className="stat-mini-item">
+                  <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_concluidos ?? 0)}</span>
+                  <span className="stat-mini-label">Concluídos</span>
+                </div>
+              )}
+              {usuario.tipo === "cliente" && (
+                <div className="stat-mini-item">
+                  <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_publicados ?? 0)}</span>
+                  <span className="stat-mini-label">Publicados</span>
+                </div>
+              )}
+              <div className="stat-mini-item">
+                <span className="stat-mini-value">{formatarNumero(avaliacoes.length)}</span>
+                <span className="stat-mini-label">Avaliações</span>
+              </div>
+              {notaMedia && (
+                <div className="stat-mini-item">
+                  <span className="stat-mini-value">{notaMedia.toFixed(1)}</span>
+                  <span className="stat-mini-label">Estrelas</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Layout Principal */}
+        <div className="main-content-layout">
+          
+          {/* Coluna Principal */}
+          <div className="content-left">
+            
+            {/* Tabs */}
+            <div className="tabs-nav">
+              <button
+                className={`tab-button ${activeTab === 'sobre' ? 'active' : ''}`}
+                onClick={() => setActiveTab('sobre')}
+              >
+                <i className="bi bi-person-lines-fill"></i>
+                Sobre
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'avaliacoes' ? 'active' : ''}`}
+                onClick={() => setActiveTab('avaliacoes')}
+              >
+                <i className="bi bi-star-fill"></i>
+                Avaliações
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'estatisticas' ? 'active' : ''}`}
+                onClick={() => setActiveTab('estatisticas')}
+              >
+                <i className="bi bi-graph-up"></i>
+                Estatísticas
+              </button>
+            </div>
+
+            {/* Conteúdo das Tabs */}
+            {activeTab === 'sobre' && (
+              <div className="standard-card fade-in">
+                <div className="card-header-std">
+                  <i className="bi bi-chat-left-quote-fill header-icon-std"></i>
+                  <h3>Sobre Mim</h3>
+                </div>
+                <div className="card-body-std">
+                  {usuario.bio ? (
+                    <p className="bio-text">{usuario.bio}</p>
+                  ) : (
+                    <div className="empty-state">
+                      <i className="bi bi-info-circle"></i>
+                      <p>Este usuário ainda não adicionou uma biografia.</p>
                     </div>
                   )}
                 </div>
               </div>
+            )}
 
-              {/* Bio */}
-              {usuario.bio && (
-                <div className="profile-bio">
-                  <p>{usuario.bio}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Estatísticas */}
-          <div className="perfil-card stats-card">
-            <div className="card-header">
-              <h3>
-                <i className="bi bi-graph-up"></i>
-                Estatísticas
-              </h3>
-            </div>
-            <div className="stats-grid">
-              {usuario.tipo === "cliente" && (
-                <StatCard
-                  icon="bi bi-briefcase"
-                  label="Trabalhos Publicados"
-                  value={usuario.trabalhos_publicados ?? 0}
-                  color="primary"
-                />
-              )}
-              {usuario.tipo === "freelancer" && (
-                <StatCard
-                  icon="bi bi-check-circle"
-                  label="Trabalhos Concluídos"
-                  value={usuario.trabalhos_concluidos ?? 0}
-                  color="success"
-                />
-              )}
-              <StatCard
-                icon="bi bi-star"
-                label="Avaliações"
-                value={avaliacoes.length}
-                color="warning"
-              />
-              {notaMedia && (
-                <StatCard
-                  icon="bi bi-award"
-                  label="Nota Média"
-                  value={`${notaMedia.toFixed(1)}/5`}
-                  color="info"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Avaliações Recebidas */}
-          <div className="perfil-card avaliacoes-card">
-            <div className="card-header">
-              <h3>
-                <i className="bi bi-chat-quote"></i>
-                Avaliações Recebidas
-              </h3>
-              {avaliacoes.length > 0 && (
-                <span className="avaliacoes-count">{avaliacoes.length}</span>
-              )}
-            </div>
-            <div className="card-body">
-              {avaliacoes.length === 0 ? (
-                <div className="empty-state">
-                  <i className="bi bi-star"></i>
-                  <h4>Nenhuma avaliação ainda</h4>
-                  <p>Este usuário ainda não recebeu avaliações.</p>
-                </div>
-              ) : (
-                <div className="avaliacoes-list">
-                  {avaliacoes.map((av) => (
-                    <div key={av.id} className="avaliacao-item">
-                      <div className="avaliacao-header">
-                        <div className="avaliador-info">
-                          <span className="avaliador-nome">{av.avaliador?.nome || "Usuário"}</span>
-                          <span className="avaliacao-data">{formatarDataBR(av.data_avaliacao)}</span>
+            {activeTab === 'avaliacoes' && (
+              <div className="fade-in">
+                {avaliacoes.length === 0 ? (
+                  <div className="standard-card">
+                    <div className="card-body-std">
+                      <div className="empty-state">
+                        <i className="bi bi-star"></i>
+                        <h3>Nenhuma avaliação</h3>
+                        <p>Este usuário ainda não recebeu avaliações.</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="reviews-list">
+                      {avaliacoesPaginadas.map((av) => (
+                        <div key={av.id} className="review-item">
+                          <div className="review-header">
+                            <div className="reviewer-info">
+                              <div className="reviewer-avatar">
+                                {av.avaliador?.nome?.charAt(0)?.toUpperCase() || "?"}
+                              </div>
+                              <div className="reviewer-details">
+                                <span className="reviewer-name">
+                                  {av.avaliador?.nome || "Usuário Anônimo"}
+                                </span>
+                                <span className="review-date">
+                                  {formatarDataBR(av.data_avaliacao)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="review-rating">
+                              <StarRating rating={av.nota} className="review-stars" />
+                              <span className="review-value">{av.nota.toFixed(1)}</span>
+                            </div>
+                          </div>
+                          {av.comentario && (
+                            <div className="review-comment">
+                              <p>{av.comentario}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="avaliacao-rating">
-                          <StarRating rating={av.nota} size="sm" />
-                          <span className="nota-texto">{av.nota}/5</span>
+                      ))}
+                    </div>
+
+                    {totalPaginas > 1 && (
+                      <div className="pagination-container">
+                        <div className="pagination-info">
+                          Página {paginaAtual} de {totalPaginas} • {avaliacoes.length} avaliações
+                        </div>
+                        <div className="pagination-controls">
+                          <button
+                            className="pagination-btn"
+                            onClick={paginaAnterior}
+                            disabled={paginaAtual === 1}
+                          >
+                            <i className="bi bi-chevron-left"></i>
+                          </button>
+                          <button
+                            className="pagination-btn"
+                            onClick={proximaPagina}
+                            disabled={paginaAtual === totalPaginas}
+                          >
+                            <i className="bi bi-chevron-right"></i>
+                          </button>
                         </div>
                       </div>
-                      {av.comentario && (
-                        <div className="avaliacao-comentario">
-                          <p>"{av.comentario}"</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'estatisticas' && (
+              <div className="fade-in">
+                <div className="standard-card">
+                  <div className="card-header-std">
+                    <i className="bi bi-bar-chart-fill header-icon-std"></i>
+                    <h3>Estatísticas Detalhadas</h3>
+                  </div>
+                  <div className="card-body-std">
+                    <div className="stats-detailed-grid">
+                      {usuario.tipo === "cliente" && (
+                        <div className="stat-detail-card">
+                          <div className="stat-detail-icon primary">
+                            <i className="bi bi-briefcase"></i>
+                          </div>
+                          <div className="stat-detail-info">
+                            <span className="stat-detail-value">
+                              {formatarNumero(usuario.trabalhos_publicados ?? 0)}
+                            </span>
+                            <span className="stat-detail-label">Trabalhos Publicados</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {usuario.tipo === "freelancer" && (
+                        <div className="stat-detail-card">
+                          <div className="stat-detail-icon success">
+                            <i className="bi bi-check-circle"></i>
+                          </div>
+                          <div className="stat-detail-info">
+                            <span className="stat-detail-value">
+                              {formatarNumero(usuario.trabalhos_concluidos ?? 0)}
+                            </span>
+                            <span className="stat-detail-label">Trabalhos Concluídos</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="stat-detail-card">
+                        <div className="stat-detail-icon warning">
+                          <i className="bi bi-star"></i>
+                        </div>
+                        <div className="stat-detail-info">
+                          <span className="stat-detail-value">
+                            {formatarNumero(avaliacoes.length)}
+                          </span>
+                          <span className="stat-detail-label">Total de Avaliações</span>
+                        </div>
+                      </div>
+                      
+                      {notaMedia && (
+                        <div className="stat-detail-card">
+                          <div className="stat-detail-icon info">
+                            <i className="bi bi-award"></i>
+                          </div>
+                          <div className="stat-detail-info">
+                            <span className="stat-detail-value">{notaMedia.toFixed(1)}/5</span>
+                            <span className="stat-detail-label">Nota Média</span>
+                          </div>
                         </div>
                       )}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Ações do Perfil */}
-          {usuarioLogado && usuarioLogado.id !== usuario.id && (
-            <div className="perfil-card actions-card">
-              <div className="card-header">
-                <h3>
-                  <i className="bi bi-gear"></i>
-                  Ações
-                </h3>
-              </div>
-              <div className="card-body">
-                <div className="profile-actions">
-                  {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
-                    <button
-                      className="btn btn-success action-btn"
-                      onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
-                    >
-                      <i className="bi bi-person-check"></i>
-                      Contratar Freelancer
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-outline-danger action-btn"
-                    onClick={() => navigate("/denuncias/cadastrar", {
-                      state: { denunciado: usuario.id }
-                    })}
-                  >
-                    <i className="bi bi-flag"></i>
-                    Denunciar Perfil
-                  </button>
-                  <button
-                    className="btn btn-ghost action-btn"
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: `Perfil de ${usuario.nome}`,
-                          text: `Confira o perfil de ${usuario.nome}`,
-                          url: window.location.href,
-                        });
-                      } else {
-                        navigator.clipboard.writeText(window.location.href);
-                        // Aqui você poderia adicionar um toast de feedback
-                        alert("Link copiado para a área de transferência!");
-                      }
-                    }}
-                  >
-                    <i className="bi bi-share"></i>
-                    Compartilhar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                {avaliacoes.length > 0 && (
+                  <div className="standard-card">
+                    <div className="card-header-std">
+                      <i className="bi bi-pie-chart-fill header-icon-std"></i>
+                      <h3>Distribuição de Avaliações</h3>
+                    </div>
+                    <div className="card-body-std">
+                      <div className="distribution-chart">
+                        {distribuicaoNotas.map(({ nota, count, percentual }) => (
+                          <div key={nota} className="distribution-row">
+                            <div className="distribution-label">
+                              {nota} <i className="bi bi-star-fill"></i>
+                            </div>
+                            <div className="distribution-bar-container">
+                              <div 
+                                className="distribution-bar-fill"
+                                style={{ width: `${percentual}%` }}
+                              ></div>
+                            </div>
+                            <div className="distribution-count">{count}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-          {/* Card de Informações Adicionais */}
-          <div className="perfil-card info-card">
-            <div className="card-header">
-              <h3>
-                <i className="bi bi-info-circle"></i>
-                Informações
-              </h3>
-            </div>
-            <div className="card-body">
-              <div className="info-list">
-                <div className="info-item">
-                  <span className="info-label">Tipo de usuário</span>
-                  <span className="info-value">
-                    <span className={`user-type-badge ${usuario.tipo}`}>
-                      {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-                    </span>
-                  </span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">Membro desde</span>
-                  <span className="info-value">
-                    {formatarDataBR(usuario.date_joined || usuario.created_at)}
-                  </span>
-                </div>
-                {notaMedia && (
-                  <div className="info-item">
-                    <span className="info-label">Reputação</span>
-                    <span className="info-value">
-                      {notaMedia >= 4.5 ? "Excelente" : 
-                       notaMedia >= 4.0 ? "Muito Boa" :
-                       notaMedia >= 3.0 ? "Boa" : "Regular"}
-                    </span>
+                {(isTopUser || avaliacoes.length >= 10 || usuario.trabalhos_concluidos >= 50) && (
+                  <div className="standard-card">
+                    <div className="card-header-std">
+                      <i className="bi bi-trophy-fill header-icon-std"></i>
+                      <h3>Conquistas</h3>
+                    </div>
+                    <div className="card-body-std">
+                      <div className="achievements-grid">
+                        {isTopUser && (
+                          <div className="achievement-item">
+                            <div className="achievement-icon gold">
+                              <i className="bi bi-award-fill"></i>
+                            </div>
+                            <div className="achievement-content">
+                              <div className="achievement-title">Profissional TOP</div>
+                              <div className="achievement-desc">Nota média superior a 4.5</div>
+                            </div>
+                          </div>
+                        )}
+                        {avaliacoes.length >= 10 && (
+                          <div className="achievement-item">
+                            <div className="achievement-icon blue">
+                              <i className="bi bi-chat-square-heart-fill"></i>
+                            </div>
+                            <div className="achievement-content">
+                              <div className="achievement-title">Bem Avaliado</div>
+                              <div className="achievement-desc">10+ avaliações recebidas</div>
+                            </div>
+                          </div>
+                        )}
+                        {usuario.trabalhos_concluidos >= 50 && (
+                          <div className="achievement-item">
+                            <div className="achievement-icon green">
+                              <i className="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div className="achievement-content">
+                              <div className="achievement-title">Veterano</div>
+                              <div className="achievement-desc">50+ trabalhos concluídos</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
 
+          {/* Sidebar */}
+          <div className="content-right">
+            
+            {/* Ações */}
+            {usuarioLogado && usuarioLogado.id !== usuario.id && (
+              <div className="standard-card">
+                <div className="card-header-std">
+                  <i className="bi bi-lightning-charge-fill header-icon-std"></i>
+                  <h3>Ações Rápidas</h3>
+                </div>
+                <div className="card-body-std">
+                  <div className="actions-list">
+                    {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
+                      <button
+                        className="action-btn primary"
+                        onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
+                      >
+                        <i className="bi bi-person-check-fill"></i>
+                        Contratar
+                      </button>
+                    )}
+                    <button
+                      className="action-btn danger"
+                      onClick={() => navigate("/denuncias/cadastrar", {
+                        state: { denunciado: usuario.id }
+                      })}
+                    >
+                      <i className="bi bi-flag-fill"></i>
+                      Denunciar
+                    </button>
+                    <button
+                      className="action-btn ghost"
+                      onClick={handleCompartilhar}
+                    >
+                      <i className="bi bi-share-fill"></i>
+                      Compartilhar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Informações */}
+            <div className="standard-card">
+              <div className="card-header-std">
+                <i className="bi bi-info-circle-fill header-icon-std"></i>
+                <h3>Informações</h3>
+              </div>
+              <div className="card-body-std">
+                <div className="info-list">
+                  <div className="info-item">
+                    <i className="bi bi-person-badge info-icon"></i>
+                    <div className="info-content">
+                      <div className="info-label">Tipo</div>
+                      <div className="info-value">
+                        <span className={`badge-type ${usuario.tipo}`}>
+                          {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {notaMedia && (
+                    <div className="info-item">
+                      <i className="bi bi-trophy info-icon"></i>
+                      <div className="info-content">
+                        <div className="info-label">Reputação</div>
+                        <div className="info-value">
+                          {notaMedia >= 4.5 ? "Excelente" : 
+                           notaMedia >= 4.0 ? "Muito Boa" :
+                           notaMedia >= 3.0 ? "Boa" : "Regular"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="info-item">
+                    <i className="bi bi-activity info-icon"></i>
+                    <div className="info-content">
+                      <div className="info-label">Status</div>
+                      <div className="info-value">
+                        <span className="status-badge">Ativo</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Performance */}
+            <div className="standard-card">
+              <div className="card-header-std">
+                <i className="bi bi-speedometer2 header-icon-std"></i>
+                <h3>Performance</h3>
+              </div>
+              <div className="card-body-std">
+                <div className="performance-list">
+                  <div className="performance-item">
+                    <div className="performance-label">
+                      <i className="bi bi-check-circle"></i>
+                      Taxa de Conclusão
+                    </div>
+                    <div className="performance-value">95%</div>
+                  </div>
+                  <div className="performance-item">
+                    <div className="performance-label">
+                      <i className="bi bi-clock-history"></i>
+                      Entrega no Prazo
+                    </div>
+                    <div className="performance-value">92%</div>
+                  </div>
+                  <div className="performance-item">
+                    <div className="performance-label">
+                      <i className="bi bi-arrow-repeat"></i>
+                      Recontratação
+                    </div>
+                    <div className="performance-value">78%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

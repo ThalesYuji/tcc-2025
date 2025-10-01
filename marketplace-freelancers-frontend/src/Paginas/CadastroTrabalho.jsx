@@ -10,7 +10,16 @@ import {
   FaMoneyBillWave,
   FaTools,
   FaCloudUploadAlt,
-  FaCheckCircle
+  FaCheckCircle,
+  FaTimes,
+  FaUser,
+  FaEye,
+  FaLightbulb,
+  FaStar,
+  FaTag,
+  FaPaperclip,
+  FaInfoCircle,
+  FaExclamationCircle
 } from "react-icons/fa";
 import "../styles/CadastroTrabalho.css";
 
@@ -35,6 +44,14 @@ export default function CadastroTrabalho() {
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState("");
   const [sucesso, setSucesso] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Sugestões de habilidades populares
+  const habilidadesPopulares = [
+    "React", "JavaScript", "Python", "Node.js", "Design Gráfico", 
+    "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
+    "Vue.js", "Angular", "Django", "Laravel", "Copywriting"
+  ];
 
   useEffect(() => {
     async function fetchFreelancer() {
@@ -110,11 +127,13 @@ export default function CadastroTrabalho() {
     setErros({});
     setErroGeral("");
     setSucesso("");
+    setIsLoading(true);
 
     const novosErros = validarCampos();
     if (Object.keys(novosErros).length > 0) {
       setErros(novosErros);
       setErroGeral("Corrija os campos destacados para prosseguir.");
+      setIsLoading(false);
       return;
     }
 
@@ -132,7 +151,7 @@ export default function CadastroTrabalho() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Trabalho cadastrado com sucesso!");
-      setTimeout(() => navigate("/trabalhos"), 1200);
+      setTimeout(() => navigate("/trabalhos"), 1500);
     } catch (err) {
       if (err.response?.data) {
         const backendErros = err.response.data;
@@ -147,6 +166,8 @@ export default function CadastroTrabalho() {
       } else {
         setErroGeral("Erro ao cadastrar trabalho. Verifique os campos e tente novamente.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,11 +177,11 @@ export default function CadastroTrabalho() {
   ) {
     return (
       <div className="cadastro-trabalho-page">
-        <div className="cadastro-trabalho-container">
-          <div className="form-box">
-            <div className="error-msg-geral">
-              Apenas clientes e administradores podem cadastrar trabalhos.
-            </div>
+        <div className="page-container">
+          <div className="access-denied-container">
+            <FaExclamationCircle className="access-denied-icon" />
+            <h3>Acesso Negado</h3>
+            <p>Apenas clientes e administradores podem cadastrar trabalhos.</p>
           </div>
         </div>
       </div>
@@ -169,188 +190,379 @@ export default function CadastroTrabalho() {
 
   return (
     <div className="cadastro-trabalho-page">
-      <div className="cadastro-trabalho-container">
-        {/* Header da Página */}
-        <div className="cadastro-trabalho-header">
-          <h1 className="cadastro-trabalho-title">
-            <div className="cadastro-trabalho-title-icon">
-              <FaPlus />
-            </div>
-            {freelancerId ? "Criar Trabalho Privado" : "Cadastrar Novo Trabalho"}
-          </h1>
-          <p className="cadastro-trabalho-subtitle">
-            {freelancerId 
-              ? "Crie um trabalho direcionado especificamente para um freelancer"
-              : "Publique um novo projeto e encontre o freelancer ideal para realizá-lo"
-            }
-          </p>
+      {/* Header Padronizado */}
+      <div className="cadastro-trabalho-header">
+        <div className="cadastro-trabalho-title">
+          <div className="cadastro-trabalho-title-icon">
+            <FaPlus />
+          </div>
+          {freelancerId ? "Trabalho Privado" : "Novo Projeto"}
         </div>
+        <div className="cadastro-trabalho-subtitle">
+          {freelancerId 
+            ? `Criar trabalho direcionado para ${freelancerNome}`
+            : "Publique seu projeto e encontre o freelancer perfeito"
+          }
+        </div>
+        {freelancerId && (
+          <div className="private-work-badge">
+            <FaUser />
+            <span>Trabalho Privado</span>
+          </div>
+        )}
+      </div>
 
-        {/* Card Principal */}
-        <div className="form-box">
-          {freelancerId && (
-            <div className="texto-info">
-              Este trabalho será direcionado apenas para{" "}
-              <strong>{freelancerNome || `Freelancer #${freelancerId}`}</strong>.
-            </div>
-          )}
+      <div className="page-container">
+        {/* Alertas Globais */}
+        {erroGeral && (
+          <div className="alert-error">
+            <FaExclamationCircle />
+            <span>{erroGeral}</span>
+          </div>
+        )}
 
-          {erroGeral && (
-            <div className="error-msg-geral">
-              {erroGeral}
-            </div>
-          )}
+        {sucesso && (
+          <div className="alert-success">
+            <FaCheckCircle />
+            <span>{sucesso}</span>
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Título */}
-            <div className="form-group">
-              <label className="form-label">
-                <FaFileAlt className="form-label-icon" />
-                Título do Trabalho
-              </label>
-              <input
-                type="text"
-                className={`form-input ${erros.titulo ? 'input-erro' : ''}`}
-                placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                required
-              />
-              {erros.titulo && <div className="error-msg">{erros.titulo}</div>}
-            </div>
+        {/* Layout Grid */}
+        <div className="cadastro-trabalho-grid">
+          
+          {/* Formulário Principal */}
+          <div className="form-main-column">
+            <form onSubmit={handleSubmit} className="trabalho-form">
 
-            {/* Descrição */}
-            <div className="form-group">
-              <label className="form-label">
-                <FaFileAlt className="form-label-icon" />
-                Descrição Detalhada
-              </label>
-              <textarea
-                className={`form-textarea ${erros.descricao ? 'input-erro' : ''}`}
-                placeholder="Descreva em detalhes o que precisa ser desenvolvido, objetivos, requisitos específicos, funcionalidades desejadas..."
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                required
-                rows="5"
-              />
-              {erros.descricao && <div className="error-msg">{erros.descricao}</div>}
-            </div>
-
-            {/* Prazo e Orçamento */}
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">
-                  <FaCalendarAlt className="form-label-icon" />
-                  Prazo de Entrega
-                </label>
-                <input
-                  type="date"
-                  className={`form-input ${erros.prazo ? 'input-erro' : ''}`}
-                  value={prazo}
-                  onChange={(e) => setPrazo(e.target.value)}
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
-                {erros.prazo && <div className="error-msg">{erros.prazo}</div>}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <FaMoneyBillWave className="form-label-icon" />
-                  Orçamento (R$)
-                </label>
-                <input
-                  type="number"
-                  className={`form-input ${erros.orcamento ? 'input-erro' : ''}`}
-                  placeholder="1500.00"
-                  value={orcamento}
-                  onChange={(e) => setOrcamento(e.target.value)}
-                  min="1"
-                  step="0.01"
-                  required
-                />
-                {erros.orcamento && <div className="error-msg">{erros.orcamento}</div>}
-              </div>
-            </div>
-
-            {/* Habilidades */}
-            <div className="form-group">
-              <label className="form-label">
-                <FaTools className="form-label-icon" />
-                Habilidades Necessárias
-              </label>
-              <div className="habilidades-container">
-                {habilidades.map((hab, index) => (
-                  <div key={index} className="habilidade-tag">
-                    {hab}
-                    <button type="button" onClick={() => removeHabilidade(hab)}>
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <input
-                  type="text"
-                  className="habilidades-input"
-                  placeholder={habilidades.length === 0 ? "Digite uma habilidade e pressione Enter..." : "Adicionar mais..."}
-                  value={habilidadeInput}
-                  onChange={handleHabilidadeInput}
-                  onKeyDown={handleHabilidadeKeyDown}
-                />
-              </div>
-
-              {sugestoes.length > 0 && (
-                <ul className="habilidade-sugestoes">
-                  {sugestoes.slice(0, 6).map((sug, index) => (
-                    <li key={index} onClick={() => adicionarHabilidade(sug)}>
-                      {sug}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Upload de Arquivo */}
-            <div className="form-group">
-              <label className="form-label">
-                <FaCloudUploadAlt className="form-label-icon" />
-                Anexar Arquivo (Opcional)
-              </label>
-              <input
-                id="anexo-upload"
-                type="file"
-                className="form-file"
-                onChange={(e) => setAnexo(e.target.files[0])}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
-              />
-              <label htmlFor="anexo-upload" className="file-upload-label">
-                <FaCloudUploadAlt className="file-upload-icon" />
-                {anexo ? 'Alterar arquivo' : 'Clique para selecionar um arquivo'}
-                <small style={{ display: 'block', marginTop: '4px', opacity: '0.7' }}>
-                  PDF, DOC, DOCX, JPG, PNG, ZIP (Máx. 10MB)
-                </small>
-              </label>
-              {anexo && (
-                <div className="file-selected">
-                  <FaCheckCircle style={{ marginRight: '4px' }} />
-                  {anexo.name}
+              {/* Card: Informações Básicas */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaFileAlt />
+                    Informações Básicas
+                  </h2>
                 </div>
-              )}
-              {erros.anexo && <div className="error-msg">{erros.anexo}</div>}
+                
+                <div className="card-body">
+                  <div className="form-field">
+                    <label className="input-label">
+                      Título do Projeto
+                      <span className="required">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className={`form-control ${erros.titulo ? 'error' : ''}`}
+                      placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
+                      value={titulo}
+                      onChange={(e) => setTitulo(e.target.value)}
+                      maxLength={100}
+                    />
+                    <div className="input-footer">
+                      <span className="char-count">{titulo.length}/100</span>
+                      {erros.titulo && <span className="error-msg">{erros.titulo}</span>}
+                    </div>
+                  </div>
+
+                  <div className="form-field">
+                    <label className="input-label">
+                      Descrição Detalhada
+                      <span className="required">*</span>
+                    </label>
+                    <textarea
+                      className={`form-control textarea-field ${erros.descricao ? 'error' : ''}`}
+                      placeholder="Descreva em detalhes o que precisa ser desenvolvido, objetivos, requisitos específicos..."
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      rows="6"
+                      maxLength={1000}
+                    />
+                    <div className="input-footer">
+                      <span className="char-count">{descricao.length}/1000</span>
+                      {erros.descricao && <span className="error-msg">{erros.descricao}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card: Prazo e Orçamento */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaCalendarAlt />
+                    Prazo e Orçamento
+                  </h2>
+                </div>
+                
+                <div className="card-body">
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label className="input-label">
+                        <FaCalendarAlt />
+                        Prazo de Entrega
+                        <span className="required">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className={`form-control ${erros.prazo ? 'error' : ''}`}
+                        value={prazo}
+                        onChange={(e) => setPrazo(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
+                    </div>
+
+                    <div className="form-field">
+                      <label className="input-label">
+                        <FaMoneyBillWave />
+                        Orçamento (R$)
+                        <span className="required">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className={`form-control ${erros.orcamento ? 'error' : ''}`}
+                        placeholder="1500.00"
+                        value={orcamento}
+                        onChange={(e) => setOrcamento(e.target.value)}
+                        min="1"
+                        step="0.01"
+                      />
+                      {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card: Habilidades */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaTools />
+                    Habilidades Necessárias
+                  </h2>
+                </div>
+                
+                <div className="card-body">
+                  <div className="skills-container">
+                    <div className="skills-input-wrapper">
+                      <input
+                        type="text"
+                        className="skills-input"
+                        placeholder="Digite uma habilidade e pressione Enter..."
+                        value={habilidadeInput}
+                        onChange={handleHabilidadeInput}
+                        onKeyDown={handleHabilidadeKeyDown}
+                      />
+                      <FaTag className="skills-input-icon" />
+                    </div>
+
+                    {habilidades.length > 0 && (
+                      <div className="selected-skills">
+                        {habilidades.map((hab, index) => (
+                          <div key={index} className="skill-badge">
+                            <span>{hab}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => removeHabilidade(hab)}
+                              className="skill-remove"
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {sugestoes.length > 0 && (
+                      <div className="skills-suggestions">
+                        <div className="suggestions-header">
+                          <FaLightbulb />
+                          <span>Sugestões</span>
+                        </div>
+                        <div className="suggestions-list">
+                          {sugestoes.slice(0, 8).map((sug, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="suggestion-tag"
+                              onClick={() => adicionarHabilidade(sug)}
+                            >
+                              {sug}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="popular-skills">
+                      <div className="popular-skills-header">
+                        <FaStar />
+                        <span>Habilidades Populares</span>
+                      </div>
+                      <div className="popular-skills-list">
+                        {habilidadesPopulares
+                          .filter(skill => !habilidades.includes(skill))
+                          .slice(0, 10)
+                          .map((skill, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="popular-skill-tag"
+                              onClick={() => adicionarHabilidade(skill)}
+                            >
+                              {skill}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card: Arquivo Anexo */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaPaperclip />
+                    Arquivo Anexo
+                  </h2>
+                  <span className="optional-badge">Opcional</span>
+                </div>
+                
+                <div className="card-body">
+                  <div className="file-upload-area">
+                    <input
+                      id="file-input"
+                      type="file"
+                      className="file-input"
+                      onChange={(e) => setAnexo(e.target.files[0])}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                    />
+                    <label htmlFor="file-input" className="file-upload-label">
+                      {anexo ? (
+                        <div className="file-selected-info">
+                          <FaCheckCircle className="file-success-icon" />
+                          <div className="file-details">
+                            <span className="file-name">{anexo.name}</span>
+                            <span className="file-size">
+                              {(anexo.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="file-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setAnexo(null);
+                            }}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="file-upload-placeholder">
+                          <FaCloudUploadAlt className="upload-icon" />
+                          <div className="upload-text">
+                            <span className="upload-title">Clique para enviar arquivo</span>
+                            <span className="upload-subtitle">
+                              PDF, DOC, DOCX, JPG, PNG, ZIP (Máx. 10MB)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                  {erros.anexo && <span className="error-msg">{erros.anexo}</span>}
+                </div>
+              </div>
+
+              {/* Botão de Submit */}
+              <div className="form-actions">
+                <button 
+                  type="submit" 
+                  className={`btn gradient-btn btn-large ${isLoading ? 'loading' : ''}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="loading-spinner"></div>
+                      <span>Cadastrando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaPlus />
+                      <span>
+                        {freelancerId ? "Enviar para Freelancer" : "Publicar Projeto"}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          {/* Sidebar */}
+          <div className="form-sidebar-column">
+            
+            {/* Card de Prévia */}
+            <div className="modern-card preview-card">
+              <div className="card-header">
+                <h2 className="card-title">
+                  <FaEye />
+                  Prévia do Projeto
+                </h2>
+              </div>
+              
+              <div className="card-body">
+                <div className="preview-content">
+                  <div className="preview-title">
+                    {titulo || "Título do seu projeto..."}
+                  </div>
+                  <div className="preview-description">
+                    {descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "") || 
+                     "Descrição do seu projeto aparecerá aqui..."}
+                  </div>
+                  <div className="preview-details">
+                    <div className="preview-detail">
+                      <FaCalendarAlt />
+                      <span>{prazo ? new Date(prazo).toLocaleDateString() : "Prazo"}</span>
+                    </div>
+                    <div className="preview-detail">
+                      <FaMoneyBillWave />
+                      <span>R$ {orcamento || "0,00"}</span>
+                    </div>
+                    <div className="preview-detail">
+                      <FaTools />
+                      <span>{habilidades.length} habilidade{habilidades.length !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Botão de Submit */}
-            <button type="submit" className="btn-submit-trabalho">
-              <FaPlus style={{ marginRight: '8px' }} />
-              {freelancerId ? "Enviar para Freelancer" : "Cadastrar Trabalho"}
-            </button>
-          </form>
-
-          {sucesso && (
-            <div className="success-msg">
-              <FaCheckCircle style={{ marginRight: '8px' }} />
-              {sucesso}
+            {/* Card de Dicas */}
+            <div className="modern-card tips-card">
+              <div className="card-header">
+                <h2 className="card-title">
+                  <FaLightbulb />
+                  Dicas para um Bom Projeto
+                </h2>
+              </div>
+              
+              <div className="card-body">
+                <ul className="tips-list">
+                  <li>Seja específico no título e descrição</li>
+                  <li>Defina um prazo realista</li>
+                  <li>Escolha habilidades relevantes</li>
+                  <li>Anexe materiais de referência</li>
+                  <li>Estabeleça um orçamento justo</li>
+                </ul>
+              </div>
             </div>
-          )}
+
+          </div>
         </div>
       </div>
     </div>
