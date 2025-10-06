@@ -14,5 +14,5 @@ npm-debug.log
 yarn-error.log
 
 # Outros
-*.env
+.env
 __pycache__/

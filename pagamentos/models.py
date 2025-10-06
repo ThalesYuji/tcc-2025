@@ -2,18 +2,18 @@ from django.db import models
 from contratos.models import Contrato
 from usuarios.models import Usuario
 
+
 class Pagamento(models.Model):
-    # 🔹 Métodos permitidos fixos
+    # 🔹 Métodos compatíveis com Stripe
     METODOS = [
         ('pix', 'PIX'),
         ('boleto', 'Boleto'),
-        ('credito', 'Cartão de Crédito'),
-        ('debito', 'Cartão de Débito'),
+        ('card', 'Cartão de Crédito/Débito'),  # Stripe usa "card" para ambos
     ]
 
-    # 🔹 Status possíveis
     STATUS = [
         ('pendente', 'Pendente'),
+        ('em_processamento', 'Em Processamento'),
         ('aprovado', 'Aprovado'),
         ('rejeitado', 'Rejeitado'),
         ('reembolsado', 'Reembolsado'),
@@ -37,29 +37,32 @@ class Pagamento(models.Model):
         decimal_places=2,
         help_text="O valor deve ser exatamente igual ao definido no contrato."
     )
-    data_pagamento = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS,
-        default='pendente'
-    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='pendente')
     metodo = models.CharField(
         max_length=20,
         choices=METODOS,
         default='pix',
-        help_text="Escolha entre PIX, Boleto, Crédito ou Débito."
-    )
-    codigo_transacao = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="Código gerado pelo provedor de pagamento (se aplicável)."
-    )
-    observacoes = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Observações adicionais sobre o pagamento."
+        help_text="Escolha entre PIX, Boleto ou Cartão."
     )
 
+    # 🔹 Stripe Payment Intent ID
+    payment_intent_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="ID do PaymentIntent gerado pelo Stripe."
+    )
+
+    # 🔹 Extra (ex.: PIX QR Code ou Boleto ID)
+    codigo_transacao = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Código adicional ou referência de transação (ex.: PIX QR Code, Boleto ID)."
+    )
+
+    observacoes = models.TextField(blank=True, null=True)
+
     def __str__(self):
-        return f"Pagamento de R$ {self.valor} via {self.get_metodo_display()} | Status: {self.status}"
+        return f"Pagamento R$ {self.valor} via {self.get_metodo_display()} | Status: {self.status}"

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import api from "../Servicos/Api";
-import { useNavigate } from "react-router-dom";
-import "../styles/Login.css"; // estilos específicos da página
-import { FaEnvelope, FaLock } from "react-icons/fa"; // ícones para inputs
+import { useNavigate, Link } from "react-router-dom";
+import "../styles/Login.css";
+import { FaEnvelope, FaLock } from "react-icons/fa";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -22,7 +22,6 @@ export default function Login() {
 
     setCarregando(true);
     try {
-      // 🔹 Faz login e recebe token
       const response = await api.post("/token/", {
         email: email.trim(),
         password: senha,
@@ -30,14 +29,12 @@ export default function Login() {
 
       localStorage.setItem("token", response.data.access);
 
-      // 🔹 Busca dados do usuário logado
       const userResponse = await api.get("/usuarios/me/", {
         headers: { Authorization: `Bearer ${response.data.access}` },
       });
 
       localStorage.setItem("userId", userResponse.data.id);
 
-      // 🔹 Redireciona para a Home inicial
       navigate("/home");
       window.location.reload();
     } catch (err) {
@@ -67,7 +64,7 @@ export default function Login() {
   return (
     <div className="login-bg">
       <div className="login-content">
-        {/* 🔹 Lado esquerdo (branding) */}
+        {/* Lado esquerdo (branding) */}
         <div className="login-left">
           <img
             src="/profreelabr.png"
@@ -84,9 +81,9 @@ export default function Login() {
           </p>
         </div>
 
-        {/* 🔹 Lado direito (formulário) */}
+        {/* Lado direito (formulário) */}
         <div className="login-right">
-          <div className="login-box">  {/* REMOVIDO "card" */}
+          <div className="login-box">
             <h3 className="form-title">Entrar</h3>
             <form onSubmit={handleLogin}>
               <div className="input-group">
@@ -113,6 +110,13 @@ export default function Login() {
                 />
               </div>
 
+              {/* Link "Esqueci minha senha" */}
+              <div className="senha-opcoes">
+                <Link to="/esqueci-senha" className="esqueci-senha-link">
+                  Esqueci minha senha
+                </Link>
+              </div>
+
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -126,7 +130,7 @@ export default function Login() {
             </form>
 
             <p className="cadastro-link">
-              Ainda não tem uma conta? <a href="/cadastro">Cadastre-se</a>
+              Ainda não tem uma conta? <Link to="/cadastro">Cadastre-se</Link>
             </p>
           </div>
         </div>

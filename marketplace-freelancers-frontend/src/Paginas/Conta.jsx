@@ -208,34 +208,37 @@ export default function Conta() {
     setCarregandoSenha(false);
   }
 
-  async function handleExcluirConta(e) {
-    e.preventDefault();
-    setExcluindo(true);
-    setErroExcluir("");
-    setFeedbackExcluir("");
-    try {
-      const resp = await api.post(`/usuarios/me/excluir_conta/`, { senha: senhaExcluir });
-      setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
-      setTimeout(() => {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }, 1500);
-    } catch (err) {
-      let msg = "Erro ao excluir conta.";
-      if (err.response?.data) {
-        const backendErros = err.response.data;
-        if (backendErros.erro) msg = backendErros.erro;
-        if (typeof backendErros === "object") {
-          msg =
-            Object.values(backendErros)
-              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-              .join(" ") || msg;
-        }
+async function handleExcluirConta(e) {
+  e.preventDefault();
+  setExcluindo(true);
+  setErroExcluir("");
+  setFeedbackExcluir("");
+  try {
+    const resp = await api.post(
+      `/usuarios/${usuarioLogado.id}/excluir_conta/`,
+      { senha: senhaExcluir }
+    );
+    setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
+    setTimeout(() => {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }, 1500);
+  } catch (err) {
+    let msg = "Erro ao excluir conta.";
+    if (err.response?.data) {
+      const backendErros = err.response.data;
+      if (backendErros.erro) msg = backendErros.erro;
+      if (typeof backendErros === "object") {
+        msg =
+          Object.values(backendErros)
+            .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+            .join(" ") || msg;
       }
-      setErroExcluir(msg);
     }
-    setExcluindo(false);
+    setErroExcluir(msg);
   }
+  setExcluindo(false);
+}
 
   if (!usuarioLogado) return null;
 

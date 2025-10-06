@@ -1,0 +1,392 @@
+/* ==============================
+   TELA DE RESETAR SENHA
+   ============================== */
+
+/* Fundo geral */
+.resetar-bg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--cor-primaria), #42a5f5);
+  padding: 20px;
+}
+
+/* Container principal */
+.resetar-container {
+  width: 100%;
+  max-width: 480px;
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Card */
+.resetar-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  padding: 40px 35px;
+}
+
+/* Cabeçalho */
+.resetar-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.resetar-logo {
+  max-width: 140px;
+  margin: 0 auto 20px;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.resetar-logo:hover {
+  transform: scale(1.05);
+}
+
+.resetar-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--cor-primaria);
+  margin-bottom: 10px;
+}
+
+.resetar-subtitle {
+  font-size: 0.95rem;
+  color: var(--cor-texto-light);
+  line-height: 1.5;
+}
+
+/* Formulário */
+.resetar-form {
+  margin-top: 25px;
+}
+
+/* Input group */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: 8px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 15px;
+  z-index: 2;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 14px 14px 14px 44px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  height: 48px;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-wrapper input:focus ~ .input-icon {
+  color: var(--cor-primaria);
+}
+
+.input-wrapper input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Input com erro */
+.input-erro {
+  border-color: var(--cor-erro) !important;
+  background: #fef2f2 !important;
+}
+
+/* Alert de erro */
+.alert-erro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--cor-erro);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+  animation: slideInDown 0.3s ease-out;
+}
+
+.alert-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Dicas de senha */
+.senha-dicas {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.dica-titulo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: 8px;
+}
+
+.dica-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dica-lista li {
+  font-size: 0.85rem;
+  color: var(--cor-texto-light);
+  padding: 4px 0;
+  position: relative;
+  padding-left: 22px;
+  transition: all 0.2s ease;
+}
+
+.dica-lista li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #cbd5e1;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.dica-lista li.valido {
+  color: var(--cor-sucesso);
+  font-weight: 500;
+}
+
+.dica-lista li.valido::before {
+  color: var(--cor-sucesso);
+}
+
+/* Botão */
+.resetar-form button {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.resetar-form button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.resetar-form button:active {
+  transform: translateY(0);
+}
+
+.resetar-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resetar-form button:disabled:hover {
+  transform: none;
+}
+
+/* Box de Sucesso */
+.sucesso-box {
+  text-align: center;
+  padding: 30px 20px;
+  animation: zoomIn 0.4s ease-out;
+}
+
+.sucesso-icon {
+  font-size: 4rem;
+  color: var(--cor-sucesso);
+  margin-bottom: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sucesso-box h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: 12px;
+}
+
+.sucesso-box p {
+  font-size: 1rem;
+  color: var(--cor-texto);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.sucesso-info {
+  font-size: 0.9rem !important;
+  color: var(--cor-texto-light) !important;
+  font-style: italic;
+}
+
+/* Link de volta */
+.link-voltar {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.link-voltar a {
+  font-size: 0.9rem;
+  color: var(--cor-primaria);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.link-voltar a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--cor-primaria);
+  transition: width 0.3s ease;
+}
+
+.link-voltar a:hover {
+  color: var(--cor-primaria-dark);
+}
+
+.link-voltar a:hover::after {
+  width: 100%;
+}
+
+/* ==============================
+   ANIMAÇÕES
+   ============================== */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* ==============================
+   RESPONSIVIDADE
+   ============================== */
+@media (max-width: 768px) {
+  .resetar-container {
+    max-width: 95%;
+  }
+  
+  .resetar-card {
+    padding: 30px 25px;
+  }
+  
+  .resetar-title {
+    font-size: 1.5rem;
+  }
+  
+  .resetar-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .resetar-bg {
+    padding: 15px;
+  }
+  
+  .resetar-card {
+    padding: 25px 20px;
+  }
+  
+  .resetar-logo {
+    max-width: 120px;
+  }
+  
+  .resetar-title {
+    font-size: 1.35rem;
+  }
+  
+  .input-wrapper input,
+  .resetar-form button {
+    height: 44px;
+    font-size: 14px;
+  }
+  
+  .sucesso-icon {
+    font-size: 3.5rem;
+  }
+}

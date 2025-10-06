@@ -150,7 +150,6 @@ export default function HomeInicial() {
       {/* Seção de Atalhos */}
       <section className="shortcuts-section section-spacing">
         <h2 className="section-title">
-          <i className="bi bi-lightning-charge"></i>
           Atalhos Rápidos
         </h2>
         
@@ -174,7 +173,6 @@ export default function HomeInicial() {
       <section className="opportunities-section section-spacing">
         <div className="opportunities-header">
           <h2 className="section-title">
-            <i className="bi bi-stars"></i>
             {usuarioLogado.tipo === "freelancer"
               ? "Trabalhos em Destaque"
               : "Talentos Recomendados"}

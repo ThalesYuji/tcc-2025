@@ -23,7 +23,11 @@ import PainelDenuncias from "./Paginas/PainelDenuncias";
 import MinhasDenuncias from "./Paginas/MinhasDenuncias";
 import HistoricoNotificacoes from "./Paginas/HistoricoNotificacoes";
 import ChatContrato from "./Paginas/ChatContrato";
-import HomeInicial from "./Paginas/HomeInicial"; // 🔹 nova tela inicial
+import HomeInicial from "./Paginas/HomeInicial";
+
+// 🔹 Novas páginas de recuperação de senha
+import EsqueciSenha from "./Paginas/EsqueciSenha";
+import ResetarSenha from "./Paginas/ResetarSenha";
 
 // 🔹 Toastify
 import { ToastContainer } from "react-toastify";
@@ -53,7 +57,9 @@ function App() {
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<CadastroUsuario />} />
-          <Route path="/perfil/:id" element={<PerfilPublico />} /> {/* 🔹 agora público */}
+          <Route path="/perfil/:id" element={<PerfilPublico />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/reset-password/:uid/:token" element={<ResetarSenha />} />
 
           {/* Rotas protegidas */}
           <Route
@@ -64,7 +70,7 @@ function App() {
                   <Navbar />
                   <div className="app-container">
                     <Routes>
-                      <Route path="/home" element={<HomeInicial />} /> {/* 🔹 nova primeira tela */}
+                      <Route path="/home" element={<HomeInicial />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/trabalhos" element={<Trabalhos />} />
                       <Route path="/trabalhos/novo" element={<CadastroTrabalho />} />

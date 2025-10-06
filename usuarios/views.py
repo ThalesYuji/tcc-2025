@@ -4,6 +4,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.utils.encoding import force_str, force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+
 
 from .models import Usuario
 from .serializers import (
@@ -197,3 +205,71 @@ class UsuarioMeAPIView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
+
+class PasswordResetRequestView(APIView):
+    """Recebe um e-mail e envia o link de redefinição se o usuário existir."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].strip().lower()
+
+        try:
+            user = Usuario.objects.get(email__iexact=email)
+        except Usuario.DoesNotExist:
+            user = None
+
+        # 🔹 Sempre retorna sucesso, para não revelar se email existe
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+
+            # 🔹 URL do frontend (defina FRONTEND_URL no settings.py)
+            frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+            reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
+
+            context = {
+                "user": user,
+                "reset_link": reset_link,
+                "site_name": getattr(settings, "SITE_NAME", "ProFreelaBR"),
+            }
+
+            subject = f"[{context['site_name']}] Redefinição de senha"
+            text_body = render_to_string("emails/password_reset.txt", context)
+            html_body = render_to_string("emails/password_reset.html", context)
+
+            msg = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [user.email])
+            msg.attach_alternative(html_body, "text/html")
+            msg.send(fail_silently=True)
+
+        return Response(
+            {"detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."},
+            status=status.HTTP_200_OK
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """Valida UID + Token e altera a senha do usuário."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uid = serializer.validated_data["uid"]
+        token = serializer.validated_data["token"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            uid_int = force_str(urlsafe_base64_decode(uid))
+            user = Usuario.objects.get(pk=uid_int)
+        except Exception:
+            return Response({"detail": "Link inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({"detail": "Token inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"detail": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)

@@ -1,11 +1,17 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
 
 # ------------------------
 # Caminho base do projeto
 # ------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ------------------------
+# Carrega variáveis do .env
+# ------------------------
+load_dotenv(BASE_DIR / ".env")
 
 # ------------------------
 # ⚠️ Segurança
@@ -66,7 +72,7 @@ ROOT_URLCONF = 'freelancer.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],  # 🔹 suporte a templates de e-mail
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -143,9 +149,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    # 🔹 Paginação Global
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 6,  # número padrão de itens por página
+    'PAGE_SIZE': 6,
 }
 
 SIMPLE_JWT = {
@@ -164,3 +169,40 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# ------------------------
+# E-MAIL (SendGrid via .env)
+# ------------------------
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
+
+# Variáveis extras para templates
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
+
+# ------------------------
+# API CPF/CNPJ
+# ------------------------
+CPF_CNPJ_API_BASE = os.getenv("CPF_CNPJ_API_BASE", "https://api.cpfcnpj.com.br")
+CPF_CNPJ_TOKEN = os.getenv("CPF_CNPJ_TOKEN")
+CPF_CNPJ_PACOTE_CPF_D = int(os.getenv("CPF_CNPJ_PACOTE_CPF_E", 9))
+CPF_CNPJ_PACOTE_CNPJ_C = int(os.getenv("CPF_CNPJ_PACOTE_CNPJ_C", 10))
+CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
+
+# ------------------------
+# STRIPE CONFIG
+# ------------------------
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:
+    raise ValueError("⚠️ Configure STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET no .env")
+
+import stripe
+stripe.api_key = STRIPE_SECRET_KEY

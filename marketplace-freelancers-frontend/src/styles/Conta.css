@@ -22,7 +22,7 @@
 }
 
 .profile-banner {
-  height: 40px;
+  height: 0px;
   position: relative;
   overflow: hidden;
 }
@@ -416,8 +416,9 @@ textarea.input-field {
 }
 
 .info-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--space-lg);
   align-items: center;
   padding: var(--space-md);
   background: var(--superficie-hover);

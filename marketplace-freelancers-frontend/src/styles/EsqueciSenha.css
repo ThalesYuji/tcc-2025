@@ -1,0 +1,407 @@
+/* ==============================
+   TELA DE ESQUECI SENHA - REDESIGN
+   ============================== */
+
+/* Fundo geral */
+.esqueci-bg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--cor-primaria), #42a5f5);
+  padding: 20px;
+}
+
+/* Container principal */
+.esqueci-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Card principal */
+.esqueci-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  padding: 45px 40px;
+  text-align: center;
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Logo */
+.esqueci-logo-wrapper {
+  margin-bottom: 30px;
+}
+
+.esqueci-logo {
+  max-width: 140px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  transition: transform 0.3s ease;
+}
+
+.esqueci-logo:hover {
+  transform: scale(1.05);
+}
+
+/* Título */
+.esqueci-titulo {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--cor-primaria);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Descrição */
+.esqueci-descricao {
+  font-size: 0.95rem;
+  color: var(--cor-texto-light);
+  margin-bottom: 30px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Formulário */
+.esqueci-form {
+  margin-bottom: 25px;
+}
+
+/* Form group */
+.form-group {
+  margin-bottom: 20px;
+}
+
+/* Input container */
+.input-container {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.input-container input {
+  width: 100%;
+  padding: 14px 14px 14px 44px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  height: 48px;
+  font-family: inherit;
+}
+
+.input-container input:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-container input:focus ~ .input-icon {
+  color: var(--cor-primaria);
+}
+
+.input-container input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Input com erro */
+.input-erro {
+  border-color: var(--cor-erro) !important;
+  background: #fef2f2 !important;
+}
+
+/* Texto de erro */
+.erro-texto {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--cor-erro);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  animation: slideInDown 0.3s ease-out;
+}
+
+/* Botão enviar */
+.btn-enviar {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-enviar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.btn-enviar:active {
+  transform: translateY(0);
+}
+
+.btn-enviar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Link voltar */
+.link-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--cor-primaria);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+  justify-content: center;
+}
+
+.link-voltar:hover {
+  color: var(--cor-primaria-dark);
+}
+
+.link-voltar svg {
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.link-voltar:hover svg {
+  transform: translateX(-3px);
+}
+
+/* ==============================
+   TELA DE SUCESSO
+   ============================== */
+
+/* Container de sucesso */
+.sucesso-container {
+  text-align: center;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Ícone de sucesso */
+.sucesso-icon {
+  font-size: 4rem;
+  color: var(--cor-sucesso);
+  margin-bottom: 24px;
+  display: block;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Título do sucesso */
+.sucesso-titulo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Texto do sucesso */
+.sucesso-texto {
+  font-size: 1rem;
+  color: var(--cor-texto);
+  margin-bottom: 25px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.sucesso-texto strong {
+  color: var(--cor-primaria);
+  font-weight: 600;
+}
+
+/* Box de dicas */
+.dicas-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.dicas-titulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.dicas-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.dicas-lista li {
+  font-size: 0.85rem;
+  color: var(--cor-texto-light);
+  padding: 5px 0;
+  position: relative;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+.dicas-lista li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--cor-primaria);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* Botão voltar ao login */
+.btn-voltar-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-voltar-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* ==============================
+   ANIMAÇÕES
+   ============================== */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* ==============================
+   RESPONSIVIDADE
+   ============================== */
+@media (max-width: 768px) {
+  .esqueci-container {
+    max-width: 95%;
+  }
+  
+  .esqueci-card {
+    padding: 35px 30px;
+  }
+  
+  .esqueci-titulo {
+    font-size: 1.5rem;
+  }
+  
+  .esqueci-descricao {
+    font-size: 0.9rem;
+  }
+  
+  .sucesso-titulo {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .esqueci-bg {
+    padding: 15px;
+  }
+  
+  .esqueci-card {
+    padding: 30px 25px;
+  }
+  
+  .esqueci-logo {
+    max-width: 120px;
+  }
+  
+  .esqueci-titulo {
+    font-size: 1.35rem;
+  }
+  
+  .esqueci-descricao {
+    font-size: 0.875rem;
+  }
+  
+  .input-container input,
+  .btn-enviar,
+  .btn-voltar-login {
+    height: 44px;
+    font-size: 14px;
+  }
+  
+  .sucesso-icon {
+    font-size: 3.5rem;
+  }
+  
+  .dicas-lista li {
+    font-size: 0.8rem;
+  }
+}

@@ -1,11 +1,16 @@
-# usuarios/serializers.py
-
 from rest_framework import serializers
 import re
 from .models import Usuario
 from notificacoes.models import Notificacao
 from avaliacoes.models import Avaliacao
 from trabalhos.models import Trabalho  # 🔹 para contar trabalhos
+from django.utils.encoding import force_str, force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
+
+# 🔹 Importa o service da API
+from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
+from django.conf import settings
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -18,7 +23,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
     foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
     notificacao_email = serializers.BooleanField(required=False)
 
-    tipo = serializers.CharField(read_only=True)
+    # 🔹 Tipo obrigatório no cadastro
+    tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
     class Meta:
         model = Usuario
@@ -47,24 +53,38 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return value
 
     def validate_cpf(self, value):
-        value = re.sub(r'\D', '', value or '')
-        qs = Usuario.objects.filter(cpf=value)
+        cpf = re.sub(r'\D', '', value or '')
+        qs = Usuario.objects.filter(cpf=cpf)
         if self.instance:
             qs = qs.exclude(id=self.instance.id)
         if qs.exists():
             raise serializers.ValidationError("CPF já cadastrado.")
-        return value
+
+        # 🔹 Consulta real na API (Pacote CPF D = 8)
+        try:
+            consultar_documento(cpf, settings.CPF_CNPJ_PACOTE_CPF_D)
+        except CPF_CNPJValidationError as e:
+            raise serializers.ValidationError(str(e))
+
+        return cpf
 
     def validate_cnpj(self, value):
-        value = re.sub(r'\D', '', value or '')
-        if not value:
-            return value
-        qs = Usuario.objects.filter(cnpj=value)
+        cnpj = re.sub(r'\D', '', value or '')
+        if not cnpj:
+            return cnpj
+        qs = Usuario.objects.filter(cnpj=cnpj)
         if self.instance:
             qs = qs.exclude(id=self.instance.id)
         if qs.exists():
             raise serializers.ValidationError("CNPJ já cadastrado.")
-        return value
+
+        # 🔹 Consulta real na API (Pacote CNPJ C = 10)
+        try:
+            consultar_documento(cnpj, settings.CPF_CNPJ_PACOTE_CNPJ_C)
+        except CPF_CNPJValidationError as e:
+            raise serializers.ValidationError(str(e))
+
+        return cnpj
 
     def validate_telefone(self, value):
         value = re.sub(r'\D', '', value or '')
@@ -104,7 +124,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
         return password
 
-    # ===================== VALIDAÇÃO CPF/CNPJ POR TIPO =====================
+    # ===================== VALIDAÇÃO EXTRA POR TIPO =====================
     def validate(self, data):
         tipo = data.get('tipo') or (self.instance.tipo if self.instance else None)
         cpf = data.get('cpf') or (self.instance.cpf if self.instance else None)
@@ -114,49 +134,20 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if senha:
             self.validate_password(senha)
 
-        def validar_cpf(cpf):
-            cpf = ''.join(filter(str.isdigit, cpf or ''))
-            if len(cpf) != 11 or cpf == cpf[0] * 11:
-                return False
-            for i in range(9, 11):
-                soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
-                digito = ((soma * 10) % 11) % 10
-                if digito != int(cpf[i]):
-                    return False
-            return True
-
-        def validar_cnpj(cnpj):
-            cnpj = ''.join(filter(str.isdigit, cnpj or ''))
-            if len(cnpj) != 14 or cnpj == cnpj[0] * 14:
-                return False
-            pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-            pesos2 = [6] + pesos1
-            for i in range(12, 14):
-                pesos = pesos1 if i == 12 else pesos2
-                soma = sum(int(cnpj[j]) * pesos[j] for j in range(i))
-                digito = 11 - (soma % 11)
-                if int(cnpj[i]) != (0 if digito >= 10 else digito):
-                    return False
-            return True
-
         if tipo == 'freelancer':
             if not cpf:
                 raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF."})
-            if not validar_cpf(cpf):
-                raise serializers.ValidationError({"cpf": "CPF inválido."})
 
         elif tipo == 'cliente':
             if not cpf:
                 raise serializers.ValidationError({"cpf": "CPF é obrigatório para clientes."})
             if not cnpj:
                 raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para clientes."})
-            if not validar_cpf(cpf):
-                raise serializers.ValidationError({"cpf": "CPF inválido."})
-            if not validar_cnpj(cnpj):
-                raise serializers.ValidationError({"cnpj": "CNPJ inválido."})
 
         return data
 
+
+# ===================== OUTROS SERIALIZERS =====================
 
 class TrocaSenhaSerializer(serializers.Serializer):
     senha_atual = serializers.CharField(write_only=True)
@@ -215,3 +206,29 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
 
     def get_trabalhos_concluidos(self, obj):
         return obj.trabalhos_direcionados.filter(status="concluido").count() if obj.tipo == "freelancer" else None
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Recebe apenas o e-mail para iniciar o reset de senha."""
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Recebe UID + Token + nova senha para confirmar reset."""
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_new_password(self, value):
+        # 🔹 Reaproveita as validações fortes já feitas no serializer de usuário
+        if len(value) < 8:
+            raise serializers.ValidationError("A senha deve ter pelo menos 8 caracteres.")
+        if not re.search(r"[A-Z]", value):
+            raise serializers.ValidationError("A senha deve conter ao menos uma letra maiúscula.")
+        if not re.search(r"[a-z]", value):
+            raise serializers.ValidationError("A senha deve conter ao menos uma letra minúscula.")
+        if not re.search(r"[0-9]", value):
+            raise serializers.ValidationError("A senha deve conter ao menos um número.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+            raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
+        return value

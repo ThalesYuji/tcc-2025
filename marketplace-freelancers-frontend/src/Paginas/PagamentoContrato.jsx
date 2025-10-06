@@ -115,13 +115,13 @@ export default function PagamentoContrato() {
       icon: "bi bi-upc-scan" 
     },
     { 
-      value: "credito", 
+      value: "card", 
       label: "Cartão de Crédito", 
       descricao: "Parcelamento até 12x sem juros",
       icon: "bi bi-credit-card" 
     },
     { 
-      value: "debito", 
+      value: "card", 
       label: "Cartão de Débito", 
       descricao: "Débito automático à vista",
       icon: "bi bi-credit-card-2-front" 

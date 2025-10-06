@@ -96,7 +96,7 @@
   justify-content: center;
 }
 
-/* Caixa do formulário - SEM CLASSE .CARD */
+/* Caixa do formulário */
 .login-box {
   width: 100%;
   max-width: 360px;
@@ -157,6 +157,44 @@
   background: #fef2f2 !important;
 }
 
+/* ==============================
+   LINK "ESQUECI MINHA SENHA"
+   ============================== */
+.senha-opcoes {
+  text-align: center;
+  margin-bottom: 16px;
+  margin-top: -4px;
+}
+
+.esqueci-senha-link {
+  font-size: 0.875rem;
+  color: var(--cor-primaria);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.esqueci-senha-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--cor-primaria);
+  transition: width 0.3s ease;
+}
+
+.esqueci-senha-link:hover {
+  color: var(--cor-primaria-dark);
+}
+
+.esqueci-senha-link:hover::after {
+  width: 100%;
+}
+
 /* Botão */
 .login-box button {
   width: 100%;
@@ -207,22 +245,39 @@
 
 /* Link de cadastro */
 .cadastro-link {
-  margin-top: 20px;
+  margin-top: 28px;
   font-size: 0.9rem;
   text-align: center;
   color: #64748b;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .cadastro-link a {
   color: var(--cor-primaria);
   font-weight: 600;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.cadastro-link a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--cor-primaria);
+  transition: width 0.3s ease;
 }
 
 .cadastro-link a:hover {
   color: var(--cor-primaria-dark);
-  text-decoration: underline;
+}
+
+.cadastro-link a:hover::after {
+  width: 100%;
 }
 
 /* ==============================
@@ -301,5 +356,9 @@
   .login-box button {
     height: 44px;
     font-size: 14px;
+  }
+  
+  .esqueci-senha-link {
+    font-size: 0.8rem;
   }
 }
