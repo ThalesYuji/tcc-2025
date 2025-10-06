@@ -7,12 +7,8 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import stripe
 
-# ✅ Compatibilidade com versões novas/antigas do Stripe
-try:
-    from stripe.error import InvalidRequestError, SignatureVerificationError
-except ImportError:
-    InvalidRequestError = Exception
-    SignatureVerificationError = Exception
+# ✅ Import correto das exceções do Stripe
+from stripe import StripeError
 
 from .models import Pagamento
 from .serializers import PagamentoSerializer
@@ -61,7 +57,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 payment_method_types=[metodo],
                 metadata={"contrato_id": contrato.id, "pagamento_id": pagamento.id},
             )
-        except InvalidRequestError as e:
+        except StripeError as e:
             raise ValueError(
                 f"Erro ao criar pagamento no Stripe: {str(e)}. "
                 f"Verifique se o método '{metodo}' está habilitado no seu dashboard."
@@ -104,6 +100,9 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             self._concluir_contrato(contrato)
 
     def _concluir_contrato(self, contrato):
+        """
+        🔹 Marca contrato e trabalho como concluídos, envia notificações.
+        """
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
         contrato.trabalho.save()
@@ -143,12 +142,17 @@ def stripe_webhook(request):
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
     except ValueError:
+        print("❌ Webhook: Payload inválido")
         return JsonResponse({"error": "Payload inválido"}, status=400)
-    except SignatureVerificationError:
+    except stripe.error.SignatureVerificationError:
+        print("❌ Webhook: Assinatura inválida")
         return JsonResponse({"error": "Assinatura inválida"}, status=400)
+    except Exception as e:
+        print(f"❌ Webhook: Erro inesperado - {str(e)}")
+        return JsonResponse({"error": "Erro interno"}, status=500)
 
     # 🔹 Debug: logar o evento recebido
-    print("🔔 Evento recebido do Stripe:", event["type"])
+    print(f"🔔 Evento recebido do Stripe: {event['type']}")
 
     event_type = event["type"]
     intent = event["data"]["object"]
@@ -157,17 +161,33 @@ def stripe_webhook(request):
     if event_type == "payment_intent.succeeded":
         pagamento = Pagamento.objects.filter(payment_intent_id=intent["id"]).first()
         if pagamento:
+            print(f"✅ Pagamento #{pagamento.id} aprovado")
             pagamento.status = "aprovado"
             pagamento.save()
+            
             contrato = pagamento.contrato
             if contrato.status != "concluido":
-                PagamentoViewSet()._concluir_contrato(contrato)
+                # Usar método auxiliar da viewset
+                viewset = PagamentoViewSet()
+                viewset._concluir_contrato(contrato)
+        else:
+            print(f"⚠️ PaymentIntent {intent['id']} não encontrado no banco")
 
     # 🔹 Pagamento falhou
     elif event_type == "payment_intent.payment_failed":
         pagamento = Pagamento.objects.filter(payment_intent_id=intent["id"]).first()
         if pagamento:
+            print(f"❌ Pagamento #{pagamento.id} rejeitado")
             pagamento.status = "rejeitado"
             pagamento.save()
+            
+            # Notificar cliente sobre falha
+            enviar_notificacao(
+                usuario=pagamento.contrato.cliente,
+                mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' falhou. Tente novamente.",
+                link=f"/contratos/{pagamento.contrato.id}/pagamento"
+            )
+        else:
+            print(f"⚠️ PaymentIntent {intent['id']} não encontrado no banco")
 
     return JsonResponse({"status": "ok"}, status=200)

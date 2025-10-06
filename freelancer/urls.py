@@ -1,5 +1,4 @@
 # freelancer/urls.py
-
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -17,7 +16,7 @@ from usuarios.views import (
 )
 from propostas.views import PropostaViewSet
 from contratos.views import ContratoViewSet
-from pagamentos.views import PagamentoViewSet, stripe_webhook   # ✅ importa webhook puro
+from pagamentos.views import PagamentoViewSet
 from avaliacoes.views import AvaliacaoViewSet
 from mensagens.views import MensagemViewSet
 from denuncias.views import DenunciaViewSet
@@ -45,33 +44,27 @@ router.register(r'notificacoes', NotificacaoViewSet, basename='notificacao')
 # ------------------------
 urlpatterns = [
     path('admin/', admin.site.urls),
-
+    
+    # ⚡ CRÍTICO: Webhooks públicos DEVEM vir ANTES de 'api/'
+    # Incluído de pagamentos/urls.py (arquivo separado, sem DRF)
+    path('stripe/', include('pagamentos.urls')),
+    
     # JWT endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
+    
     # Endpoint para dados do usuário logado
     path('api/usuarios/me/', UsuarioMeAPIView.as_view(), name='usuario-me'),
-
+    
     # Endpoints de recuperação de senha
     path('api/password-reset/', PasswordResetRequestView.as_view(), name='password-reset'),
     path('api/password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
-
-    # ------------------------
+    
     # Endpoints principais da API (via DRF)
-    # ------------------------
     path('api/', include(router.urls)),
     path('api/', include('trabalhos.urls')),
     path('api/', include('habilidades.urls')),
-
-    # ------------------------
-    # ⚡ Webhook Stripe → precisa estar FORA do DRF e SEM autenticação
-    # Chamado direto pelo Stripe → nunca passa pelo JWT
-    # ------------------------
-    path('api/pagamentos/webhook/', stripe_webhook, name='stripe-webhook'),
 ]
 
-# ------------------------
 # Suporte a arquivos de mídia
-# ------------------------
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

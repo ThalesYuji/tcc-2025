@@ -1,4 +1,4 @@
-// src/Paginas/PagamentoContrato.jsx - Layout Expandido
+// src/Paginas/PagamentoContrato.jsx - Integrado com Stripe
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
@@ -14,6 +14,8 @@ export default function PagamentoContrato() {
   const [metodo, setMetodo] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [processandoPagamento, setProcessandoPagamento] = useState(false);
+  const [pagamentoId, setPagamentoId] = useState(null);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
   const token = localStorage.getItem("token");
 
   // Buscar contrato
@@ -32,6 +34,45 @@ export default function PagamentoContrato() {
     }
     fetchContrato();
   }, [id, token]);
+
+  // Polling: verificar status do pagamento a cada 3 segundos
+  useEffect(() => {
+    if (!pagamentoId) return;
+
+    console.log("🔄 Polling iniciado para pagamento ID:", pagamentoId);
+
+    const intervalo = setInterval(async () => {
+      try {
+        console.log("🔍 Verificando status do pagamento...");
+        const response = await api.get(`/pagamentos/${pagamentoId}/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const statusAtual = response.data.status;
+        console.log("📊 Status atual:", statusAtual);
+        
+        if (statusAtual === "aprovado") {
+          console.log("✅ Pagamento APROVADO detectado!");
+          clearInterval(intervalo);
+          setSucesso("✅ Pagamento confirmado! Contrato concluído com sucesso.");
+          setProcessandoPagamento(false);
+          setTimeout(() => navigate("/contratos"), 3000);
+        } else if (statusAtual === "rejeitado") {
+          console.log("❌ Pagamento REJEITADO detectado!");
+          clearInterval(intervalo);
+          setErro("❌ Pagamento rejeitado. Tente novamente com outro método.");
+          setProcessandoPagamento(false);
+        }
+      } catch (error) {
+        console.error("❌ Erro ao verificar status:", error);
+      }
+    }, 3000); // Verifica a cada 3 segundos
+
+    return () => {
+      console.log("🛑 Polling encerrado");
+      clearInterval(intervalo);
+    };
+  }, [pagamentoId, token, navigate]);
 
   // Confirmar pagamento
   const confirmarPagamento = async () => {
@@ -52,12 +93,23 @@ export default function PagamentoContrato() {
     };
 
     try {
-      await api.post("/pagamentos/", payload, {
+      const response = await api.post("/pagamentos/", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setSucesso("Pagamento realizado com sucesso! O contrato foi concluído.");
-      setTimeout(() => navigate("/contratos"), 3000);
+      // Salvar IDs para monitoramento
+      setPagamentoId(response.data.id);
+      setPaymentIntentId(response.data.payment_intent_id);
+
+      // Mostrar instruções para teste
+      setSucesso(
+        `💳 Pagamento criado! Payment Intent ID: ${response.data.payment_intent_id}\n\n` +
+        `🧪 PARA TESTAR: Execute no terminal:\n` +
+        `stripe trigger payment_intent.succeeded\n\n` +
+        `⏳ Aguardando confirmação do Stripe...`
+      );
+
+      // Continua em "processandoPagamento" até o polling detectar mudança
     } catch (error) {
       let msg = "Erro ao registrar pagamento.";
       if (error.response?.data) {
@@ -71,7 +123,6 @@ export default function PagamentoContrato() {
         }
       }
       setErro(msg);
-    } finally {
       setProcessandoPagamento(false);
     }
   };
@@ -153,14 +204,14 @@ export default function PagamentoContrato() {
       {erro && (
         <div className="pagamento-msg erro">
           <i className="bi bi-exclamation-circle"></i>
-          {erro}
+          <pre style={{whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>{erro}</pre>
         </div>
       )}
       
       {sucesso && (
         <div className="pagamento-msg sucesso">
           <i className="bi bi-check-circle"></i>
-          {sucesso}
+          <pre style={{whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>{sucesso}</pre>
         </div>
       )}
 
@@ -204,9 +255,9 @@ export default function PagamentoContrato() {
             </h4>
             
             <div className="pagamento-opcoes">
-              {metodosDisponiveis.map((opcao) => (
+              {metodosDisponiveis.map((opcao, idx) => (
                 <label
-                  key={opcao.value}
+                  key={`${opcao.value}-${idx}`}
                   className={`opcao-box ${metodo === opcao.value ? "ativo" : ""}`}
                 >
                   <input
@@ -214,7 +265,7 @@ export default function PagamentoContrato() {
                     value={opcao.value}
                     checked={metodo === opcao.value}
                     onChange={(e) => setMetodo(e.target.value)}
-                    disabled={processandoPagamento || sucesso}
+                    disabled={processandoPagamento}
                   />
                   <div className="icone">
                     <i className={opcao.icon}></i>
@@ -227,6 +278,21 @@ export default function PagamentoContrato() {
               ))}
             </div>
           </div>
+
+          {/* Instruções de teste */}
+          {paymentIntentId && processandoPagamento && (
+            <div className="pagamento-instrucoes">
+              <h4>
+                <i className="bi bi-terminal"></i>
+                Instruções para Teste
+              </h4>
+              <p>Execute no terminal para simular aprovação:</p>
+              <code>stripe trigger payment_intent.succeeded</code>
+              <p style={{marginTop: '10px', fontSize: '0.9em', color: '#666'}}>
+                O sistema está monitorando automaticamente e atualizará quando o webhook receber o evento.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar (direita) */}
@@ -254,6 +320,17 @@ export default function PagamentoContrato() {
               <span className="resumo-valor">R$ {valorFormatado}</span>
             </div>
 
+            {/* Status do pagamento */}
+            {pagamentoId && (
+              <div className="pagamento-status">
+                <span className="status-label">Status:</span>
+                <span className="status-badge processando">
+                  <i className="bi bi-clock-history"></i>
+                  Aguardando confirmação
+                </span>
+              </div>
+            )}
+
             {/* Botões de ação */}
             <div className="pagamento-actions">
               <button 
@@ -268,17 +345,17 @@ export default function PagamentoContrato() {
               <button 
                 onClick={confirmarPagamento} 
                 className="btn-confirmar"
-                disabled={processandoPagamento || !metodo || sucesso}
+                disabled={processandoPagamento || !metodo}
               >
                 {processandoPagamento ? (
                   <>
                     <div className="loading-spinner small"></div>
-                    Processando...
+                    Aguardando...
                   </>
                 ) : (
                   <>
                     <i className="bi bi-check-lg"></i>
-                    Pagar Agora
+                    Criar Pagamento
                   </>
                 )}
               </button>
