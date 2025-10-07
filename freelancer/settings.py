@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+import dj_database_url
 from dotenv import load_dotenv
 
 # ------------------------
@@ -14,11 +15,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 # ------------------------
-# ⚠️ Segurança
+# Segurança
 # ------------------------
-SECRET_KEY = 'django-insecure-)ava3u%8_xl%&kcf-l2xwo*tr!mbv(_irqp8d&az55#0c)5t*r'
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)ava3u%8_xl%&kcf-l2xwo*tr!mbv(_irqp8d&az55#0c)5t*r')
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # ------------------------
 # APPS INSTALADOS
@@ -54,9 +55,10 @@ INSTALLED_APPS = [
 # MIDDLEWARE
 # ------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise para arquivos estáticos
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -72,7 +74,7 @@ ROOT_URLCONF = 'freelancer.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, "templates")],  # 🔹 suporte a templates de e-mail
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,27 +87,38 @@ TEMPLATES = [
 ]
 
 # ------------------------
-# WSGI (padrão Django)
+# WSGI
 # ------------------------
 WSGI_APPLICATION = 'freelancer.wsgi.application'
 
 # ------------------------
 # BANCO DE DADOS
 # ------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'freelancerdb',
-        'USER': 'root',
-        'PASSWORD': 'root',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
-        },
+if os.getenv('DATABASE_URL'):
+    # Produção: PostgreSQL (Railway)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Desenvolvimento: MySQL
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'freelancerdb',
+            'USER': 'root',
+            'PASSWORD': 'root',
+            'HOST': 'localhost',
+            'PORT': '3306',
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES', NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
+            },
+        }
+    }
 
 # ------------------------
 # VALIDAÇÃO DE SENHA
@@ -128,7 +141,9 @@ USE_TZ = True
 # ------------------------
 # STATIC / MEDIA
 # ------------------------
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -165,13 +180,22 @@ SIMPLE_JWT = {
 # ------------------------
 # CORS
 # ------------------------
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000'
+).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 # ------------------------
-# E-MAIL (SendGrid via .env)
+# CSRF
+# ------------------------
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:8000'
+).split(',')
+
+# ------------------------
+# E-MAIL (SendGrid)
 # ------------------------
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
@@ -181,7 +205,6 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
 
-# Variáveis extras para templates
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 
@@ -201,8 +224,17 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:
-    raise ValueError("⚠️ Configure STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET no .env")
+if STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET:
+    import stripe
+    stripe.api_key = STRIPE_SECRET_KEY
 
-import stripe
-stripe.api_key = STRIPE_SECRET_KEY
+# ------------------------
+# SEGURANÇA (Produção)
+# ------------------------
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
