@@ -212,7 +212,7 @@ SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 # ------------------------
 CPF_CNPJ_API_BASE = os.getenv("CPF_CNPJ_API_BASE", "https://api.cpfcnpj.com.br")
 CPF_CNPJ_TOKEN = os.getenv("CPF_CNPJ_TOKEN")
-CPF_CNPJ_PACOTE_CPF_D = int(os.getenv("CPF_CNPJ_PACOTE_CPF_E", 9))
+CPF_CNPJ_PACOTE_CPF_C = int(os.getenv("CPF_CNPJ_PACOTE_CPF_C", 2))
 CPF_CNPJ_PACOTE_CNPJ_C = int(os.getenv("CPF_CNPJ_PACOTE_CNPJ_C", 10))
 CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
 
