@@ -2,8 +2,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 # JWT personalizado
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -29,31 +27,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # ------------------------
-# Endpoint temporário para criar superuser
-# ------------------------
-@csrf_exempt
-def create_superuser_temp(request):
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    try:
-        if not User.objects.filter(email='admin@profreelabr.com').exists():
-            User.objects.create_superuser(
-                email='admin@profreelabr.com',
-                password='Admin@123456',
-                nome='Administrador',
-                tipo='cliente',
-                cpf='00000000000'
-            )
-            return JsonResponse({
-                "status": "✅ Superuser criado com sucesso!",
-                "email": "admin@profreelabr.com",
-                "password": "Admin@123456"
-            })
-        return JsonResponse({"status": "⚠️ Superuser já existe"})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-# ------------------------
 # Roteador central DRF
 # ------------------------
 router = DefaultRouter()
@@ -71,7 +44,6 @@ router.register(r'notificacoes', NotificacaoViewSet, basename='notificacao')
 # ------------------------
 urlpatterns = [
     # 🧪 TEMPORÁRIO: Criar superuser (REMOVER depois de usar!)
-    path('create-admin/', create_superuser_temp, name='create-admin-temp'),
     
     path('admin/', admin.site.urls),
     
