@@ -56,7 +56,7 @@ INSTALLED_APPS = [
 # ------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise para arquivos estáticos
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -178,26 +178,12 @@ SIMPLE_JWT = {
 }
 
 # ------------------------
-# CORS
+# CORS - LIBERADO PARA DEBUG
 # ------------------------
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:3000'
-).split(',')
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
+CORS_ALLOW_HEADERS = ['*']
+CORS_ALLOW_METHODS = ['*']
 
 # ------------------------
 # CSRF
@@ -245,14 +231,3 @@ if STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET:
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
-
-# ------------------------
-# SEGURANÇA (Produção)
-# ------------------------
-# if not DEBUG:
-#     SECURE_SSL_REDIRECT = True
-#     SESSION_COOKIE_SECURE = True
-#     CSRF_COOKIE_SECURE = True
-#     SECURE_BROWSER_XSS_FILTER = True
-#     SECURE_CONTENT_TYPE_NOSNIFF = True
-#     X_FRAME_OPTIONS = 'DENY'
