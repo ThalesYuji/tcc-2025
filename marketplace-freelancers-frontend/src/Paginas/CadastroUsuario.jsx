@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "../Servicos/Api"; // ✅ Usando o api.js centralizado
 import "../styles/CadastroUsuario.css";
 
 // Ícones
@@ -117,7 +117,8 @@ export default function CadastroUsuario() {
     setCarregando(true);
 
     try {
-      await axios.post("http://localhost:8000/api/usuarios/", formData, {
+      // ✅ Usando api.js (que já aponta para Railway)
+      await api.post("/usuarios/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Cadastro realizado com sucesso! Redirecionando...");
@@ -307,8 +308,6 @@ export default function CadastroUsuario() {
                   </div>
                 )}
               </div>
-              {erros.cpf && <div className="error-msg">{erros.cpf}</div>}
-              {erros.cnpj && <div className="error-msg">{erros.cnpj}</div>}
 
               {/* Upload de imagem */}
               <div className="form-row form-col">
