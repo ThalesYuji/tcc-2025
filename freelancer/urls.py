@@ -36,20 +36,20 @@ def create_superuser_temp(request):
     from django.contrib.auth import get_user_model
     User = get_user_model()
     try:
-        if not User.objects.filter(username='admin').exists():
+        if not User.objects.filter(email='admin@profreelabr.com').exists():
             User.objects.create_superuser(
-                username='admin',
                 email='admin@profreelabr.com',
                 password='Admin@123456',
                 nome='Administrador',
-                tipo='cliente'
+                tipo='cliente',
+                cpf='00000000000'
             )
             return JsonResponse({
                 "status": "✅ Superuser criado com sucesso!",
-                "username": "admin",
+                "email": "admin@profreelabr.com",
                 "password": "Admin@123456"
             })
-        return JsonResponse({"status": "⚠️ Superuser 'admin' já existe"})
+        return JsonResponse({"status": "⚠️ Superuser já existe"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
