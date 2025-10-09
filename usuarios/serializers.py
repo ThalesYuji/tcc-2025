@@ -62,7 +62,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         # 🔹 Consulta real na API (Pacote CPF D = 8)
         try:
-            consultar_documento(cpf, settings.CPF_CNPJ_PACOTE_CPF_D)
+            consultar_documento(cpf, settings.CPF_CNPJ_PACOTE_CPF_C)
         except CPF_CNPJValidationError as e:
             raise serializers.ValidationError(str(e))
 
