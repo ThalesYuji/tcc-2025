@@ -11,7 +11,7 @@ def validar_cpf(cpf: str):
     """
     Consulta API CPF e retorna (ok: bool, dados|mensagem: dict|str)
     """
-    url = f"{settings.CPF_CNPJ_API_BASE}/{settings.CPF_CNPJ_TOKEN}/{settings.CPF_CNPJ_PACOTE_CPF_D}/{cpf}"
+    url = f"{settings.CPF_CNPJ_API_BASE}/{settings.CPF_CNPJ_TOKEN}/{settings.CPF_CNPJ_PACOTE_CPF_C}/{cpf}"
     try:
         resp = requests.get(url, timeout=settings.CPF_CNPJ_TIMEOUT)
         resp.raise_for_status()
@@ -66,7 +66,7 @@ def consultar_documento(numero: str, pacote_id: int):
     """
     numero = numero.strip()
 
-    if pacote_id == settings.CPF_CNPJ_PACOTE_CPF_D:
+    if pacote_id == settings.CPF_CNPJ_PACOTE_CPF_C:
         ok, result = validar_cpf(numero)
     elif pacote_id == settings.CPF_CNPJ_PACOTE_CNPJ_C:
         ok, result = validar_cnpj(numero)
