@@ -1,19 +1,20 @@
 # pagamentos/views.py
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from django.db.models import Q
-from django.conf import settings
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-import stripe
-
-# ✅ Import correto das exceções do Stripe
-from stripe import StripeError
+import logging
 
 from .models import Pagamento
 from .serializers import PagamentoSerializer
 from .permissoes import PermissaoPagamento
+from services.mercadopago import MercadoPagoService
 from notificacoes.utils import enviar_notificacao
+
+logger = logging.getLogger(__name__)
 
 
 class PagamentoViewSet(viewsets.ModelViewSet):
@@ -32,72 +33,300 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             Q(contrato__freelancer=user)
         ).distinct()
 
-    def perform_create(self, serializer):
+    @action(detail=False, methods=['post'], url_path='criar-pix')
+    def criar_pix(self, request):
         """
-        🔹 Cria um PaymentIntent no Stripe para o método escolhido.
-        Faz a normalização do método (ex: credito/debito → card).
+        Cria um pagamento via PIX
+        POST /api/pagamentos/criar-pix/
+        Body: { "contrato_id": 1 }
         """
-        pagamento = serializer.save(status="pendente")
-        contrato = pagamento.contrato
-
-        # 🔹 Normaliza método enviado
-        metodo = pagamento.metodo.lower()
-        if metodo in ["credito", "debito"]:
-            metodo = "card"  # Stripe trata ambos como "card"
-
-        # 🔹 Valor mínimo do Stripe (R$ 5,00)
-        if pagamento.valor < 5:
-            raise ValueError("O valor mínimo permitido pelo Stripe é R$ 5,00.")
-
         try:
-            # 🔹 Criar PaymentIntent no Stripe
-            intent = stripe.PaymentIntent.create(
-                amount=int(pagamento.valor * 100),  # Stripe usa centavos
-                currency="brl",
-                payment_method_types=[metodo],
-                metadata={"contrato_id": contrato.id, "pagamento_id": pagamento.id},
+            contrato_id = request.data.get('contrato_id')
+            
+            if not contrato_id:
+                return Response(
+                    {"erro": "contrato_id é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Busca o contrato via queryset do serializer
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+            except Contrato.DoesNotExist:
+                return Response(
+                    {"erro": "Contrato não encontrado"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Verifica se o usuário é o cliente do contrato
+            if contrato.cliente != request.user:
+                return Response(
+                    {"erro": "Você não tem permissão para pagar este contrato"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Verifica se já existe um pagamento pendente
+            pagamento_existente = Pagamento.objects.filter(
+                contrato=contrato,
+                status__in=['pendente', 'em_processamento']
+            ).first()
+            
+            if pagamento_existente:
+                return Response(
+                    {"erro": "Já existe um pagamento pendente para este contrato"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Cria o pagamento no Mercado Pago
+            mp_service = MercadoPagoService()
+            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "") if request.user.cpf else ""
+            
+            resultado = mp_service.criar_pagamento_pix(
+                valor=float(contrato.valor),
+                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                email_pagador=request.user.email,
+                cpf_pagador=cpf_limpo,
+                nome_pagador=request.user.nome,
+                external_reference=str(contrato.id)
             )
-        except StripeError as e:
-            raise ValueError(
-                f"Erro ao criar pagamento no Stripe: {str(e)}. "
-                f"Verifique se o método '{metodo}' está habilitado no seu dashboard."
+            
+            if not resultado.get("sucesso"):
+                return Response(
+                    {"erro": resultado.get("erro", "Erro ao criar pagamento")},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Cria o registro de pagamento no banco
+            pagamento = Pagamento.objects.create(
+                contrato=contrato,
+                cliente=request.user,
+                valor=contrato.valor,
+                metodo='pix',
+                status='pendente',
+                mercadopago_payment_id=resultado['payment_id'],
+                codigo_transacao=resultado['qr_code']
+            )
+            
+            # Notifica o cliente
+            enviar_notificacao(
+                usuario=request.user,
+                mensagem=f"Pagamento PIX criado para o contrato '{contrato.trabalho.titulo}'. Use o QR Code para pagar.",
+                link=f"/contratos/{contrato.id}/pagamento"
+            )
+            
+            return Response({
+                "sucesso": True,
+                "pagamento_id": pagamento.id,
+                "mercadopago_payment_id": resultado['payment_id'],
+                "qr_code": resultado['qr_code'],
+                "qr_code_base64": resultado['qr_code_base64'],
+                "ticket_url": resultado['ticket_url'],
+                "expiration_date": resultado.get('expiration_date'),
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao criar pagamento PIX: {str(e)}")
+            return Response(
+                {"erro": "Erro interno ao processar pagamento"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # 🔹 Atualizar pagamento com dados do Stripe
-        pagamento.payment_intent_id = intent.id
-        pagamento.status = "em_processamento"
-        pagamento.save()
-
-        # 🔹 Notificação inicial
-        enviar_notificacao(
-            usuario=contrato.cliente,
-            mensagem=f"Pagamento criado para o contrato '{contrato.trabalho.titulo}'. Aguarde confirmação.",
-            link=f"/contratos/{contrato.id}/pagamento"
-        )
-
-        # 🔹 Guardar client_secret para devolver no response
-        self.client_secret = intent.client_secret
-
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        if hasattr(self, "client_secret"):
-            response.data["client_secret"] = self.client_secret
-        return response
-
-    def perform_update(self, serializer):
+    @action(detail=False, methods=['post'], url_path='criar-boleto')
+    def criar_boleto(self, request):
         """
-        🔹 Admin pode atualizar status manualmente.
+        Cria um pagamento via Boleto
+        POST /api/pagamentos/criar-boleto/
+        Body: { "contrato_id": 1 }
         """
-        pagamento = serializer.save()
-        contrato = pagamento.contrato
-
-        if pagamento.valor != contrato.valor:
-            raise ValueError(
-                f"O valor do pagamento ({pagamento.valor}) deve ser exatamente igual ao contrato ({contrato.valor})."
+        try:
+            contrato_id = request.data.get('contrato_id')
+            
+            if not contrato_id:
+                return Response(
+                    {"erro": "contrato_id é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+            except Contrato.DoesNotExist:
+                return Response(
+                    {"erro": "Contrato não encontrado"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if contrato.cliente != request.user:
+                return Response(
+                    {"erro": "Você não tem permissão para pagar este contrato"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            pagamento_existente = Pagamento.objects.filter(
+                contrato=contrato,
+                status__in=['pendente', 'em_processamento']
+            ).first()
+            
+            if pagamento_existente:
+                return Response(
+                    {"erro": "Já existe um pagamento pendente para este contrato"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            mp_service = MercadoPagoService()
+            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "") if request.user.cpf else ""
+            
+            resultado = mp_service.criar_pagamento_boleto(
+                valor=float(contrato.valor),
+                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                email_pagador=request.user.email,
+                cpf_pagador=cpf_limpo,
+                nome_pagador=request.user.nome,
+                external_reference=str(contrato.id)
+            )
+            
+            if not resultado.get("sucesso"):
+                return Response(
+                    {"erro": resultado.get("erro", "Erro ao criar pagamento")},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            pagamento = Pagamento.objects.create(
+                contrato=contrato,
+                cliente=request.user,
+                valor=contrato.valor,
+                metodo='boleto',
+                status='pendente',
+                mercadopago_payment_id=resultado['payment_id'],
+                codigo_transacao=resultado['boleto_url']
+            )
+            
+            enviar_notificacao(
+                usuario=request.user,
+                mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'. Acesse o link para pagar.",
+                link=f"/contratos/{contrato.id}/pagamento"
+            )
+            
+            return Response({
+                "sucesso": True,
+                "pagamento_id": pagamento.id,
+                "mercadopago_payment_id": resultado['payment_id'],
+                "boleto_url": resultado['boleto_url'],
+                "barcode": resultado.get('barcode'),
+                "expiration_date": resultado.get('expiration_date'),
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao criar pagamento Boleto: {str(e)}")
+            return Response(
+                {"erro": "Erro interno ao processar pagamento"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        if pagamento.status == "aprovado" and contrato.status != "concluido":
-            self._concluir_contrato(contrato)
+    @action(detail=False, methods=['post'], url_path='criar-cartao')
+    def criar_cartao(self, request):
+        """
+        Cria um pagamento via Cartão
+        POST /api/pagamentos/criar-cartao/
+        Body: { 
+            "contrato_id": 1,
+            "token": "token_do_cartao",
+            "parcelas": 1
+        }
+        """
+        try:
+            contrato_id = request.data.get('contrato_id')
+            token_cartao = request.data.get('token')
+            parcelas = request.data.get('parcelas', 1)
+            
+            if not all([contrato_id, token_cartao]):
+                return Response(
+                    {"erro": "contrato_id e token são obrigatórios"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+            except Contrato.DoesNotExist:
+                return Response(
+                    {"erro": "Contrato não encontrado"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            if contrato.cliente != request.user:
+                return Response(
+                    {"erro": "Você não tem permissão para pagar este contrato"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            pagamento_existente = Pagamento.objects.filter(
+                contrato=contrato,
+                status__in=['pendente', 'em_processamento']
+            ).first()
+            
+            if pagamento_existente:
+                return Response(
+                    {"erro": "Já existe um pagamento pendente para este contrato"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            mp_service = MercadoPagoService()
+            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "") if request.user.cpf else ""
+            
+            resultado = mp_service.criar_pagamento_cartao(
+                valor=float(contrato.valor),
+                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                token_cartao=token_cartao,
+                parcelas=int(parcelas),
+                email_pagador=request.user.email,
+                cpf_pagador=cpf_limpo,
+                external_reference=str(contrato.id)
+            )
+            
+            if not resultado.get("sucesso"):
+                return Response(
+                    {"erro": resultado.get("erro", "Erro ao criar pagamento")},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Mapeia o status do MP para o nosso
+            status_local = mp_service.mapear_status_mp_para_local(resultado['status'])
+            
+            pagamento = Pagamento.objects.create(
+                contrato=contrato,
+                cliente=request.user,
+                valor=contrato.valor,
+                metodo='card',
+                status=status_local,
+                mercadopago_payment_id=resultado['payment_id']
+            )
+            
+            # Se foi aprovado instantaneamente, conclui o contrato
+            if status_local == 'aprovado':
+                self._concluir_contrato(contrato)
+            
+            enviar_notificacao(
+                usuario=request.user,
+                mensagem=f"Pagamento com cartão processado para o contrato '{contrato.trabalho.titulo}'.",
+                link=f"/contratos/{contrato.id}/pagamento"
+            )
+            
+            return Response({
+                "sucesso": True,
+                "pagamento_id": pagamento.id,
+                "mercadopago_payment_id": resultado['payment_id'],
+                "status": status_local,
+                "status_detail": resultado.get('status_detail'),
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao criar pagamento Cartão: {str(e)}")
+            return Response(
+                {"erro": "Erro interno ao processar pagamento"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _concluir_contrato(self, contrato):
         """
@@ -121,73 +350,71 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
 
 # ------------------------
-# Webhook Stripe (sem DRF, sem JWT, só Django puro)
+# Webhook Mercado Pago (sem DRF, sem JWT, só Django puro)
 # ------------------------
 @csrf_exempt
-def stripe_webhook(request):
+def mercadopago_webhook(request):
     """
-    Endpoint público para o Stripe enviar eventos de pagamento.
+    Endpoint público para o Mercado Pago enviar eventos de pagamento.
     ⚠️ Não passa pelo DRF → não exige autenticação JWT.
-    Apenas valida a assinatura do Stripe.
     """
     if request.method != "POST":
-        return HttpResponse(status=405)  # Método não permitido
+        return HttpResponse(status=405)
 
-    payload = request.body
-    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
-    event = None
-
+    import json
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        print("❌ Webhook: Payload inválido")
-        return JsonResponse({"error": "Payload inválido"}, status=400)
-    except stripe.error.SignatureVerificationError:
-        print("❌ Webhook: Assinatura inválida")
-        return JsonResponse({"error": "Assinatura inválida"}, status=400)
-    except Exception as e:
-        print(f"❌ Webhook: Erro inesperado - {str(e)}")
-        return JsonResponse({"error": "Erro interno"}, status=500)
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        logger.error("❌ Webhook MP: JSON inválido")
+        return JsonResponse({"error": "JSON inválido"}, status=400)
 
-    # 🔹 Debug: logar o evento recebido
-    print(f"🔔 Evento recebido do Stripe: {event['type']}")
+    logger.info(f"🔔 Webhook recebido do Mercado Pago: {data.get('type')}")
 
-    event_type = event["type"]
-    intent = event["data"]["object"]
-
-    # 🔹 Pagamento aprovado
-    if event_type == "payment_intent.succeeded":
-        pagamento = Pagamento.objects.filter(payment_intent_id=intent["id"]).first()
-        if pagamento:
-            print(f"✅ Pagamento #{pagamento.id} aprovado")
-            pagamento.status = "aprovado"
-            pagamento.save()
-            
+    # Mercado Pago envia notificações de diferentes tipos
+    if data.get("type") == "payment":
+        payment_id = data.get("data", {}).get("id")
+        
+        if not payment_id:
+            logger.warning("⚠️ Webhook MP: payment_id não encontrado")
+            return JsonResponse({"status": "ok"}, status=200)
+        
+        # Consulta o pagamento atualizado no Mercado Pago
+        mp_service = MercadoPagoService()
+        payment_info = mp_service.consultar_pagamento(str(payment_id))
+        
+        if not payment_info:
+            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP")
+            return JsonResponse({"status": "ok"}, status=200)
+        
+        # Busca o pagamento no banco
+        pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
+        
+        if not pagamento:
+            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no banco")
+            return JsonResponse({"status": "ok"}, status=200)
+        
+        # Atualiza o status
+        status_antigo = pagamento.status
+        pagamento.status = mp_service.mapear_status_mp_para_local(payment_info['status'])
+        pagamento.save()
+        
+        logger.info(f"✅ Pagamento #{pagamento.id} atualizado: {status_antigo} → {pagamento.status}")
+        
+        # Se foi aprovado, conclui o contrato
+        if pagamento.status == 'aprovado' and status_antigo != 'aprovado':
             contrato = pagamento.contrato
             if contrato.status != "concluido":
-                # Usar método auxiliar da viewset
                 viewset = PagamentoViewSet()
                 viewset._concluir_contrato(contrato)
-        else:
-            print(f"⚠️ PaymentIntent {intent['id']} não encontrado no banco")
-
-    # 🔹 Pagamento falhou
-    elif event_type == "payment_intent.payment_failed":
-        pagamento = Pagamento.objects.filter(payment_intent_id=intent["id"]).first()
-        if pagamento:
-            print(f"❌ Pagamento #{pagamento.id} rejeitado")
-            pagamento.status = "rejeitado"
-            pagamento.save()
-            
-            # Notificar cliente sobre falha
+                logger.info(f"✅ Contrato #{contrato.id} concluído automaticamente")
+        
+        # Se foi rejeitado, notifica
+        elif pagamento.status == 'rejeitado' and status_antigo != 'rejeitado':
             enviar_notificacao(
                 usuario=pagamento.contrato.cliente,
-                mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' falhou. Tente novamente.",
+                mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' foi rejeitado. Tente novamente.",
                 link=f"/contratos/{pagamento.contrato.id}/pagamento"
             )
-        else:
-            print(f"⚠️ PaymentIntent {intent['id']} não encontrado no banco")
-
+            logger.info(f"📧 Notificação de rejeição enviada para cliente #{pagamento.contrato.cliente.id}")
+    
     return JsonResponse({"status": "ok"}, status=200)

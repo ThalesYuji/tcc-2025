@@ -43,12 +43,10 @@ router.register(r'notificacoes', NotificacaoViewSet, basename='notificacao')
 # URLs principais
 # ------------------------
 urlpatterns = [
-    # 🧪 TEMPORÁRIO: Criar superuser (REMOVER depois de usar!)
-    
     path('admin/', admin.site.urls),
     
     # ⚡ CRÍTICO: Webhooks públicos DEVEM vir ANTES de 'api/'
-    path('stripe/', include('pagamentos.urls')),
+    path('mercadopago/', include('pagamentos.urls')),
     
     # JWT endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
