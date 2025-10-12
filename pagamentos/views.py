@@ -328,6 +328,41 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['get'], url_path='status')
+    def consultar_status(self, request, pk=None):
+        """
+        Consulta o status atual de um pagamento
+        GET /api/pagamentos/{id}/status/
+        """
+        try:
+            pagamento = self.get_object()
+            
+            # Se tem ID do Mercado Pago, consulta o status atualizado
+            if pagamento.mercadopago_payment_id:
+                mp_service = MercadoPagoService()
+                payment_info = mp_service.consultar_pagamento(pagamento.mercadopago_payment_id)
+                
+                if payment_info:
+                    # Atualiza o status local se mudou
+                    novo_status = mp_service.mapear_status_mp_para_local(payment_info['status'])
+                    if novo_status != pagamento.status:
+                        pagamento.status = novo_status
+                        pagamento.save()
+                        
+                        # Se foi aprovado, conclui o contrato
+                        if novo_status == 'aprovado':
+                            self._concluir_contrato(pagamento.contrato)
+            
+            serializer = self.get_serializer(pagamento)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            logger.error(f"❌ Erro ao consultar status: {str(e)}")
+            return Response(
+                {"erro": "Erro ao consultar status do pagamento"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     def _concluir_contrato(self, contrato):
         """
         🔹 Marca contrato e trabalho como concluídos, envia notificações.

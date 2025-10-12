@@ -1,4 +1,4 @@
-/* src/styles/PagamentoContrato.css - Layout Expandido */
+/* src/styles/PagamentoContrato.css - Layout Expandido com Mercado Pago */
 
 .pagamento-container {
   background: var(--cor-fundo);
@@ -188,7 +188,7 @@
   min-height: 100px;
 }
 
-.opcao-box:hover {
+.opcao-box:hover:not(.disabled) {
   border-color: var(--cor-primaria);
   background: rgba(59, 130, 246, 0.03);
   transform: translateY(-2px);
@@ -201,6 +201,12 @@
   color: var(--cor-primaria);
   box-shadow: var(--sombra-lg);
   transform: translateY(-2px);
+}
+
+.opcao-box.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .opcao-box input {
@@ -288,6 +294,166 @@
 }
 
 /* ==============================
+   QR CODE PIX - MERCADO PAGO
+   ============================== */
+.pix-container {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  animation: slideInUp 0.5s ease-out;
+}
+
+.pix-container h4 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pix-container h4 i {
+  color: var(--cor-primaria);
+  font-size: 1.25rem;
+}
+
+.qr-code-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--space-xl) 0;
+  padding: var(--space-2xl);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(16, 185, 129, 0.03) 100%);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--borda-medium);
+}
+
+.qr-code-display img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  box-shadow: var(--sombra-lg);
+}
+
+.pix-actions {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-xl) 0;
+}
+
+.btn-copiar-pix {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-2xl);
+  background: linear-gradient(135deg, #00b894 0%, #00a383 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--sombra-md);
+}
+
+.btn-copiar-pix:hover {
+  background: linear-gradient(135deg, #00a383 0%, #008f72 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
+}
+
+.btn-copiar-pix i {
+  font-size: 1.25rem;
+}
+
+.pix-instrucoes {
+  margin-top: var(--space-xl);
+  padding: var(--space-xl);
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 150, 243, 0.05) 100%);
+  border-left: 4px solid #2196f3;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: #1565c0;
+}
+
+/* ==============================
+   BOLETO - MERCADO PAGO
+   ============================== */
+.boleto-container {
+  background: var(--superficie-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  box-shadow: var(--sombra-md);
+  border: 1px solid var(--borda-light);
+  animation: slideInUp 0.5s ease-out;
+}
+
+.boleto-container h4 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.boleto-container h4 i {
+  color: var(--cor-primaria);
+  font-size: 1.25rem;
+}
+
+.boleto-actions {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-xl) 0;
+}
+
+.btn-baixar-boleto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-2xl);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  box-shadow: var(--sombra-md);
+  text-decoration: none;
+}
+
+.btn-baixar-boleto:hover {
+  background: linear-gradient(135deg, #ee5a6f 0%, #e74c3c 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
+}
+
+.btn-baixar-boleto i {
+  font-size: 1.25rem;
+}
+
+.boleto-instrucoes {
+  margin-top: var(--space-xl);
+  padding: var(--space-xl);
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, rgba(255, 107, 107, 0.05) 100%);
+  border-left: 4px solid #ff6b6b;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: #c0392b;
+}
+
+/* ==============================
    SIDEBAR (DIREITA)
    ============================== */
 .pagamento-sidebar {
@@ -358,6 +524,45 @@
   color: var(--cor-sucesso);
 }
 
+/* Status do pagamento */
+.pagamento-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+}
+
+.status-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cor-texto-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.status-badge.processando {
+  background: rgba(255, 159, 67, 0.1);
+  color: #e67e22;
+  border: 1px solid rgba(255, 159, 67, 0.2);
+}
+
+.status-badge i {
+  animation: pulse 2s ease-in-out infinite;
+}
+
 /* ==============================
    MENSAGENS DE STATUS
    ============================== */
@@ -368,7 +573,7 @@
   font-weight: 500;
   margin-bottom: var(--space-lg);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-sm);
   animation: messageSlideIn 0.3s ease-out;
 }
@@ -376,6 +581,7 @@
 .pagamento-msg i {
   font-size: 1.25rem;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .pagamento-msg.erro {
@@ -391,7 +597,7 @@
 }
 
 /* ==============================
-   ÁREA DE AÇÕES - BOTÕES CORRIGIDOS
+   ÁREA DE AÇÕES - BOTÕES
    ============================== */
 .pagamento-actions {
   display: flex;
@@ -479,8 +685,8 @@
 }
 
 .loading-spinner.small {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-width: 2px;
   margin: 0;
 }
@@ -542,6 +748,15 @@
     flex: none;
     width: 100%;
   }
+  
+  .qr-code-display img {
+    max-width: 250px;
+  }
+  
+  .pix-container,
+  .boleto-container {
+    padding: var(--space-xl);
+  }
 }
 
 @media (max-width: 480px) {
@@ -572,6 +787,20 @@
     height: 48px;
     font-size: 1.25rem;
   }
+  
+  .qr-code-display {
+    padding: var(--space-lg);
+  }
+  
+  .qr-code-display img {
+    max-width: 200px;
+  }
+  
+  .btn-copiar-pix,
+  .btn-baixar-boleto {
+    padding: var(--space-md) var(--space-lg);
+    font-size: 0.9rem;
+  }
 }
 
 /* ==============================
@@ -592,6 +821,16 @@
   100% { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .opcao-box {
   animation: slideInUp 0.4s ease-out forwards;
   opacity: 0;
@@ -601,11 +840,6 @@
 .opcao-box:nth-child(1) { animation-delay: 0.1s; }
 .opcao-box:nth-child(2) { animation-delay: 0.2s; }
 .opcao-box:nth-child(3) { animation-delay: 0.3s; }
-.opcao-box:nth-child(4) { animation-delay: 0.4s; }
-
-@keyframes slideInUp {
-  to { opacity: 1; transform: translateY(0); }
-}
 
 /* ==============================
    ESTADOS ESPECIAIS

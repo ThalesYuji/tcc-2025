@@ -1,4 +1,4 @@
-// src/Paginas/PagamentoContrato.jsx - Integrado com Stripe
+// src/Paginas/PagamentoContrato.jsx - Integrado com Mercado Pago
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
@@ -15,7 +15,13 @@ export default function PagamentoContrato() {
   const [carregando, setCarregando] = useState(true);
   const [processandoPagamento, setProcessandoPagamento] = useState(false);
   const [pagamentoId, setPagamentoId] = useState(null);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  
+  // Dados específicos do Mercado Pago
+  const [qrCode, setQrCode] = useState(null);
+  const [qrCodeBase64, setQrCodeBase64] = useState(null);
+  const [boletoUrl, setBoletoUrl] = useState(null);
+  const [pixCopiado, setPixCopiado] = useState(false);
+  
   const token = localStorage.getItem("token");
 
   // Buscar contrato
@@ -44,7 +50,7 @@ export default function PagamentoContrato() {
     const intervalo = setInterval(async () => {
       try {
         console.log("🔍 Verificando status do pagamento...");
-        const response = await api.get(`/pagamentos/${pagamentoId}/`, {
+        const response = await api.get(`/pagamentos/${pagamentoId}/status/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -74,57 +80,107 @@ export default function PagamentoContrato() {
     };
   }, [pagamentoId, token, navigate]);
 
-  // Confirmar pagamento
+  // Copiar código PIX
+  const copiarPixCode = () => {
+    if (qrCode) {
+      navigator.clipboard.writeText(qrCode);
+      setPixCopiado(true);
+      setTimeout(() => setPixCopiado(false), 2000);
+    }
+  };
+
+  // Confirmar pagamento - PIX
+  const criarPagamentoPix = async () => {
+    setErro("");
+    setSucesso("");
+    setProcessandoPagamento(true);
+
+    try {
+      const response = await api.post("/pagamentos/criar-pix/", 
+        { contrato_id: contrato?.id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setPagamentoId(response.data.pagamento_id);
+      setQrCode(response.data.qr_code);
+      setQrCodeBase64(response.data.qr_code_base64);
+      
+      setSucesso("💳 QR Code PIX gerado! Use o aplicativo do seu banco para pagar.");
+    } catch (error) {
+      handleErro(error);
+      setProcessandoPagamento(false);
+    }
+  };
+
+  // Confirmar pagamento - Boleto
+  const criarPagamentoBoleto = async () => {
+    setErro("");
+    setSucesso("");
+    setProcessandoPagamento(true);
+
+    try {
+      const response = await api.post("/pagamentos/criar-boleto/", 
+        { contrato_id: contrato?.id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setPagamentoId(response.data.pagamento_id);
+      setBoletoUrl(response.data.boleto_url);
+      
+      setSucesso("📄 Boleto gerado! Clique no botão abaixo para baixar.");
+    } catch (error) {
+      handleErro(error);
+      setProcessandoPagamento(false);
+    }
+  };
+
+  // Confirmar pagamento - Cartão
+  const criarPagamentoCartao = async () => {
+    setErro("");
+    setSucesso("");
+    
+    // TODO: Implementar formulário de cartão com Mercado Pago SDK
+    setErro("⚠️ Pagamento com cartão será implementado em breve. Use PIX ou Boleto.");
+  };
+
+  // Função principal de pagamento
   const confirmarPagamento = async () => {
     if (!metodo) {
       setErro("Escolha uma forma de pagamento.");
       return;
     }
 
-    setErro("");
-    setSucesso("");
-    setProcessandoPagamento(true);
-
-    const payload = {
-      contrato: contrato?.id,
-      cliente: contrato?.cliente?.id,
-      valor: contrato?.valor,
-      metodo,
-    };
-
-    try {
-      const response = await api.post("/pagamentos/", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Salvar IDs para monitoramento
-      setPagamentoId(response.data.id);
-      setPaymentIntentId(response.data.payment_intent_id);
-
-      // Mostrar instruções para teste
-      setSucesso(
-        `💳 Pagamento criado! Payment Intent ID: ${response.data.payment_intent_id}\n\n` +
-        `🧪 PARA TESTAR: Execute no terminal:\n` +
-        `stripe trigger payment_intent.succeeded\n\n` +
-        `⏳ Aguardando confirmação do Stripe...`
-      );
-
-      // Continua em "processandoPagamento" até o polling detectar mudança
-    } catch (error) {
-      let msg = "Erro ao registrar pagamento.";
-      if (error.response?.data) {
-        if (typeof error.response.data === "string") {
-          msg = error.response.data;
-        } else if (error.response.data.detail) {
-          msg = error.response.data.detail;
-        } else {
-          const primeiroErro = Object.values(error.response.data)[0];
-          msg = Array.isArray(primeiroErro) ? primeiroErro[0] : primeiroErro;
-        }
-      }
-      setErro(msg);
-      setProcessandoPagamento(false);
+    switch(metodo) {
+      case 'pix':
+        await criarPagamentoPix();
+        break;
+      case 'boleto':
+        await criarPagamentoBoleto();
+        break;
+      case 'card':
+        await criarPagamentoCartao();
+        break;
+      default:
+        setErro("Método de pagamento inválido.");
     }
+  };
+
+  // Handler de erros
+  const handleErro = (error) => {
+    let msg = "Erro ao registrar pagamento.";
+    if (error.response?.data) {
+      if (typeof error.response.data === "string") {
+        msg = error.response.data;
+      } else if (error.response.data.erro) {
+        msg = error.response.data.erro;
+      } else if (error.response.data.detail) {
+        msg = error.response.data.detail;
+      } else {
+        const primeiroErro = Object.values(error.response.data)[0];
+        msg = Array.isArray(primeiroErro) ? primeiroErro[0] : primeiroErro;
+      }
+    }
+    setErro(msg);
   };
 
   // Loading state
@@ -167,15 +223,10 @@ export default function PagamentoContrato() {
     },
     { 
       value: "card", 
-      label: "Cartão de Crédito", 
-      descricao: "Parcelamento até 12x sem juros",
-      icon: "bi bi-credit-card" 
-    },
-    { 
-      value: "card", 
-      label: "Cartão de Débito", 
-      descricao: "Débito automático à vista",
-      icon: "bi bi-credit-card-2-front" 
+      label: "Cartão de Crédito/Débito", 
+      descricao: "Em breve",
+      icon: "bi bi-credit-card",
+      disabled: true
     },
   ];
 
@@ -204,14 +255,14 @@ export default function PagamentoContrato() {
       {erro && (
         <div className="pagamento-msg erro">
           <i className="bi bi-exclamation-circle"></i>
-          <pre style={{whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>{erro}</pre>
+          <span>{erro}</span>
         </div>
       )}
       
       {sucesso && (
         <div className="pagamento-msg sucesso">
           <i className="bi bi-check-circle"></i>
-          <pre style={{whiteSpace: 'pre-wrap', fontFamily: 'inherit'}}>{sucesso}</pre>
+          <span>{sucesso}</span>
         </div>
       )}
 
@@ -248,48 +299,89 @@ export default function PagamentoContrato() {
           </div>
 
           {/* Formulário de Pagamento */}
-          <div className="pagamento-form">
-            <h4>
-              <i className="bi bi-wallet2"></i>
-              Escolha o método de pagamento
-            </h4>
-            
-            <div className="pagamento-opcoes">
-              {metodosDisponiveis.map((opcao, idx) => (
-                <label
-                  key={`${opcao.value}-${idx}`}
-                  className={`opcao-box ${metodo === opcao.value ? "ativo" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    value={opcao.value}
-                    checked={metodo === opcao.value}
-                    onChange={(e) => setMetodo(e.target.value)}
-                    disabled={processandoPagamento}
-                  />
-                  <div className="icone">
-                    <i className={opcao.icon}></i>
-                  </div>
-                  <div className="opcao-info">
-                    <div className="opcao-titulo">{opcao.label}</div>
-                    <div className="opcao-descricao">{opcao.descricao}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Instruções de teste */}
-          {paymentIntentId && processandoPagamento && (
-            <div className="pagamento-instrucoes">
+          {!qrCode && !boletoUrl && (
+            <div className="pagamento-form">
               <h4>
-                <i className="bi bi-terminal"></i>
-                Instruções para Teste
+                <i className="bi bi-wallet2"></i>
+                Escolha o método de pagamento
               </h4>
-              <p>Execute no terminal para simular aprovação:</p>
-              <code>stripe trigger payment_intent.succeeded</code>
-              <p style={{marginTop: '10px', fontSize: '0.9em', color: '#666'}}>
-                O sistema está monitorando automaticamente e atualizará quando o webhook receber o evento.
+              
+              <div className="pagamento-opcoes">
+                {metodosDisponiveis.map((opcao, idx) => (
+                  <label
+                    key={`${opcao.value}-${idx}`}
+                    className={`opcao-box ${metodo === opcao.value ? "ativo" : ""} ${opcao.disabled ? "disabled" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      value={opcao.value}
+                      checked={metodo === opcao.value}
+                      onChange={(e) => setMetodo(e.target.value)}
+                      disabled={processandoPagamento || opcao.disabled}
+                    />
+                    <div className="icone">
+                      <i className={opcao.icon}></i>
+                    </div>
+                    <div className="opcao-info">
+                      <div className="opcao-titulo">{opcao.label}</div>
+                      <div className="opcao-descricao">{opcao.descricao}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* QR Code PIX */}
+          {qrCodeBase64 && (
+            <div className="pix-container">
+              <h4>
+                <i className="bi bi-qr-code"></i>
+                QR Code PIX
+              </h4>
+              <div className="qr-code-display">
+                <img src={`data:image/png;base64,${qrCodeBase64}`} alt="QR Code PIX" />
+              </div>
+              <div className="pix-actions">
+                <button 
+                  onClick={copiarPixCode}
+                  className="btn-copiar-pix"
+                >
+                  <i className={pixCopiado ? "bi bi-check-lg" : "bi bi-clipboard"}></i>
+                  {pixCopiado ? "Código Copiado!" : "Copiar Código PIX"}
+                </button>
+              </div>
+              <p className="pix-instrucoes">
+                🔹 Abra o app do seu banco<br/>
+                🔹 Escaneie o QR Code ou cole o código<br/>
+                🔹 Confirme o pagamento<br/>
+                ⏳ Aguarde a confirmação automática
+              </p>
+            </div>
+          )}
+
+          {/* Boleto */}
+          {boletoUrl && (
+            <div className="boleto-container">
+              <h4>
+                <i className="bi bi-file-earmark-text"></i>
+                Boleto Bancário
+              </h4>
+              <div className="boleto-actions">
+                <a 
+                  href={boletoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-baixar-boleto"
+                >
+                  <i className="bi bi-download"></i>
+                  Baixar Boleto
+                </a>
+              </div>
+              <p className="boleto-instrucoes">
+                📄 Clique para baixar o boleto<br/>
+                🏦 Pague em qualquer banco ou lotérica<br/>
+                ⏳ Aguarde até 2 dias úteis para confirmação
               </p>
             </div>
           )}
@@ -339,26 +431,28 @@ export default function PagamentoContrato() {
                 disabled={processandoPagamento}
               >
                 <i className="bi bi-arrow-left"></i>
-                Cancelar
+                {pagamentoId ? "Fechar" : "Cancelar"}
               </button>
               
-              <button 
-                onClick={confirmarPagamento} 
-                className="btn-confirmar"
-                disabled={processandoPagamento || !metodo}
-              >
-                {processandoPagamento ? (
-                  <>
-                    <div className="loading-spinner small"></div>
-                    Aguardando...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-check-lg"></i>
-                    Criar Pagamento
-                  </>
-                )}
-              </button>
+              {!pagamentoId && (
+                <button 
+                  onClick={confirmarPagamento} 
+                  className="btn-confirmar"
+                  disabled={processandoPagamento || !metodo}
+                >
+                  {processandoPagamento ? (
+                    <>
+                      <div className="loading-spinner small"></div>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check-lg"></i>
+                      Gerar Pagamento
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
