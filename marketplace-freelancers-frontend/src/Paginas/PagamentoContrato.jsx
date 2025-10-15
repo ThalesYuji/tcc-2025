@@ -95,11 +95,19 @@ export default function PagamentoContrato() {
     setSucesso("");
     setProcessandoPagamento(true);
 
+    console.log("🔍 DEBUG - Iniciando pagamento PIX");
+    console.log("📦 Contrato ID:", contrato?.id);
+    console.log("🔑 Token existe:", !!token);
+    console.log("🌐 Base URL:", api.defaults.baseURL);
+
     try {
+      console.log("📡 Chamando API:", `${api.defaults.baseURL}/pagamentos/criar-pix/`);
+      
       const response = await api.post("/pagamentos/criar-pix/", 
-        { contrato_id: contrato?.id },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { contrato_id: contrato?.id }
       );
+
+      console.log("✅ Resposta recebida:", response.data);
 
       setPagamentoId(response.data.pagamento_id);
       setQrCode(response.data.qr_code);
@@ -107,6 +115,10 @@ export default function PagamentoContrato() {
       
       setSucesso("💳 QR Code PIX gerado! Use o aplicativo do seu banco para pagar.");
     } catch (error) {
+      console.error("❌ Erro completo:", error);
+      console.error("❌ Response:", error.response);
+      console.error("❌ Status:", error.response?.status);
+      console.error("❌ Data:", error.response?.data);
       handleErro(error);
       setProcessandoPagamento(false);
     }
