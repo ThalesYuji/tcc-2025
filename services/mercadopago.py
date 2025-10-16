@@ -32,7 +32,6 @@ def _extrair_msg_erro_mp(resp: dict) -> str:
     msg = resp.get("message") or resp.get("error") or str(resp)
     cause = resp.get("cause")
     if isinstance(cause, list) and cause:
-        # Pega a primeira causa com descrição
         msg = cause[0].get("description") or msg
     return msg
 
@@ -56,10 +55,7 @@ class MercadoPagoService:
         nome_pagador: str,
         external_reference: str = None
     ) -> Dict:
-        """
-        Cria um pagamento via PIX
-        Returns: Dict com dados do pagamento incluindo QR Code e chave PIX
-        """
+        """Cria um pagamento via PIX"""
         try:
             primeiro, ultimo = _split_nome_completo(nome_pagador)
 
@@ -103,7 +99,7 @@ class MercadoPagoService:
             return {"sucesso": False, "erro": str(e)}
 
     # ------------------------------
-    # BOLETO
+    # BOLETO (REGISTRADO)
     # ------------------------------
     def criar_pagamento_boleto(
         self,
@@ -112,25 +108,45 @@ class MercadoPagoService:
         email_pagador: str,
         cpf_pagador: str,
         nome_pagador: str,
-        external_reference: str = None
+        external_reference: str = None,
+        endereco: dict | None = None,  # ⚠️ obrigatório para boleto registrado
     ) -> Dict:
         """
-        Cria um pagamento via Boleto
-        Returns: Dict com dados do pagamento incluindo URL do boleto
+        Cria um pagamento via Boleto Registrado.
+        'endereco' deve conter: zip_code, street_name, street_number, neighborhood, city, federal_unit (UF).
         """
         try:
             primeiro, ultimo = _split_nome_completo(nome_pagador)
 
+            # saneia CEP e UF
+            cep = (endereco or {}).get("zip_code")
+            if cep:
+                cep = "".join(c for c in str(cep) if c.isdigit())
+            uf = (endereco or {}).get("federal_unit")
+            if uf:
+                uf = str(uf).upper()[:2]
+
+            payer = {
+                "email": email_pagador,
+                "first_name": primeiro,
+                "last_name": ultimo,
+                "identification": {"type": "CPF", "number": cpf_pagador},
+            }
+            if endereco:
+                payer["address"] = {
+                    "zip_code": cep,
+                    "street_name": (endereco or {}).get("street_name"),
+                    "street_number": (endereco or {}).get("street_number"),
+                    "neighborhood": (endereco or {}).get("neighborhood"),
+                    "city": (endereco or {}).get("city"),
+                    "federal_unit": uf,
+                }
+
             payment_data = {
                 "transaction_amount": float(valor),
                 "description": descricao,
-                "payment_method_id": "bolbradesco",  # boleto BR
-                "payer": {
-                    "email": email_pagador,
-                    "first_name": primeiro,
-                    "last_name": ultimo,
-                    "identification": {"type": "CPF", "number": cpf_pagador},
-                },
+                "payment_method_id": "bolbradesco",
+                "payer": payer,
             }
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
@@ -141,23 +157,16 @@ class MercadoPagoService:
             payment = result.get("response", {})
             logger.info(f"MP BOLETO ← status={status} body={payment}")
 
-            # Falha (400/422 etc) ou sem "id"
             if status not in (200, 201) or "id" not in payment:
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
-            # boleto_url pode vir em dois lugares diferentes:
             poi_tx = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
-            boleto_url = poi_tx.get("ticket_url")
-            if not boleto_url:
-                boleto_url = (payment.get("transaction_details") or {}).get("external_resource_url")
-
+            boleto_url = poi_tx.get("ticket_url") or (payment.get("transaction_details") or {}).get("external_resource_url")
             barcode = None
-            # Alguns ambientes retornam em poi.transaction_data.barcode (string) ou em payment["barcode"]["content"]
             if isinstance(poi_tx.get("barcode"), str):
                 barcode = poi_tx.get("barcode")
             elif isinstance(payment.get("barcode"), dict):
                 barcode = payment.get("barcode", {}).get("content")
-
             expiration_date = poi_tx.get("expiration_date") or payment.get("date_of_expiration")
 
             if not boleto_url:
@@ -189,13 +198,9 @@ class MercadoPagoService:
         cpf_pagador: str,
         external_reference: str = None
     ) -> Dict:
-        """
-        Cria um pagamento via Cartão de Crédito
-        Returns: Dict com dados do pagamento
-        """
+        """Cria um pagamento via Cartão de Crédito"""
         try:
-            # ⚠️ NÃO fixe payment_method_id como "visa";
-            # o token já carrega o método detectado pelo MP.
+            # não fixe payment_method_id; o token já carrega a bandeira
             payment_data = {
                 "transaction_amount": float(valor),
                 "token": token_cartao,
@@ -233,9 +238,7 @@ class MercadoPagoService:
     # CONSULTA
     # ------------------------------
     def consultar_pagamento(self, payment_id: str) -> Optional[Dict]:
-        """
-        Consulta o status de um pagamento
-        """
+        """Consulta o status de um pagamento"""
         try:
             logger.info(f"MP GET pagamento → {payment_id}")
             result = self.sdk.payment().get(payment_id)
@@ -265,9 +268,7 @@ class MercadoPagoService:
     # MAPA DE STATUS
     # ------------------------------
     def mapear_status_mp_para_local(self, status_mp: str) -> str:
-        """
-        Mapeia status do Mercado Pago para os status do model local
-        """
+        """Mapeia status do Mercado Pago para os status do model local"""
         mapeamento = {
             "pending": "pendente",
             "in_process": "em_processamento",
