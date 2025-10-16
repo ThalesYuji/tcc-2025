@@ -4,6 +4,7 @@ Suporta: PIX, Boleto (registrado) e Cartão de Crédito
 """
 import logging
 from typing import Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 import mercadopago
 from django.conf import settings
@@ -34,6 +35,47 @@ def _extrair_msg_erro_mp(resp: dict) -> str:
     if isinstance(cause, list) and cause:
         msg = cause[0].get("description") or msg
     return msg
+
+
+def _url_valida(url: Optional[str]) -> bool:
+    """Retorna True se for http(s) com host público (não localhost)."""
+    if not url:
+        return False
+    try:
+        p = urlparse(url)
+        if p.scheme not in ("http", "https"):
+            return False
+        if not p.netloc:
+            return False
+        # evita localhost/127.0.0.1
+        host = p.hostname or ""
+        if host in ("localhost", "127.0.0.1", "0.0.0.0"):
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def _build_notification_url() -> Optional[str]:
+    """
+    Tenta montar a notification_url a partir de MP_WEBHOOK_URL ou SITE_URL.
+    Só retorna se for uma URL pública válida; caso contrário, retorna None.
+    """
+    # Preferência explícita
+    url = getattr(settings, "MP_WEBHOOK_URL", None)
+    if _url_valida(url):
+        return url.rstrip("/")
+
+    # Fallback com SITE_URL
+    base = getattr(settings, "SITE_URL", "") or ""
+    if base:
+        base = base.rstrip("/")
+        candidate = f"{base}/mercadopago/webhook/"
+        if _url_valida(candidate):
+            return candidate.rstrip("/")
+
+    # Sem URL válida → não enviar notification_url (evita 400 no MP)
+    return None
 
 
 class MercadoPagoService:
@@ -70,6 +112,10 @@ class MercadoPagoService:
             }
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
+
+            notif = _build_notification_url()
+            if notif:
+                payment_data["notification_url"] = notif
 
             logger.info(f"MP PIX → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
@@ -139,13 +185,6 @@ class MercadoPagoService:
                     "federal_unit": uf,
                 }
 
-            # notification_url (webhook público)
-            try:
-                notification_url = getattr(settings, "MP_WEBHOOK_URL", None) \
-                    or (getattr(settings, "SITE_URL", "").rstrip("/") + "/mercadopago/webhook/")
-            except Exception:
-                notification_url = None
-
             payment_data = {
                 "transaction_amount": float(valor),
                 "description": descricao,
@@ -154,10 +193,11 @@ class MercadoPagoService:
             }
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
-            if notification_url:
-                payment_data["notification_url"] = notification_url
 
-            # Mantemos endereço apenas em 'payer.address' (nada em additional_info)
+            notif = _build_notification_url()
+            if notif:
+                payment_data["notification_url"] = notif
+
             logger.info(f"MP BOLETO → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
@@ -221,6 +261,10 @@ class MercadoPagoService:
             }
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
+
+            notif = _build_notification_url()
+            if notif:
+                payment_data["notification_url"] = notif
 
             logger.info(f"MP CARTAO → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
