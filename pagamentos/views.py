@@ -169,6 +169,13 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 logger.error(f"❌ Usuário {request.user.id} não é cliente")
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
+            # valor mínimo para boleto (evita falhas no adquirente)
+            if float(contrato.valor) < 3:
+                return Response(
+                    {"erro": "O valor mínimo para boleto é R$ 3,00."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             pagamento_existente = Pagamento.objects.filter(
                 contrato=contrato,
                 status__in=['pendente', 'em_processamento']
