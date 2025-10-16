@@ -33,6 +33,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             Q(contrato__freelancer=user)
         ).distinct()
 
+    # ===================== PIX =====================
     @action(detail=False, methods=['post'], url_path='criar-pix')
     def criar_pix(self, request):
         """
@@ -132,110 +133,128 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             logger.error(f"❌ Erro inesperado ao criar pagamento PIX: {str(e)}", exc_info=True)
             return Response({"erro": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@action(detail=False, methods=['post'], url_path='criar-boleto')
-def criar_boleto(self, request):
-    """
-    Cria um pagamento via Boleto Registrado
-    POST /api/pagamentos/criar-boleto/
-    Body obrigatório:
-      {
-        "contrato_id": 1,
-        "cep": "12345678",
-        "rua": "Av. Brasil",
-        "numero": "1000",
-        "bairro": "Centro",
-        "cidade": "São Paulo",
-        "uf": "SP"
-      }
-    """
-    try:
-        contrato_id = request.data.get('contrato_id')
-        if not contrato_id:
-            return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
-
-        from contratos.models import Contrato
+    # =================== BOLETO ====================
+    @action(detail=False, methods=['post'], url_path='criar-boleto')
+    def criar_boleto(self, request):
+        """
+        Cria um pagamento via Boleto Registrado
+        POST /api/pagamentos/criar-boleto/
+        Body obrigatório:
+          {
+            "contrato_id": 1,
+            "cep": "12345678",
+            "rua": "Av. Brasil",
+            "numero": "1000",
+            "bairro": "Centro",
+            "cidade": "São Paulo",
+            "uf": "SP"
+          }
+        """
         try:
-            contrato = Contrato.objects.get(id=contrato_id)
-        except Contrato.DoesNotExist:
-            return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            contrato_id = request.data.get('contrato_id')
+            logger.info(f"📥 Recebido contrato_id para boleto: {contrato_id}")
 
-        if contrato.cliente != request.user:
-            return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+            if not contrato_id:
+                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
-        pendente = Pagamento.objects.filter(
-            contrato=contrato, status__in=['pendente', 'em_processamento']
-        ).first()
-        if pendente:
-            return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+                logger.info(f"✅ Contrato encontrado: #{contrato.id}")
+            except Contrato.DoesNotExist:
+                logger.error(f"❌ Contrato {contrato_id} não encontrado")
+                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not request.user.cpf:
-            return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=status.HTTP_400_BAD_REQUEST)
+            if contrato.cliente != request.user:
+                logger.error(f"❌ Usuário {request.user.id} não é cliente")
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
-        cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
+            pagamento_existente = Pagamento.objects.filter(
+                contrato=contrato,
+                status__in=['pendente', 'em_processamento']
+            ).first()
+            if pagamento_existente:
+                logger.warning(f"⚠️ Pagamento pendente já existe: #{pagamento_existente.id}")
+                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔹 Endereço exigido pelo boleto registrado
-        endereco = {
-            "zip_code": (request.data.get("cep") or "").replace("-", "").strip(),
-            "street_name": request.data.get("rua"),
-            "street_number": request.data.get("numero"),
-            "neighborhood": request.data.get("bairro"),
-            "city": request.data.get("cidade"),
-            "federal_unit": (request.data.get("uf") or "").upper()[:2],
-        }
-        faltando = [k for k, v in endereco.items() if not v]
-        if faltando:
-            return Response(
-                {"erro": "Para gerar boleto, informe CEP, rua, número, bairro, cidade e UF.",
-                 "campos_faltando": faltando},
-                status=status.HTTP_400_BAD_REQUEST
+            if not request.user.cpf:
+                logger.error("❌ Usuário sem CPF")
+                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=status.HTTP_400_BAD_REQUEST)
+
+            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
+            logger.info(f"🔐 CPF processado: {cpf_limpo[:3]}***")
+
+            # Endereço exigido pelo boleto registrado
+            endereco = {
+                "zip_code": (request.data.get("cep") or "").replace("-", "").strip(),
+                "street_name": request.data.get("rua"),
+                "street_number": request.data.get("numero"),
+                "neighborhood": request.data.get("bairro"),
+                "city": request.data.get("cidade"),
+                "federal_unit": (request.data.get("uf") or "").upper()[:2],
+            }
+            faltando = [k for k, v in endereco.items() if not v]
+            if faltando:
+                return Response(
+                    {"erro": "Para gerar boleto, informe CEP, rua, número, bairro, cidade e UF.",
+                     "campos_faltando": faltando},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            mp_service = MercadoPagoService()
+            logger.info("📄 Criando boleto no Mercado Pago...")
+
+            resultado = mp_service.criar_pagamento_boleto(
+                valor=float(contrato.valor),
+                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                email_pagador=request.user.email,
+                cpf_pagador=cpf_limpo,
+                nome_pagador=request.user.nome,
+                external_reference=str(contrato.id),
+                endereco=endereco,
             )
 
-        mp_service = MercadoPagoService()
-        resultado = mp_service.criar_pagamento_boleto(
-            valor=float(contrato.valor),
-            descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
-            email_pagador=request.user.email,
-            cpf_pagador=cpf_limpo,
-            nome_pagador=request.user.nome,
-            external_reference=str(contrato.id),
-            endereco=endereco,  # 👈 AGORA VAI O ENDEREÇO
-        )
+            if not resultado.get("sucesso"):
+                logger.error(f"❌ Erro MP: {resultado.get('erro')}")
+                return Response({"erro": resultado.get("erro", "Erro ao criar boleto no Mercado Pago")}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not resultado.get("sucesso"):
-            return Response({"erro": resultado.get("erro")}, status=status.HTTP_400_BAD_REQUEST)
+            logger.info(f"✅ Boleto criado no MP: {resultado['payment_id']}")
 
-        pagamento = Pagamento.objects.create(
-            contrato=contrato,
-            cliente=request.user,
-            valor=contrato.valor,
-            metodo='boleto',
-            status='pendente',
-            mercadopago_payment_id=resultado['payment_id'],
-            codigo_transacao=resultado['boleto_url'],
-        )
-
-        try:
-            enviar_notificacao(
-                usuario=request.user,
-                mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'. Acesse o link para pagar.",
-                link=f"/contratos/{contrato.id}/pagamento",
+            pagamento = Pagamento.objects.create(
+                contrato=contrato,
+                cliente=request.user,
+                valor=contrato.valor,
+                metodo='boleto',
+                status='pendente',
+                mercadopago_payment_id=resultado['payment_id'],
+                codigo_transacao=resultado['boleto_url']
             )
-        except Exception:
-            logger.warning("Falha ao enviar notificação BOLETO")
 
-        return Response({
-            "sucesso": True,
-            "pagamento_id": pagamento.id,
-            "mercadopago_payment_id": resultado['payment_id'],
-            "boleto_url": resultado['boleto_url'],
-            "barcode": resultado.get('barcode'),
-            "expiration_date": resultado.get('expiration_date'),
-        }, status=status.HTTP_201_CREATED)
+            logger.info(f"✅ Pagamento salvo no banco: #{pagamento.id}")
 
-    except Exception as e:
-        logger.error(f"❌ Erro inesperado ao criar boleto: {e}", exc_info=True)
-        return Response({"erro": f"Erro interno: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            try:
+                enviar_notificacao(
+                    usuario=request.user,
+                    mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'. Acesse o link para pagar.",
+                    link=f"/contratos/{contrato.id}/pagamento"
+                )
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao enviar notificação: {str(e)}")
 
+            return Response({
+                "sucesso": True,
+                "pagamento_id": pagamento.id,
+                "mercadopago_payment_id": resultado['payment_id'],
+                "boleto_url": resultado['boleto_url'],
+                "barcode": resultado.get('barcode'),
+                "expiration_date": resultado.get('expiration_date'),
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"❌ Erro inesperado ao criar boleto: {str(e)}", exc_info=True)
+            return Response({"erro": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # =================== CARTÃO ====================
     @action(detail=False, methods=['post'], url_path='criar-cartao')
     def criar_cartao(self, request):
         """
@@ -320,6 +339,7 @@ def criar_boleto(self, request):
             logger.error(f"❌ Erro ao criar pagamento Cartão: {str(e)}")
             return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
         """
@@ -349,6 +369,7 @@ def criar_boleto(self, request):
             logger.error(f"❌ Erro ao consultar status: {str(e)}")
             return Response({"erro": "Erro ao consultar status do pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # ================== HELPER ==================
     def _concluir_contrato(self, contrato):
         """
         🔹 Marca contrato e trabalho como concluídos, envia notificações.
