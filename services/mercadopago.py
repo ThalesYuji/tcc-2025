@@ -2,21 +2,51 @@
 Serviço para integração com Mercado Pago
 Suporta: PIX, Boleto e Cartão de Crédito
 """
+import logging
+from typing import Dict, Optional, Tuple
+
 import mercadopago
 from django.conf import settings
-from typing import Dict, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
 
+def _split_nome_completo(nome: str) -> Tuple[str, str]:
+    nome = (nome or "").strip()
+    if not nome:
+        return "", ""
+    partes = nome.split()
+    primeiro = partes[0]
+    ultimo = " ".join(partes[1:]) if len(partes) > 1 else partes[0]
+    return primeiro, ultimo
+
+
+def _extrair_msg_erro_mp(resp: dict) -> str:
+    """
+    Tenta extrair a melhor mensagem de erro do Mercado Pago.
+    Estruturas comuns:
+      {"message": "...", "error": "...", "cause": [{"code": "...", "description": "..."}]}
+    """
+    if not isinstance(resp, dict):
+        return str(resp)
+    msg = resp.get("message") or resp.get("error") or str(resp)
+    cause = resp.get("cause")
+    if isinstance(cause, list) and cause:
+        # Pega a primeira causa com descrição
+        msg = cause[0].get("description") or msg
+    return msg
+
+
 class MercadoPagoService:
     """Classe para gerenciar operações do Mercado Pago"""
-    
+
     def __init__(self):
         """Inicializa o SDK do Mercado Pago"""
         self.sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
-    
+
+    # ------------------------------
+    # PIX
+    # ------------------------------
     def criar_pagamento_pix(
         self,
         valor: float,
@@ -28,64 +58,53 @@ class MercadoPagoService:
     ) -> Dict:
         """
         Cria um pagamento via PIX
-        
-        Args:
-            valor: Valor do pagamento
-            descricao: Descrição do pagamento
-            email_pagador: Email do pagador
-            cpf_pagador: CPF do pagador (apenas números)
-            nome_pagador: Nome completo do pagador
-            external_reference: Referência externa (ID do contrato, por exemplo)
-        
-        Returns:
-            Dict com dados do pagamento incluindo QR Code e chave PIX
+        Returns: Dict com dados do pagamento incluindo QR Code e chave PIX
         """
         try:
-            # Separa primeiro e último nome
-            nome_parts = nome_pagador.strip().split()
-            primeiro_nome = nome_parts[0]
-            ultimo_nome = " ".join(nome_parts[1:]) if len(nome_parts) > 1 else nome_parts[0]
-            
+            primeiro, ultimo = _split_nome_completo(nome_pagador)
+
             payment_data = {
                 "transaction_amount": float(valor),
                 "description": descricao,
                 "payment_method_id": "pix",
                 "payer": {
                     "email": email_pagador,
-                    "first_name": primeiro_nome,
-                    "last_name": ultimo_nome,
-                    "identification": {
-                        "type": "CPF",
-                        "number": cpf_pagador
-                    }
-                }
+                    "first_name": primeiro,
+                    "last_name": ultimo,
+                    "identification": {"type": "CPF", "number": cpf_pagador},
+                },
             }
-            
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
-            
+
+            logger.info(f"MP PIX → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
-            payment = result["response"]
-            
-            logger.info(f"✅ Pagamento PIX criado: {payment['id']}")
-            
+            status = result.get("status")
+            payment = result.get("response", {})
+            logger.info(f"MP PIX ← status={status} body={payment}")
+
+            if status not in (200, 201) or "id" not in payment:
+                return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
+
+            poi = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
+
             return {
                 "sucesso": True,
-                "payment_id": payment["id"],
-                "status": payment["status"],
-                "qr_code": payment["point_of_interaction"]["transaction_data"]["qr_code"],
-                "qr_code_base64": payment["point_of_interaction"]["transaction_data"]["qr_code_base64"],
-                "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"],
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "qr_code": poi.get("qr_code"),
+                "qr_code_base64": poi.get("qr_code_base64"),
+                "ticket_url": poi.get("ticket_url"),
                 "expiration_date": payment.get("date_of_expiration"),
             }
-            
+
         except Exception as e:
-            logger.error(f"❌ Erro ao criar pagamento PIX: {str(e)}")
-            return {
-                "sucesso": False,
-                "erro": str(e)
-            }
-    
+            logger.exception(f"❌ Erro ao criar pagamento PIX: {e}")
+            return {"sucesso": False, "erro": str(e)}
+
+    # ------------------------------
+    # BOLETO
+    # ------------------------------
     def criar_pagamento_boleto(
         self,
         valor: float,
@@ -97,63 +116,69 @@ class MercadoPagoService:
     ) -> Dict:
         """
         Cria um pagamento via Boleto
-        
-        Args:
-            valor: Valor do pagamento
-            descricao: Descrição do pagamento
-            email_pagador: Email do pagador
-            cpf_pagador: CPF do pagador (apenas números)
-            nome_pagador: Nome completo do pagador
-            external_reference: Referência externa (ID do contrato, por exemplo)
-        
-        Returns:
-            Dict com dados do pagamento incluindo URL do boleto
+        Returns: Dict com dados do pagamento incluindo URL do boleto
         """
         try:
-            # Separa primeiro e último nome
-            nome_parts = nome_pagador.strip().split()
-            primeiro_nome = nome_parts[0]
-            ultimo_nome = " ".join(nome_parts[1:]) if len(nome_parts) > 1 else nome_parts[0]
-            
+            primeiro, ultimo = _split_nome_completo(nome_pagador)
+
             payment_data = {
                 "transaction_amount": float(valor),
                 "description": descricao,
-                "payment_method_id": "bolbradesco",
+                "payment_method_id": "bolbradesco",  # boleto BR
                 "payer": {
                     "email": email_pagador,
-                    "first_name": primeiro_nome,
-                    "last_name": ultimo_nome,
-                    "identification": {
-                        "type": "CPF",
-                        "number": cpf_pagador
-                    }
-                }
+                    "first_name": primeiro,
+                    "last_name": ultimo,
+                    "identification": {"type": "CPF", "number": cpf_pagador},
+                },
             }
-            
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
-            
+
+            logger.info(f"MP BOLETO → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
-            payment = result["response"]
-            
-            logger.info(f"✅ Pagamento Boleto criado: {payment['id']}")
-            
+            status = result.get("status")
+            payment = result.get("response", {})
+            logger.info(f"MP BOLETO ← status={status} body={payment}")
+
+            # Falha (400/422 etc) ou sem "id"
+            if status not in (200, 201) or "id" not in payment:
+                return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
+
+            # boleto_url pode vir em dois lugares diferentes:
+            poi_tx = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
+            boleto_url = poi_tx.get("ticket_url")
+            if not boleto_url:
+                boleto_url = (payment.get("transaction_details") or {}).get("external_resource_url")
+
+            barcode = None
+            # Alguns ambientes retornam em poi.transaction_data.barcode (string) ou em payment["barcode"]["content"]
+            if isinstance(poi_tx.get("barcode"), str):
+                barcode = poi_tx.get("barcode")
+            elif isinstance(payment.get("barcode"), dict):
+                barcode = payment.get("barcode", {}).get("content")
+
+            expiration_date = poi_tx.get("expiration_date") or payment.get("date_of_expiration")
+
+            if not boleto_url:
+                return {"sucesso": False, "erro": "Resposta do MP sem URL do boleto."}
+
             return {
                 "sucesso": True,
-                "payment_id": payment["id"],
-                "status": payment["status"],
-                "boleto_url": payment["transaction_details"]["external_resource_url"],
-                "barcode": payment.get("barcode", {}).get("content"),
-                "expiration_date": payment.get("date_of_expiration"),
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "boleto_url": boleto_url,
+                "barcode": barcode,
+                "expiration_date": expiration_date,
             }
-            
+
         except Exception as e:
-            logger.error(f"❌ Erro ao criar pagamento Boleto: {str(e)}")
-            return {
-                "sucesso": False,
-                "erro": str(e)
-            }
-    
+            logger.exception(f"❌ Erro ao criar pagamento Boleto: {e}")
+            return {"sucesso": False, "erro": str(e)}
+
+    # ------------------------------
+    # CARTÃO
+    # ------------------------------
     def criar_pagamento_cartao(
         self,
         valor: float,
@@ -166,94 +191,82 @@ class MercadoPagoService:
     ) -> Dict:
         """
         Cria um pagamento via Cartão de Crédito
-        
-        Args:
-            valor: Valor do pagamento
-            descricao: Descrição do pagamento
-            token_cartao: Token do cartão gerado no frontend
-            parcelas: Número de parcelas
-            email_pagador: Email do pagador
-            cpf_pagador: CPF do pagador (apenas números)
-            external_reference: Referência externa (ID do contrato, por exemplo)
-        
-        Returns:
-            Dict com dados do pagamento
+        Returns: Dict com dados do pagamento
         """
         try:
+            # ⚠️ NÃO fixe payment_method_id como "visa";
+            # o token já carrega o método detectado pelo MP.
             payment_data = {
                 "transaction_amount": float(valor),
                 "token": token_cartao,
                 "description": descricao,
                 "installments": int(parcelas),
-                "payment_method_id": "visa",  # Será detectado pelo token
                 "payer": {
                     "email": email_pagador,
-                    "identification": {
-                        "type": "CPF",
-                        "number": cpf_pagador
-                    }
-                }
+                    "identification": {"type": "CPF", "number": cpf_pagador},
+                },
             }
-            
             if external_reference:
                 payment_data["external_reference"] = str(external_reference)
-            
+
+            logger.info(f"MP CARTAO → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
-            payment = result["response"]
-            
-            logger.info(f"✅ Pagamento Cartão criado: {payment['id']}")
-            
+            status = result.get("status")
+            payment = result.get("response", {})
+            logger.info(f"MP CARTAO ← status={status} body={payment}")
+
+            if status not in (200, 201) or "id" not in payment:
+                return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
+
             return {
                 "sucesso": True,
-                "payment_id": payment["id"],
-                "status": payment["status"],
-                "status_detail": payment["status_detail"],
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "status_detail": payment.get("status_detail"),
             }
-            
+
         except Exception as e:
-            logger.error(f"❌ Erro ao criar pagamento Cartão: {str(e)}")
-            return {
-                "sucesso": False,
-                "erro": str(e)
-            }
-    
+            logger.exception(f"❌ Erro ao criar pagamento Cartão: {e}")
+            return {"sucesso": False, "erro": str(e)}
+
+    # ------------------------------
+    # CONSULTA
+    # ------------------------------
     def consultar_pagamento(self, payment_id: str) -> Optional[Dict]:
         """
         Consulta o status de um pagamento
-        
-        Args:
-            payment_id: ID do pagamento no Mercado Pago
-        
-        Returns:
-            Dict com informações do pagamento ou None se não encontrado
         """
         try:
+            logger.info(f"MP GET pagamento → {payment_id}")
             result = self.sdk.payment().get(payment_id)
-            payment = result["response"]
-            
+            status = result.get("status")
+            payment = result.get("response", {})
+            logger.info(f"MP GET pagamento ← status={status} body={payment}")
+
+            if status not in (200, 201) or "id" not in payment:
+                logger.warning(f"MP GET pagamento não encontrado/erro: {payment}")
+                return None
+
             return {
-                "payment_id": payment["id"],
-                "status": payment["status"],
-                "status_detail": payment["status_detail"],
-                "transaction_amount": payment["transaction_amount"],
-                "date_created": payment["date_created"],
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "status_detail": payment.get("status_detail"),
+                "transaction_amount": payment.get("transaction_amount"),
+                "date_created": payment.get("date_created"),
                 "date_approved": payment.get("date_approved"),
                 "external_reference": payment.get("external_reference"),
             }
-            
+
         except Exception as e:
-            logger.error(f"❌ Erro ao consultar pagamento {payment_id}: {str(e)}")
+            logger.exception(f"❌ Erro ao consultar pagamento {payment_id}: {e}")
             return None
-    
+
+    # ------------------------------
+    # MAPA DE STATUS
+    # ------------------------------
     def mapear_status_mp_para_local(self, status_mp: str) -> str:
         """
         Mapeia status do Mercado Pago para os status do model local
-        
-        Args:
-            status_mp: Status retornado pelo Mercado Pago
-        
-        Returns:
-            Status compatível com o model Pagamento
         """
         mapeamento = {
             "pending": "pendente",
