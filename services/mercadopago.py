@@ -1,6 +1,6 @@
 """
 Serviço para integração com Mercado Pago
-Suporta: PIX, Boleto e Cartão de Crédito
+Suporta: PIX, Boleto (registrado) e Cartão de Crédito
 """
 import logging
 from typing import Dict, Optional, Tuple
@@ -77,9 +77,10 @@ class MercadoPagoService:
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
             payment = result.get("response", {})
-            logger.info(f"MP PIX ← status={status} body={payment}")
+            logger.info(f"MP PIX ← status={status}")
 
             if status not in (200, 201) or "id" not in payment:
+                logger.error(f"MP PIX ERRO RAW: {result}")
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
             poi = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
@@ -101,121 +102,121 @@ class MercadoPagoService:
     # ------------------------------
     # BOLETO (REGISTRADO)
     # ------------------------------
-def criar_pagamento_boleto(
-    self,
-    valor: float,
-    descricao: str,
-    email_pagador: str,
-    cpf_pagador: str,
-    nome_pagador: str,
-    external_reference: str = None,
-    endereco: dict | None = None,
-) -> Dict:
-    """
-    Cria um pagamento via Boleto Registrado.
-    'endereco' deve conter: zip_code, street_name, street_number, neighborhood, city, federal_unit (UF).
-    """
-    try:
-        primeiro, ultimo = _split_nome_completo(nome_pagador)
-
-        # saneia CEP e UF
-        cep = (endereco or {}).get("zip_code")
-        if cep:
-            cep = "".join(c for c in str(cep) if c.isdigit())
-        uf = (endereco or {}).get("federal_unit")
-        if uf:
-            uf = str(uf).upper()[:2]
-
-        payer = {
-            "email": email_pagador,
-            "first_name": primeiro,
-            "last_name": ultimo,
-            "identification": {"type": "CPF", "number": cpf_pagador},
-        }
-        if endereco:
-            payer["address"] = {
-                "zip_code": cep,
-                "street_name": (endereco or {}).get("street_name"),
-                "street_number": (endereco or {}).get("street_number"),
-                "neighborhood": (endereco or {}).get("neighborhood"),
-                "city": (endereco or {}).get("city"),
-                "federal_unit": uf,
-            }
-
-        # notification_url (webhook público)
+    def criar_pagamento_boleto(
+        self,
+        valor: float,
+        descricao: str,
+        email_pagador: str,
+        cpf_pagador: str,
+        nome_pagador: str,
+        external_reference: str = None,
+        endereco: dict | None = None,
+    ) -> Dict:
+        """
+        Cria um pagamento via Boleto Registrado.
+        'endereco' deve conter: zip_code, street_name, street_number, neighborhood, city, federal_unit (UF).
+        """
         try:
-            notification_url = getattr(settings, "MP_WEBHOOK_URL", None) \
-                or (getattr(settings, "SITE_URL", "").rstrip("/") + "/mercadopago/webhook/")
-        except Exception:
-            notification_url = None
+            primeiro, ultimo = _split_nome_completo(nome_pagador)
 
-        payment_data = {
-            "transaction_amount": float(valor),
-            "description": descricao,
-            "payment_method_id": "bolbradesco",
-            "payer": payer,
-        }
-        if external_reference:
-            payment_data["external_reference"] = str(external_reference)
-        if notification_url:
-            payment_data["notification_url"] = notification_url
+            # saneia CEP e UF
+            cep = (endereco or {}).get("zip_code")
+            if cep:
+                cep = "".join(c for c in str(cep) if c.isdigit())
+            uf = (endereco or {}).get("federal_unit")
+            if uf:
+                uf = str(uf).upper()[:2]
 
-        # Alguns adquirentes exigem também em additional_info.payer
-        if endereco:
-            payment_data["additional_info"] = {
-                "payer": {
-                    "first_name": primeiro,
-                    "last_name": ultimo,
-                    "registration_type": "CPF",
-                    "registration_number": cpf_pagador,
-                    "address": {
-                        "zip_code": cep,
-                        "street_name": (endereco or {}).get("street_name"),
-                        "street_number": (endereco or {}).get("street_number"),
-                        "neighborhood": (endereco or {}).get("neighborhood"),
-                        "city": (endereco or {}).get("city"),
-                        "federal_unit": uf,
-                    },
+            payer = {
+                "email": email_pagador,
+                "first_name": primeiro,
+                "last_name": ultimo,
+                "identification": {"type": "CPF", "number": cpf_pagador},
+            }
+            if endereco:
+                payer["address"] = {
+                    "zip_code": cep,
+                    "street_name": (endereco or {}).get("street_name"),
+                    "street_number": (endereco or {}).get("street_number"),
+                    "neighborhood": (endereco or {}).get("neighborhood"),
+                    "city": (endereco or {}).get("city"),
+                    "federal_unit": uf,
                 }
+
+            # notification_url (webhook público)
+            try:
+                notification_url = getattr(settings, "MP_WEBHOOK_URL", None) \
+                    or (getattr(settings, "SITE_URL", "").rstrip("/") + "/mercadopago/webhook/")
+            except Exception:
+                notification_url = None
+
+            payment_data = {
+                "transaction_amount": float(valor),
+                "description": descricao,
+                "payment_method_id": "bolbradesco",
+                "payer": payer,
+            }
+            if external_reference:
+                payment_data["external_reference"] = str(external_reference)
+            if notification_url:
+                payment_data["notification_url"] = notification_url
+
+            # Alguns adquirentes exigem também em additional_info.payer
+            if endereco:
+                payment_data["additional_info"] = {
+                    "payer": {
+                        "first_name": primeiro,
+                        "last_name": ultimo,
+                        "registration_type": "CPF",
+                        "registration_number": cpf_pagador,
+                        "address": {
+                            "zip_code": cep,
+                            "street_name": (endereco or {}).get("street_name"),
+                            "street_number": (endereco or {}).get("street_number"),
+                            "neighborhood": (endereco or {}).get("neighborhood"),
+                            "city": (endereco or {}).get("city"),
+                            "federal_unit": uf,
+                        },
+                    }
+                }
+
+            logger.info(f"MP BOLETO → payload: {payment_data}")
+            result = self.sdk.payment().create(payment_data)
+            status = result.get("status")
+            payment = result.get("response", {})
+            logger.info(f"MP BOLETO ← status={status}")
+
+            # Se falhou, loga a resposta completa para debug
+            if status not in (200, 201) or "id" not in payment:
+                logger.error(f"MP BOLETO ERRO RAW: {result}")
+                return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
+
+            poi_tx = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
+            boleto_url = poi_tx.get("ticket_url") or (payment.get("transaction_details") or {}).get("external_resource_url")
+
+            barcode = None
+            if isinstance(poi_tx.get("barcode"), str):
+                barcode = poi_tx.get("barcode")
+            elif isinstance(payment.get("barcode"), dict):
+                barcode = payment.get("barcode", {}).get("content")
+
+            expiration_date = poi_tx.get("expiration_date") or payment.get("date_of_expiration")
+
+            if not boleto_url:
+                return {"sucesso": False, "erro": "Resposta do MP sem URL do boleto."}
+
+            return {
+                "sucesso": True,
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "boleto_url": boleto_url,
+                "barcode": barcode,
+                "expiration_date": expiration_date,
             }
 
-        logger.info(f"MP BOLETO → payload: {payment_data}")
-        result = self.sdk.payment().create(payment_data)
-        status = result.get("status")
-        payment = result.get("response", {})
-        logger.info(f"MP BOLETO ← status={status}")
-
-        # Se falhou, loga a resposta completa para debug
-        if status not in (200, 201) or "id" not in payment:
-            logger.error(f"MP BOLETO ERRO RAW: {result}")
-            return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
-
-        poi_tx = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
-        boleto_url = poi_tx.get("ticket_url") or (payment.get("transaction_details") or {}).get("external_resource_url")
-
-        barcode = None
-        if isinstance(poi_tx.get("barcode"), str):
-            barcode = poi_tx.get("barcode")
-        elif isinstance(payment.get("barcode"), dict):
-            barcode = payment.get("barcode", {}).get("content")
-
-        expiration_date = poi_tx.get("expiration_date") or payment.get("date_of_expiration")
-
-        if not boleto_url:
-            return {"sucesso": False, "erro": "Resposta do MP sem URL do boleto."}
-
-        return {
-            "sucesso": True,
-            "payment_id": payment.get("id"),
-            "status": payment.get("status"),
-            "boleto_url": boleto_url,
-            "barcode": barcode,
-            "expiration_date": expiration_date,
-        }
-
-    except Exception as e:
-        logger.exception(f"❌ Erro ao criar pagamento Boleto: {e}")
-        return {"sucesso": False, "erro": str(e)}
+        except Exception as e:
+            logger.exception(f"❌ Erro ao criar pagamento Boleto: {e}")
+            return {"sucesso": False, "erro": str(e)}
 
     # ------------------------------
     # CARTÃO
@@ -250,9 +251,10 @@ def criar_pagamento_boleto(
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
             payment = result.get("response", {})
-            logger.info(f"MP CARTAO ← status={status} body={payment}")
+            logger.info(f"MP CARTAO ← status={status}")
 
             if status not in (200, 201) or "id" not in payment:
+                logger.error(f"MP CARTAO ERRO RAW: {result}")
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
             return {
@@ -276,10 +278,10 @@ def criar_pagamento_boleto(
             result = self.sdk.payment().get(payment_id)
             status = result.get("status")
             payment = result.get("response", {})
-            logger.info(f"MP GET pagamento ← status={status} body={payment}")
+            logger.info(f"MP GET pagamento ← status={status}")
 
             if status not in (200, 201) or "id" not in payment:
-                logger.warning(f"MP GET pagamento não encontrado/erro: {payment}")
+                logger.warning(f"MP GET pagamento não encontrado/erro: {result}")
                 return None
 
             return {
