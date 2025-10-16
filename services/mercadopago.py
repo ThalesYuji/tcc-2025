@@ -43,9 +43,7 @@ class MercadoPagoService:
         """Inicializa o SDK do Mercado Pago"""
         self.sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
 
-    # ------------------------------
-    # PIX
-    # ------------------------------
+    # ---------------- PIX ----------------
     def criar_pagamento_pix(
         self,
         valor: float,
@@ -99,9 +97,7 @@ class MercadoPagoService:
             logger.exception(f"❌ Erro ao criar pagamento PIX: {e}")
             return {"sucesso": False, "erro": str(e)}
 
-    # ------------------------------
-    # BOLETO (REGISTRADO)
-    # ------------------------------
+    # -------------- BOLETO (REGISTRADO) --------------
     def criar_pagamento_boleto(
         self,
         valor: float,
@@ -161,32 +157,13 @@ class MercadoPagoService:
             if notification_url:
                 payment_data["notification_url"] = notification_url
 
-            # Alguns adquirentes exigem também em additional_info.payer
-            if endereco:
-                payment_data["additional_info"] = {
-                    "payer": {
-                        "first_name": primeiro,
-                        "last_name": ultimo,
-                        "registration_type": "CPF",
-                        "registration_number": cpf_pagador,
-                        "address": {
-                            "zip_code": cep,
-                            "street_name": (endereco or {}).get("street_name"),
-                            "street_number": (endereco or {}).get("street_number"),
-                            "neighborhood": (endereco or {}).get("neighborhood"),
-                            "city": (endereco or {}).get("city"),
-                            "federal_unit": uf,
-                        },
-                    }
-                }
-
+            # Mantemos endereço apenas em 'payer.address' (nada em additional_info)
             logger.info(f"MP BOLETO → payload: {payment_data}")
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
             payment = result.get("response", {})
             logger.info(f"MP BOLETO ← status={status}")
 
-            # Se falhou, loga a resposta completa para debug
             if status not in (200, 201) or "id" not in payment:
                 logger.error(f"MP BOLETO ERRO RAW: {result}")
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
@@ -218,9 +195,7 @@ class MercadoPagoService:
             logger.exception(f"❌ Erro ao criar pagamento Boleto: {e}")
             return {"sucesso": False, "erro": str(e)}
 
-    # ------------------------------
-    # CARTÃO
-    # ------------------------------
+    # ---------------- CARTÃO ----------------
     def criar_pagamento_cartao(
         self,
         valor: float,
@@ -233,12 +208,12 @@ class MercadoPagoService:
     ) -> Dict:
         """Cria um pagamento via Cartão de Crédito"""
         try:
-            # não fixe payment_method_id; o token já carrega a bandeira
             payment_data = {
                 "transaction_amount": float(valor),
                 "token": token_cartao,
                 "description": descricao,
                 "installments": int(parcelas),
+                # não fixe payment_method_id; o token já carrega a bandeira
                 "payer": {
                     "email": email_pagador,
                     "identification": {"type": "CPF", "number": cpf_pagador},
@@ -268,9 +243,7 @@ class MercadoPagoService:
             logger.exception(f"❌ Erro ao criar pagamento Cartão: {e}")
             return {"sucesso": False, "erro": str(e)}
 
-    # ------------------------------
-    # CONSULTA
-    # ------------------------------
+    # -------------- CONSULTA --------------
     def consultar_pagamento(self, payment_id: str) -> Optional[Dict]:
         """Consulta o status de um pagamento"""
         try:
@@ -298,9 +271,7 @@ class MercadoPagoService:
             logger.exception(f"❌ Erro ao consultar pagamento {payment_id}: {e}")
             return None
 
-    # ------------------------------
-    # MAPA DE STATUS
-    # ------------------------------
+    # -------------- MAPA STATUS --------------
     def mapear_status_mp_para_local(self, status_mp: str) -> str:
         """Mapeia status do Mercado Pago para os status do model local"""
         mapeamento = {
