@@ -3,6 +3,7 @@ from datetime import timedelta
 import os
 import dj_database_url
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 # ------------------------
 # Caminho base do projeto
@@ -19,7 +20,41 @@ load_dotenv(BASE_DIR / ".env")
 # ------------------------
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)ava3u%8_xl%&kcf-l2xwo*tr!mbv(_irqp8d&az55#0c)5t*r')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+def _host_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    try:
+        p = urlparse(url)
+        return p.netloc or None
+    except Exception:
+        return None
+
+def _origin(url: str | None) -> str | None:
+    if not url:
+        return None
+    try:
+        p = urlparse(url)
+        if p.scheme and p.netloc:
+            return f"{p.scheme}://{p.netloc}"
+    except Exception:
+        pass
+    return None
+
+# URL pública do BACKEND (Railway) — use no .env em produção
+SITE_URL = os.getenv("SITE_URL", "").rstrip("/")  # ex: https://seu-backend.up.railway.app
+# URL pública do FRONT (onde o usuário navega)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+# URL para onde o Checkout Pro retorna (pode ser a mesma do FRONTEND_URL com rota /checkout/retorno)
+FRONT_RETURN_URL = os.getenv("FRONT_RETURN_URL", f"{FRONTEND_URL}/checkout/retorno").rstrip("/")
+# Webhook público do Mercado Pago (opcional; se não informar, o código só envia quando for válido)
+MP_WEBHOOK_URL = os.getenv("MP_WEBHOOK_URL", f"{SITE_URL}/mercadopago/webhook/").rstrip("/")
+
+_default_allowed = ['localhost', '127.0.0.1']
+_site_host = _host_from_url(SITE_URL)
+ALLOWED_HOSTS = list(filter(None, os.getenv('ALLOWED_HOSTS', '').split(','))) or _default_allowed
+if _site_host and _site_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_site_host)
 
 # ------------------------
 # APPS INSTALADOS
@@ -178,20 +213,32 @@ SIMPLE_JWT = {
 }
 
 # ------------------------
-# CORS - LIBERADO PARA DEBUG
+# CORS
 # ------------------------
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = ['*']
-CORS_ALLOW_METHODS = ['*']
+# Dev: liberado
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = ['*']
+    CORS_ALLOW_METHODS = ['*']
+# Prod: restringe às origens conhecidas (front)
+else:
+    _front_origin = _origin(FRONTEND_URL)
+    CORS_ALLOWED_ORIGINS = [o for o in [_front_origin] if o]
+    CORS_ALLOW_CREDENTIALS = True
 
 # ------------------------
 # CSRF
 # ------------------------
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:8000'
-).split(',')
+_csrf_default = ['http://localhost:8000']
+_front_origin = _origin(FRONTEND_URL)
+_site_origin = _origin(SITE_URL)
+CSRF_TRUSTED_ORIGINS = list({
+    *(_csrf_default),
+    *([_front_origin] if _front_origin else []),
+    *([_site_origin] if _site_origin else []),
+    *[o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o],
+})
 
 # ------------------------
 # E-MAIL (SendGrid)
@@ -204,7 +251,6 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 
 # ------------------------
@@ -222,7 +268,23 @@ CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
 MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 
-# Temporário para debug
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# URLs usadas na integração (expostas nos services/views)
+# - SITE_URL: backend público
+# - FRONTEND_URL: app web
+# - FRONT_RETURN_URL: rota do front para onde o Checkout Pro retorna
+# - MP_WEBHOOK_URL: webhook público do Mercado Pago
+# (Os services só enviam notification_url se ela for pública e válida)
+# Já definidas no topo: SITE_URL, FRONTEND_URL, FRONT_RETURN_URL, MP_WEBHOOK_URL
+
+# ------------------------
+# Segurança HTTPS (apenas produção)
+# ------------------------
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

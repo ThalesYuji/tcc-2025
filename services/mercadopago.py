@@ -1,6 +1,6 @@
 """
 Serviço para integração com Mercado Pago
-Suporta: PIX, Boleto (registrado) e Cartão de Crédito
+Suporta: PIX, Boleto (registrado), Cartão e Checkout Pro (preference)
 """
 import logging
 from typing import Dict, Optional, Tuple
@@ -47,7 +47,6 @@ def _url_valida(url: Optional[str]) -> bool:
             return False
         if not p.netloc:
             return False
-        # evita localhost/127.0.0.1
         host = p.hostname or ""
         if host in ("localhost", "127.0.0.1", "0.0.0.0"):
             return False
@@ -285,6 +284,66 @@ class MercadoPagoService:
 
         except Exception as e:
             logger.exception(f"❌ Erro ao criar pagamento Cartão: {e}")
+            return {"sucesso": False, "erro": str(e)}
+
+    # -------------- CHECKOUT PRO (PREFERENCE) --------------
+    def criar_preferencia_checkout_pro(
+        self,
+        titulo: str,
+        quantidade: int,
+        valor_unitario: float,
+        external_reference: Optional[str],
+        back_urls: Dict[str, str],
+        auto_return: str = "approved",
+        payer: Optional[dict] = None,
+    ) -> Dict:
+        """
+        Cria uma 'preference' do Checkout Pro.
+        back_urls: {"success": URL, "pending": URL, "failure": URL}
+        notification_url só é enviada se pública/valida (construída via _build_notification_url).
+        """
+        try:
+            preference = {
+                "items": [
+                    {
+                        "title": titulo,
+                        "quantity": int(quantidade),
+                        "unit_price": float(valor_unitario),
+                        "currency_id": "BRL",
+                    }
+                ],
+                "back_urls": back_urls,
+                "auto_return": auto_return,
+            }
+
+            if external_reference:
+                preference["external_reference"] = str(external_reference)
+
+            notif = _build_notification_url()
+            if notif:
+                preference["notification_url"] = notif
+
+            if payer:
+                preference["payer"] = payer
+
+            logger.info(f"MP PREF → payload: {preference}")
+            res = self.sdk.preference().create(preference)
+            status = res.get("status")
+            body = res.get("response", {})
+            logger.info(f"MP PREF ← status={status}")
+
+            if status not in (200, 201) or "id" not in body:
+                logger.error(f"MP PREF ERRO RAW: {res}")
+                return {"sucesso": False, "erro": _extrair_msg_erro_mp(body)}
+
+            return {
+                "sucesso": True,
+                "preference_id": body["id"],
+                "init_point": body.get("init_point"),
+                "sandbox_init_point": body.get("sandbox_init_point"),
+            }
+        except Exception as e:
+            logger.exception("❌ Erro ao criar preference")
             return {"sucesso": False, "erro": str(e)}
 
     # -------------- CONSULTA --------------

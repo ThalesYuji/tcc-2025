@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 import logging
 
 from .models import Pagamento
@@ -345,6 +346,62 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"❌ Erro ao criar pagamento Cartão: {str(e)}")
             return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # ============ CHECKOUT PRO (criar preference) ============
+    @action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
+    def criar_preferencia_checkout_pro(self, request):
+        """
+        Cria uma preference do Checkout Pro para o contrato informado.
+        POST /api/pagamentos/checkout-pro/criar-preferencia/
+        Body: { "contrato_id": 123 }
+        Retorna: { init_point, sandbox_init_point, preference_id }
+        """
+        try:
+            contrato_id = request.data.get("contrato_id")
+            if not contrato_id:
+                return Response({"erro": "contrato_id é obrigatório"}, status=400)
+
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+            except Contrato.DoesNotExist:
+                return Response({"erro": "Contrato não encontrado"}, status=404)
+
+            if contrato.cliente != request.user:
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
+
+            # back_urls do frontend:
+            front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
+            back_urls = {
+                "success": front_return,
+                "pending": front_return,
+                "failure": front_return,
+            }
+
+            mp = MercadoPagoService()
+            resultado = mp.criar_preferencia_checkout_pro(
+                titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                quantidade=1,
+                valor_unitario=float(contrato.valor),
+                external_reference=str(contrato.id),
+                back_urls=back_urls,
+                auto_return="approved",
+                payer={"email": request.user.email} if request.user.email else None,
+            )
+
+            if not resultado.get("sucesso"):
+                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
+
+            return Response({
+                "sucesso": True,
+                "preference_id": resultado["preference_id"],
+                "init_point": resultado["init_point"],
+                "sandbox_init_point": resultado.get("sandbox_init_point"),
+            }, status=201)
+
+        except Exception as e:
+            logger.exception("Erro ao criar preference do Checkout Pro")
+            return Response({"erro": f"Erro interno: {e}"}, status=500)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
