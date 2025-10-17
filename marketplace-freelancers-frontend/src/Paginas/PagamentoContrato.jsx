@@ -1,4 +1,5 @@
-// src/Paginas/PagamentoContrato.jsx - Integrado com Mercado Pago (PIX + BOLETO com endereço)
+// src/Paginas/PagamentoContrato.jsx
+// Pagamento de contrato com PIX, Boleto e Checkout Pro (Mercado Pago)
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
@@ -11,18 +12,20 @@ export default function PagamentoContrato() {
   const [contrato, setContrato] = useState(null);
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
-  const [metodo, setMetodo] = useState("");
+  const [metodo, setMetodo] = useState(""); // pix | boleto | checkout_pro
   const [carregando, setCarregando] = useState(true);
   const [processandoPagamento, setProcessandoPagamento] = useState(false);
   const [pagamentoId, setPagamentoId] = useState(null);
 
-  // Mercado Pago (PIX / BOLETO)
+  // PIX
   const [qrCode, setQrCode] = useState("");
   const [qrCodeBase64, setQrCodeBase64] = useState("");
-  const [boletoUrl, setBoletoUrl] = useState("");
   const [pixCopiado, setPixCopiado] = useState(false);
 
-  // Endereço do pagador (obrigatório para BOLETO registrado)
+  // BOLETO
+  const [boletoUrl, setBoletoUrl] = useState("");
+
+  // Endereço para BOLETO
   const [cep, setCep] = useState("");
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
@@ -36,7 +39,7 @@ export default function PagamentoContrato() {
       try {
         const resp = await api.get(`/contratos/${id}/`);
         setContrato(resp.data);
-      } catch (e) {
+      } catch {
         setErro("Erro ao carregar contrato para pagamento.");
       } finally {
         setCarregando(false);
@@ -44,7 +47,7 @@ export default function PagamentoContrato() {
     })();
   }, [id]);
 
-  // Polling do status do pagamento
+  // Poll do status (PIX/BOLETO). Para Checkout Pro, o status será exibido na rota /checkout/retorno.
   useEffect(() => {
     if (!pagamentoId) return;
     const timer = setInterval(async () => {
@@ -55,7 +58,7 @@ export default function PagamentoContrato() {
           clearInterval(timer);
           setSucesso("✅ Pagamento confirmado! Contrato concluído com sucesso.");
           setProcessandoPagamento(false);
-          setTimeout(() => navigate("/contratos"), 2500);
+          setTimeout(() => navigate("/contratos"), 2000);
         } else if (statusAtual === "rejeitado") {
           clearInterval(timer);
           setErro("❌ Pagamento rejeitado. Tente novamente.");
@@ -68,7 +71,7 @@ export default function PagamentoContrato() {
     return () => clearInterval(timer);
   }, [pagamentoId, navigate]);
 
-  // Utilidades
+  // Utils
   const copiarPixCode = () => {
     if (!qrCode) return;
     navigator.clipboard.writeText(qrCode);
@@ -91,37 +94,30 @@ export default function PagamentoContrato() {
     setErro(msg);
   };
 
-  // Ações de pagamento
+  // Ações
+
+  // PIX
   const criarPagamentoPix = async () => {
-    setErro("");
-    setSucesso("");
-    setProcessandoPagamento(true);
+    setErro(""); setSucesso(""); setProcessandoPagamento(true);
     try {
-      const resp = await api.post("/pagamentos/criar-pix/", {
-        contrato_id: contrato?.id,
-      });
+      const resp = await api.post("/pagamentos/criar-pix/", { contrato_id: contrato?.id });
       setPagamentoId(resp.data.pagamento_id);
       setQrCode(resp.data.qr_code);
       setQrCodeBase64(resp.data.qr_code_base64);
       setSucesso("💳 QR Code PIX gerado! Pague pelo app do seu banco.");
     } catch (e) {
-      handleErro(e);
-      setProcessandoPagamento(false);
+      handleErro(e); setProcessandoPagamento(false);
     }
   };
 
+  // BOLETO
   const criarPagamentoBoleto = async () => {
-    setErro("");
-    setSucesso("");
-    setProcessandoPagamento(true);
+    setErro(""); setSucesso(""); setProcessandoPagamento(true);
     try {
       const payload = {
         contrato_id: contrato?.id,
         cep: (cep || "").replace(/\D/g, ""),
-        rua,
-        numero,
-        bairro,
-        cidade,
+        rua, numero, bairro, cidade,
         uf: (uf || "").toUpperCase().slice(0, 2),
       };
       const resp = await api.post("/pagamentos/criar-boleto/", payload);
@@ -129,23 +125,35 @@ export default function PagamentoContrato() {
       setBoletoUrl(resp.data.boleto_url);
       setSucesso("📄 Boleto gerado! Clique para baixar.");
     } catch (e) {
+      handleErro(e); setProcessandoPagamento(false);
+    }
+  };
+
+  // CHECKOUT PRO (redireciona para o Mercado Pago)
+  const criarPreferenceCheckoutPro = async () => {
+    setErro(""); setSucesso(""); setProcessandoPagamento(true);
+    try {
+      const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", {
+        contrato_id: contrato?.id,
+      });
+      const initPoint = resp.data?.init_point;
+      if (!initPoint) throw new Error("Não foi possível obter o link de pagamento.");
+      // redireciona o usuário para o fluxo do Mercado Pago
+      window.location.href = initPoint;
+    } catch (e) {
       handleErro(e);
       setProcessandoPagamento(false);
     }
   };
 
-  const criarPagamentoCartao = async () => {
-    setErro("⚠️ Pagamento com cartão será implementado em breve. Use PIX ou Boleto.");
-  };
-
-  const confirmarPagamento = async () => {
+  const confirmarPagamento = () => {
     if (!metodo) {
       setErro("Escolha um método de pagamento.");
       return;
     }
     if (metodo === "pix") return criarPagamentoPix();
     if (metodo === "boleto") return criarPagamentoBoleto();
-    if (metodo === "card") return criarPagamentoCartao();
+    if (metodo === "checkout_pro") return criarPreferenceCheckoutPro();
   };
 
   // ---- RENDER ----
@@ -177,10 +185,11 @@ export default function PagamentoContrato() {
     maximumFractionDigits: 2,
   });
 
+  // opções de pagamento
   const metodosDisponiveis = [
+    { value: "checkout_pro", label: "Pagar no Mercado Pago", descricao: "Checkout Pro (redirecionamento)", icon: "bi bi-shop-window" },
     { value: "pix", label: "PIX", descricao: "Transferência instantânea", icon: "bi bi-lightning-charge" },
     { value: "boleto", label: "Boleto Bancário", descricao: "Vencimento em 3 dias úteis", icon: "bi bi-upc-scan" },
-    { value: "card", label: "Cartão (em breve)", descricao: "Em breve", icon: "bi bi-credit-card", disabled: true },
   ];
 
   return (
@@ -188,9 +197,7 @@ export default function PagamentoContrato() {
       {/* Header */}
       <div className="pagamento-header">
         <h1 className="pagamento-title">
-          <div className="pagamento-icon">
-            <i className="bi bi-credit-card"></i>
-          </div>
+          <div className="pagamento-icon"><i className="bi bi-credit-card"></i></div>
           Pagamento do Contrato
         </h1>
         <p className="pagamento-subtitle">
@@ -218,10 +225,7 @@ export default function PagamentoContrato() {
         <div className="pagamento-main">
           {/* Detalhes do contrato */}
           <div className="contrato-detalhes">
-            <h3>
-              <i className="bi bi-file-text"></i>
-              Detalhes do Contrato
-            </h3>
+            <h3><i className="bi bi-file-text"></i> Detalhes do Contrato</h3>
             <div className="detalhes-grid">
               <div className="detalhe-item">
                 <span className="detalhe-label">Projeto</span>
@@ -242,13 +246,10 @@ export default function PagamentoContrato() {
             </div>
           </div>
 
-          {/* Formulário de Endereço (obrigatório para boleto) */}
-          {!qrCodeBase64 && !boletoUrl && (
+          {/* Form de Endereço (somente quando o usuário escolhe boleto e ainda não gerou nada) */}
+          {!qrCodeBase64 && !boletoUrl && metodo === "boleto" && (
             <div className="pagamento-form">
-              <h4>
-                <i className="bi bi-geo-alt"></i>
-                Endereço do Pagador (obrigatório para Boleto)
-              </h4>
+              <h4><i className="bi bi-geo-alt"></i> Endereço do Pagador (obrigatório para Boleto)</h4>
               <div className="detalhes-grid">
                 <div className="detalhe-item">
                   <span className="detalhe-label">CEP</span>
@@ -275,31 +276,26 @@ export default function PagamentoContrato() {
                   <input className="form-control" value={uf} onChange={(e)=>setUf(e.target.value)} maxLength={2} placeholder="SP" />
                 </div>
               </div>
-              <small className="text-muted">
-                Preencha para gerar <strong>Boleto</strong>. Para <strong>PIX</strong> não é necessário.
-              </small>
+              <small className="text-muted">Preencha para gerar <strong>Boleto</strong>.</small>
             </div>
           )}
 
-          {/* Escolha de método */}
+          {/* Escolha de método (quando ainda não abriu PIX/BOLETO) */}
           {!qrCodeBase64 && !boletoUrl && (
             <div className="pagamento-form">
-              <h4>
-                <i className="bi bi-wallet2"></i>
-                Escolha o método de pagamento
-              </h4>
+              <h4><i className="bi bi-wallet2"></i> Escolha o método de pagamento</h4>
               <div className="pagamento-opcoes">
                 {metodosDisponiveis.map((opcao) => (
                   <label
                     key={opcao.value}
-                    className={`opcao-box ${metodo === opcao.value ? "ativo" : ""} ${opcao.disabled ? "disabled" : ""}`}
+                    className={`opcao-box ${metodo === opcao.value ? "ativo" : ""}`}
                   >
                     <input
                       type="radio"
                       value={opcao.value}
                       checked={metodo === opcao.value}
                       onChange={(e) => setMetodo(e.target.value)}
-                      disabled={processandoPagamento || opcao.disabled}
+                      disabled={processandoPagamento}
                     />
                     <div className="icone"><i className={opcao.icon}></i></div>
                     <div className="opcao-info">
@@ -315,10 +311,7 @@ export default function PagamentoContrato() {
           {/* PIX */}
           {qrCodeBase64 && (
             <div className="pix-container">
-              <h4>
-                <i className="bi bi-qr-code"></i>
-                QR Code PIX
-              </h4>
+              <h4><i className="bi bi-qr-code"></i> QR Code PIX</h4>
               <div className="qr-code-display">
                 <img src={`data:image/png;base64,${qrCodeBase64}`} alt="QR Code PIX" />
               </div>
@@ -337,10 +330,7 @@ export default function PagamentoContrato() {
           {/* BOLETO */}
           {boletoUrl && (
             <div className="boleto-container">
-              <h4>
-                <i className="bi bi-file-earmark-text"></i>
-                Boleto Bancário
-              </h4>
+              <h4><i className="bi bi-file-earmark-text"></i> Boleto Bancário</h4>
               <div className="boleto-actions">
                 <a href={boletoUrl} target="_blank" rel="noopener noreferrer" className="btn-baixar-boleto">
                   <i className="bi bi-download"></i> Baixar Boleto
@@ -356,10 +346,7 @@ export default function PagamentoContrato() {
         {/* Sidebar */}
         <div className="pagamento-sidebar">
           <div className="resumo-pagamento">
-            <h4>
-              <i className="bi bi-receipt"></i>
-              Resumo do Pagamento
-            </h4>
+            <h4><i className="bi bi-receipt"></i> Resumo do Pagamento</h4>
             <div className="resumo-item">
               <span className="resumo-label">Total</span>
               <span className="resumo-valor">R$ {valorFormatado}</span>
@@ -378,11 +365,12 @@ export default function PagamentoContrato() {
               <button onClick={() => navigate("/contratos")} className="btn-voltar" disabled={processandoPagamento}>
                 <i className="bi bi-arrow-left"></i> {pagamentoId ? "Fechar" : "Cancelar"}
               </button>
+
               {!pagamentoId && (
                 <button
                   onClick={confirmarPagamento}
                   className="btn-confirmar"
-                  disabled={processandoPagamento || !metodo}
+                  disabled={processandoPagamento || !metodo || (metodo==="boleto" && (!cep||!rua||!numero||!bairro||!cidade||!uf))}
                 >
                   {processandoPagamento ? (
                     <>
@@ -390,7 +378,7 @@ export default function PagamentoContrato() {
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-check-lg"></i> Gerar Pagamento
+                      <i className="bi bi-check-lg"></i> {metodo === "checkout_pro" ? "Ir para pagamento" : "Gerar Pagamento"}
                     </>
                   )}
                 </button>

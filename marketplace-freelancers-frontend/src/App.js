@@ -1,6 +1,7 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./Paginas/Login";
 import Dashboard from "./Paginas/Dashboard";
 import Trabalhos from "./Paginas/Trabalhos";
@@ -25,11 +26,14 @@ import HistoricoNotificacoes from "./Paginas/HistoricoNotificacoes";
 import ChatContrato from "./Paginas/ChatContrato";
 import HomeInicial from "./Paginas/HomeInicial";
 
-// 🔹 Novas páginas de recuperação de senha
+// Recuperação de senha
 import EsqueciSenha from "./Paginas/EsqueciSenha";
 import ResetarSenha from "./Paginas/ResetarSenha";
 
-// 🔹 Toastify
+// Retorno do Mercado Pago (Checkout Pro)
+import CheckoutRetorno from "./Paginas/CheckoutRetorno";
+
+// Toastify
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -61,7 +65,7 @@ function App() {
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/reset-password/:uid/:token" element={<ResetarSenha />} />
 
-          {/* Rotas protegidas */}
+          {/* Rotas protegidas (usuário logado) */}
           <Route
             path="*"
             element={
@@ -87,6 +91,10 @@ function App() {
                       <Route path="/minhas-denuncias" element={<MinhasDenuncias />} />
                       <Route path="/notificacoes" element={<HistoricoNotificacoes />} />
                       <Route path="/contratos/:contratoId/chat" element={<ChatContrato />} />
+
+                      {/* 🔹 Retorno do Checkout Pro */}
+                      <Route path="/checkout/retorno" element={<CheckoutRetorno />} />
+
                       <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                   </div>
