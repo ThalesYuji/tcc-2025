@@ -60,12 +60,10 @@ def _build_notification_url() -> Optional[str]:
     Tenta montar a notification_url a partir de MP_WEBHOOK_URL ou SITE_URL.
     Só retorna se for uma URL pública válida; caso contrário, retorna None.
     """
-    # Preferência explícita
     url = getattr(settings, "MP_WEBHOOK_URL", None)
     if _url_valida(url):
         return url.rstrip("/")
 
-    # Fallback com SITE_URL
     base = getattr(settings, "SITE_URL", "") or ""
     if base:
         base = base.rstrip("/")
@@ -73,7 +71,6 @@ def _build_notification_url() -> Optional[str]:
         if _url_valida(candidate):
             return candidate.rstrip("/")
 
-    # Sem URL válida → não enviar notification_url (evita 400 no MP)
     return None
 
 
@@ -160,7 +157,6 @@ class MercadoPagoService:
         try:
             primeiro, ultimo = _split_nome_completo(nome_pagador)
 
-            # saneia CEP e UF
             cep = (endereco or {}).get("zip_code")
             if cep:
                 cep = "".join(c for c in str(cep) if c.isdigit())
@@ -252,7 +248,6 @@ class MercadoPagoService:
                 "token": token_cartao,
                 "description": descricao,
                 "installments": int(parcelas),
-                # não fixe payment_method_id; o token já carrega a bandeira
                 "payer": {
                     "email": email_pagador,
                     "identification": {"type": "CPF", "number": cpf_pagador},

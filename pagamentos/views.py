@@ -359,16 +359,16 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         try:
             contrato_id = request.data.get("contrato_id")
             if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=400)
+                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
             except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=404)
+                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
             if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
             # back_urls do frontend:
             front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
@@ -390,18 +390,18 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             )
 
             if not resultado.get("sucesso"):
-                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
+                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({
                 "sucesso": True,
                 "preference_id": resultado["preference_id"],
                 "init_point": resultado["init_point"],
                 "sandbox_init_point": resultado.get("sandbox_init_point"),
-            }, status=201)
+            }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.exception("Erro ao criar preference do Checkout Pro")
-            return Response({"erro": f"Erro interno: {e}"}, status=500)
+            return Response({"erro": f"Erro interno: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
@@ -490,11 +490,36 @@ def mercadopago_webhook(request):
             logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP")
             return JsonResponse({"status": "ok"}, status=200)
 
+        # Tenta localizar pagamento pelo payment_id
         pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
 
+        # Se não existir (fluxo comum do Checkout Pro), criamos um novo a partir do external_reference
         if not pagamento:
-            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no banco")
-            return JsonResponse({"status": "ok"}, status=200)
+            external_ref = payment_info.get("external_reference")
+            if external_ref:
+                try:
+                    from contratos.models import Contrato
+                    contrato = Contrato.objects.get(id=int(external_ref))
+                except Exception:
+                    contrato = None
+
+                if contrato:
+                    status_local = mp_service.mapear_status_mp_para_local(payment_info['status'])
+                    pagamento = Pagamento.objects.create(
+                        contrato=contrato,
+                        cliente=contrato.cliente,
+                        valor=payment_info.get("transaction_amount") or contrato.valor,
+                        metodo='checkout_pro',
+                        status=status_local,
+                        mercadopago_payment_id=str(payment_id),
+                    )
+                    logger.info(f"🆕 Pagamento criado via webhook para contrato #{contrato.id} (Checkout Pro).")
+                else:
+                    logger.warning(f"⚠️ Webhook: external_reference '{external_ref}' não mapeado para contrato.")
+                    return JsonResponse({"status": "ok"}, status=200)
+            else:
+                logger.warning("⚠️ Webhook: pagamento sem external_reference; não foi possível criar registro.")
+                return JsonResponse({"status": "ok"}, status=200)
 
         status_antigo = pagamento.status
         pagamento.status = mp_service.mapear_status_mp_para_local(payment_info['status'])
