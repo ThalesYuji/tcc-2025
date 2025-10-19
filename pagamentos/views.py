@@ -38,11 +38,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     # ===================== PIX =====================
     @action(detail=False, methods=['post'], url_path='criar-pix')
     def criar_pix(self, request):
-        """
-        Cria um pagamento via PIX
-        POST /api/pagamentos/criar-pix/
-        Body: { "contrato_id": 1 }
-        """
         try:
             contrato_id = request.data.get('contrato_id')
             logger.info(f"📥 Recebido contrato_id: {contrato_id}")
@@ -50,7 +45,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             if not contrato_id:
                 return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Busca o contrato
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
@@ -59,12 +53,10 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 logger.error(f"❌ Contrato {contrato_id} não encontrado")
                 return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Verifica se o usuário é o cliente do contrato
             if contrato.cliente != request.user:
                 logger.error(f"❌ Usuário {request.user.id} não é cliente")
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
-            # Verifica pagamento pendente
             pagamento_existente = Pagamento.objects.filter(
                 contrato=contrato,
                 status__in=['pendente', 'em_processamento']
@@ -73,7 +65,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 logger.warning(f"⚠️ Pagamento pendente já existe: #{pagamento_existente.id}")
                 return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Verifica CPF
             if not request.user.cpf:
                 logger.error("❌ Usuário sem CPF")
                 return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=status.HTTP_400_BAD_REQUEST)
@@ -81,7 +72,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
             logger.info(f"🔐 CPF processado: {cpf_limpo[:3]}***")
 
-            # Mercado Pago
             mp_service = MercadoPagoService()
             logger.info("💳 Criando pagamento PIX no Mercado Pago...")
 
@@ -138,20 +128,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     # =================== BOLETO ====================
     @action(detail=False, methods=['post'], url_path='criar-boleto')
     def criar_boleto(self, request):
-        """
-        Cria um pagamento via Boleto Registrado
-        POST /api/pagamentos/criar-boleto/
-        Body obrigatório:
-          {
-            "contrato_id": 1,
-            "cep": "12345678",
-            "rua": "Av. Brasil",
-            "numero": "1000",
-            "bairro": "Centro",
-            "cidade": "São Paulo",
-            "uf": "SP"
-          }
-        """
         try:
             contrato_id = request.data.get('contrato_id')
             logger.info(f"📥 Recebido contrato_id para boleto: {contrato_id}")
@@ -171,7 +147,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 logger.error(f"❌ Usuário {request.user.id} não é cliente")
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
-            # valor mínimo para boleto (evita falhas no adquirente)
             if float(contrato.valor) < 3:
                 return Response(
                     {"erro": "O valor mínimo para boleto é R$ 3,00."},
@@ -193,7 +168,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
             logger.info(f"🔐 CPF processado: {cpf_limpo[:3]}***")
 
-            # Endereço exigido pelo boleto registrado
             endereco = {
                 "zip_code": (request.data.get("cep") or "").replace("-", "").strip(),
                 "street_name": request.data.get("rua"),
@@ -266,16 +240,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     # =================== CARTÃO ====================
     @action(detail=False, methods=['post'], url_path='criar-cartao')
     def criar_cartao(self, request):
-        """
-        Cria um pagamento via Cartão
-        POST /api/pagamentos/criar-cartao/
-        Body:
-        {
-            "contrato_id": 1,
-            "token": "token_do_cartao",
-            "parcelas": 1
-        }
-        """
         try:
             contrato_id = request.data.get('contrato_id')
             token_cartao = request.data.get('token')
@@ -352,52 +316,55 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
     def criar_preferencia_checkout_pro(self, request):
         """
-        Cria uma preference do Checkout Pro e usa o endpoint público do backend
-        /mercadopago/retorno/ como back_urls (o backend redireciona para o front).
+        Cria uma preference do Checkout Pro.
+        Body: { "contrato_id": 123, (opcionais) "cep","rua","numero","bairro","cidade","uf","telefone" }
         """
         try:
             contrato_id = request.data.get("contrato_id")
             if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=400)
+                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
             except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=404)
+                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
             if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
 
-            # === back_urls públicas (sempre https) ===
-            # usamos o backend para garantir que é público; ele redireciona ao front depois.
-            site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
-            if not site or not site.startswith("https://"):
-                return Response(
-                    {"erro": "Configuração inválida: defina SITE_URL com seu domínio HTTPS (ex.: https://seuapp.railway.app)."},
-                    status=400
-                )
-            retorno_backend = f"{site}/mercadopago/retorno/"
-            back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
+            # SEMPRE usar a URL pública do backend para o retorno
+            site_url = getattr(settings, "SITE_URL", "").rstrip("/")
+            if not site_url:
+                return Response({"erro": "SITE_URL não configurada no backend."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # --- Payer opcional (ajuda a habilitar boleto/pix dentro do Checkout Pro) ---
+            back_to_backend = f"{site_url}/mercadopago/retorno/"
+            back_urls = {"success": back_to_backend, "pending": back_to_backend, "failure": back_to_backend}
+
+            # Monta payer (ajuda a liberar boleto/pix dentro do Checkout Pro)
             cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
-            cep = (request.data.get("cep") or "").replace("-", "").strip()
             payer = {
                 "email": request.user.email,
                 "name": getattr(request.user, "nome", "") or getattr(request.user, "first_name", "") or "Cliente",
                 "surname": getattr(request.user, "sobrenome", "") or getattr(request.user, "last_name", "") or "",
-                "identification": {"type": "CPF", "number": cpf_limpo} if cpf_limpo else None,
-                "address": {
-                    "zip_code": cep or None,
-                    "street_name": request.data.get("rua") or None,
-                    "street_number": request.data.get("numero") or None,
-                    "neighborhood": request.data.get("bairro") or None,
-                    "city": request.data.get("cidade") or None,
-                    "federal_unit": (request.data.get("uf") or "").upper()[:2] or None,
-                },
             }
-            payer = {k: v for k, v in payer.items() if v}
+            if cpf_limpo:
+                payer["identification"] = {"type": "CPF", "number": cpf_limpo}
+
+            # endereço opcional
+            cep = (request.data.get("cep") or "").replace("-", "")
+            addr = {
+                "zip_code": cep or None,
+                "street_name": (request.data.get("rua") or None),
+                "street_number": (request.data.get("numero") or None),
+                "neighborhood": (request.data.get("bairro") or None),
+                "city": (request.data.get("cidade") or None),
+                "federal_unit": ((request.data.get("uf") or "").upper()[:2] or None),
+            }
+            # remove None
+            addr = {k: v for k, v in addr.items() if v}
+            if addr:
+                payer["address"] = addr
 
             mp = MercadoPagoService()
             resultado = mp.criar_preferencia_checkout_pro(
@@ -406,36 +373,27 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 valor_unitario=float(contrato.valor),
                 external_reference=str(contrato.id),
                 back_urls=back_urls,
-                auto_return="approved",  # só funciona se back_urls.success for HTTPS e válido
-                payer=payer or None,
+                auto_return="approved",
+                payer=payer,
             )
 
             if not resultado.get("sucesso"):
-                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
+                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({
                 "sucesso": True,
                 "preference_id": resultado["preference_id"],
                 "init_point": resultado["init_point"],
                 "sandbox_init_point": resultado.get("sandbox_init_point"),
-            }, status=201)
+            }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.exception("Erro ao criar preference do Checkout Pro")
-            return Response({"erro": f"Erro interno: {e}"}, status=500)
-
-    # Alias opcional (aceita também com hífen no caminho)
-    @action(detail=False, methods=['post'], url_path=r'checkout-pro/criar-preferencia')
-    def criar_preferencia_checkout_pro_alias(self, request):
-        return self.criar_preferencia_checkout_pro(request)
+            return Response({"erro": f"Erro interno: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
-        """
-        Consulta o status atual de um pagamento
-        GET /api/pagamentos/{id}/status/
-        """
         try:
             pagamento = self.get_object()
 
@@ -461,9 +419,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
     # ================== HELPER ==================
     def _concluir_contrato(self, contrato):
-        """
-        🔹 Marca contrato e trabalho como concluídos, envia notificações.
-        """
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
         contrato.trabalho.save()
@@ -480,6 +435,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             link=f"/contratos/{contrato.id}"
         )
 
+
 # ------------------------
 # Retorno do Checkout Pro (redireciona ao front)
 # ------------------------
@@ -488,11 +444,9 @@ def mercadopago_retorno(request):
     O Mercado Pago redireciona o comprador para esta URL pública (success/pending/failure).
     Aqui só repassamos os parâmetros para a rota do front.
     """
-    front_return = (getattr(settings, "FRONT_RETURN_URL", None)
-                    or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/checkout/retorno").rstrip("/")
-
+    front_base = getattr(settings, "FRONT_RETURN_URL", None) or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno"
     qs = request.GET.urlencode()
-    destino = f"{front_return}?{qs}" if qs else front_return
+    destino = f"{front_base}?{qs}" if qs else front_base
     logger.info(f"↪️ Redirecionando retorno do MP para o front: {destino}")
     return redirect(destino)
 
@@ -502,10 +456,6 @@ def mercadopago_retorno(request):
 # ------------------------
 @csrf_exempt
 def mercadopago_webhook(request):
-    """
-    Endpoint público para o Mercado Pago enviar eventos de pagamento.
-    ⚠️ Não passa pelo DRF → não exige autenticação JWT.
-    """
     if request.method != "POST":
         return HttpResponse(status=405)
 
