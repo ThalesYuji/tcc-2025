@@ -8,6 +8,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 import logging
+import json
 
 from .models import Pagamento
 from .serializers import PagamentoSerializer
@@ -463,83 +464,122 @@ def mercadopago_webhook(request):
     """
     Endpoint público para o Mercado Pago enviar eventos de pagamento.
     ⚠️ Não passa pelo DRF → não exige autenticação JWT.
+
+    - Se MP_WEBHOOK_SECRET estiver definido no settings, valida via querystring (?secret=...)
+    - Busca os detalhes do pagamento no SDK
+    - Atualiza um Pagamento existente OU cria um novo via external_reference (Checkout Pro)
+    - Conclui contrato automaticamente se aprovado
     """
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    import json
+    # (opcional) verificação simples por 'secret' via querystring
+    try:
+        secret_conf = getattr(settings, "MP_WEBHOOK_SECRET", None)
+        if secret_conf:
+            if request.GET.get("secret") != secret_conf:
+                logger.warning("Webhook rejeitado: secret inválido")
+                return HttpResponse(status=403)
+    except Exception:
+        pass
+
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         logger.error("❌ Webhook MP: JSON inválido")
         return JsonResponse({"error": "JSON inválido"}, status=400)
 
-    logger.info(f"🔔 Webhook recebido do Mercado Pago: {data.get('type')}")
+    event_type = data.get("type")
+    logger.info(f"🔔 Webhook recebido do Mercado Pago: {event_type}")
 
-    if data.get("type") == "payment":
-        payment_id = data.get("data", {}).get("id")
+    if event_type != "payment":
+        # Outros tipos (plan/subscription/...) não tratados aqui
+        return JsonResponse({"status": "ignored"}, status=200)
 
-        if not payment_id:
-            logger.warning("⚠️ Webhook MP: payment_id não encontrado")
+    payment_id = str(data.get("data", {}).get("id") or "")
+    if not payment_id:
+        logger.warning("⚠️ Webhook MP: payment_id não encontrado")
+        return JsonResponse({"status": "ok"}, status=200)
+
+    # Consulta completa no SDK (precisamos de payment_type_id e external_reference)
+    mp_service = MercadoPagoService()
+    try:
+        sdk_resp = mp_service.sdk.payment().get(payment_id)
+        sdk_http = sdk_resp.get("status")
+        payment = sdk_resp.get("response", {}) or {}
+        logger.info(f"MP GET pagamento ← http={sdk_http} id={payment.get('id')}")
+        if sdk_http not in (200, 201) or not payment.get("id"):
+            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP ou erro: {sdk_resp}")
+            return JsonResponse({"status": "ok"}, status=200)
+    except Exception as e:
+        logger.exception(f"❌ Erro ao consultar pagamento {payment_id}: {e}")
+        return JsonResponse({"status": "ok"}, status=200)
+
+    # Dados do pagamento
+    status_mp = payment.get("status")  # approved, pending, in_process, rejected...
+    external_reference = payment.get("external_reference")
+    payment_type_id = payment.get("payment_type_id")  # credit_card, debit_card, bank_transfer, ticket
+    transaction_amount = payment.get("transaction_amount")
+    status_local = mp_service.mapear_status_mp_para_local(status_mp)
+
+    # Mapeia tipo → metodo local
+    if payment_type_id == "bank_transfer":
+        metodo_local = "pix"
+    elif payment_type_id == "ticket":
+        metodo_local = "boleto"
+    elif payment_type_id in ("credit_card", "debit_card"):
+        metodo_local = "card"
+    else:
+        # fallback (ex.: created via Checkout Pro sem detalhamento)
+        metodo_local = "card"
+
+    # Tenta localizar pagamento pelo payment_id
+    pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
+
+    # Se não existir, criamos via external_reference (fluxo comum do Checkout Pro)
+    if not pagamento:
+        from contratos.models import Contrato
+        contrato = None
+        try:
+            if external_reference:
+                contrato = Contrato.objects.get(id=int(external_reference))
+        except Exception:
+            contrato = None
+
+        if not contrato:
+            logger.warning(f"⚠️ Webhook: external_reference '{external_reference}' não mapeado para contrato.")
             return JsonResponse({"status": "ok"}, status=200)
 
-        mp_service = MercadoPagoService()
-        payment_info = mp_service.consultar_pagamento(str(payment_id))
-
-        if not payment_info:
-            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP")
-            return JsonResponse({"status": "ok"}, status=200)
-
-        # Tenta localizar pagamento pelo payment_id
-        pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
-
-        # Se não existir (fluxo comum do Checkout Pro), criamos um novo a partir do external_reference
-        if not pagamento:
-            external_ref = payment_info.get("external_reference")
-            if external_ref:
-                try:
-                    from contratos.models import Contrato
-                    contrato = Contrato.objects.get(id=int(external_ref))
-                except Exception:
-                    contrato = None
-
-                if contrato:
-                    status_local = mp_service.mapear_status_mp_para_local(payment_info['status'])
-                    pagamento = Pagamento.objects.create(
-                        contrato=contrato,
-                        cliente=contrato.cliente,
-                        valor=payment_info.get("transaction_amount") or contrato.valor,
-                        metodo='checkout_pro',
-                        status=status_local,
-                        mercadopago_payment_id=str(payment_id),
-                    )
-                    logger.info(f"🆕 Pagamento criado via webhook para contrato #{contrato.id} (Checkout Pro).")
-                else:
-                    logger.warning(f"⚠️ Webhook: external_reference '{external_ref}' não mapeado para contrato.")
-                    return JsonResponse({"status": "ok"}, status=200)
-            else:
-                logger.warning("⚠️ Webhook: pagamento sem external_reference; não foi possível criar registro.")
-                return JsonResponse({"status": "ok"}, status=200)
-
+        pagamento = Pagamento.objects.create(
+            contrato=contrato,
+            cliente=contrato.cliente,
+            valor=transaction_amount or contrato.valor,
+            metodo=metodo_local,
+            status=status_local,
+            mercadopago_payment_id=str(payment_id),
+            codigo_transacao=str(payment_id),
+        )
+        logger.info(f"🆕 Pagamento criado via webhook: #{pagamento.id} (metodo={metodo_local}, status={status_local})")
+    else:
         status_antigo = pagamento.status
-        pagamento.status = mp_service.mapear_status_mp_para_local(payment_info['status'])
+        pagamento.status = status_local
         pagamento.save()
-
         logger.info(f"✅ Pagamento #{pagamento.id} atualizado: {status_antigo} → {pagamento.status}")
 
-        if pagamento.status == 'aprovado' and status_antigo != 'aprovado':
-            contrato = pagamento.contrato
-            if contrato.status != "concluido":
-                viewset = PagamentoViewSet()
-                viewset._concluir_contrato(contrato)
-                logger.info(f"✅ Contrato #{contrato.id} concluído automaticamente")
+    # Pós-processamento por status
+    if pagamento.status == 'aprovado':
+        contrato = pagamento.contrato
+        if contrato.status != "concluido":
+            viewset = PagamentoViewSet()
+            viewset._concluir_contrato(contrato)
+            logger.info(f"✅ Contrato #{contrato.id} concluído automaticamente (webhook)")
 
-        elif pagamento.status == 'rejeitado' and status_antigo != 'rejeitado':
-            enviar_notificacao(
-                usuario=pagamento.contrato.cliente,
-                mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' foi rejeitado. Tente novamente.",
-                link=f"/contratos/{pagamento.contrato.id}/pagamento"
-            )
-            logger.info(f"📧 Notificação de rejeição enviada para cliente #{pagamento.contrato.cliente.id}")
+    elif pagamento.status == 'rejeitado':
+        enviar_notificacao(
+            usuario=pagamento.contrato.cliente,
+            mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' foi rejeitado. Tente novamente.",
+            link=f"/contratos/{pagamento.contrato.id}/pagamento"
+        )
+        logger.info(f"📧 Notificação de rejeição enviada para cliente #{pagamento.contrato.cliente.id}")
 
     return JsonResponse({"status": "ok"}, status=200)
