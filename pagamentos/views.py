@@ -349,90 +349,91 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ============ CHECKOUT PRO (criar preference) ============
-# dentro de PagamentoViewSet
-@action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
-def criar_preferencia_checkout_pro(self, request):
-    """
-    Cria uma preference do Checkout Pro para o contrato informado.
-    POST /api/pagamentos/checkout-pro/criar-preferencia/
-    Body: { "contrato_id": 123,  (opcionais p/ boleto/pix) "cep","rua","numero","cidade","uf","bairro","telefone" }
-    """
-    try:
-        contrato_id = request.data.get("contrato_id")
-        if not contrato_id:
-            return Response({"erro": "contrato_id é obrigatório"}, status=400)
-
-        from contratos.models import Contrato
+    @action(detail=False, methods=['post'], url_path=r'checkout_pro/criar_preferencia')
+    def criar_preferencia_checkout_pro(self, request):
+        """
+        Cria uma preference do Checkout Pro para o contrato informado.
+        POST /api/pagamentos/checkout_pro/criar_preferencia/
+        Body: { "contrato_id": 123,  (opcionais) "cep","rua","numero","cidade","uf","bairro","telefone" }
+        """
         try:
-            contrato = Contrato.objects.get(id=contrato_id)
-        except Contrato.DoesNotExist:
-            return Response({"erro": "Contrato não encontrado"}, status=404)
+            contrato_id = request.data.get("contrato_id")
+            if not contrato_id:
+                return Response({"erro": "contrato_id é obrigatório"}, status=400)
 
-        if contrato.cliente != request.user:
-            return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
+            from contratos.models import Contrato
+            try:
+                contrato = Contrato.objects.get(id=contrato_id)
+            except Contrato.DoesNotExist:
+                return Response({"erro": "Contrato não encontrado"}, status=404)
 
-        # back_urls do frontend:
-        front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
-        back_urls = {
-            "success": front_return,
-            "pending": front_return,
-            "failure": front_return,
-        }
+            if contrato.cliente != request.user:
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-        # --- Monta payer completo (habilita boleto/pix como convidado) ---
-        cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
-        cep = (request.data.get("cep") or "").replace("-", "").strip()
-        rua = request.data.get("rua") or ""
-        numero = request.data.get("numero") or ""
-        bairro = request.data.get("bairro") or ""
-        cidade = request.data.get("cidade") or ""
-        uf = (request.data.get("uf") or "").upper()[:2]
-        telefone = request.data.get("telefone") or ""
+            # back_urls do frontend:
+            front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
+            back_urls = {
+                "success": front_return,
+                "pending": front_return,
+                "failure": front_return,
+            }
 
-        payer = {
-            "email": request.user.email,
-            "name": getattr(request.user, "nome", "") or getattr(request.user, "first_name", "") or "Cliente",
-            "surname": getattr(request.user, "sobrenome", "") or getattr(request.user, "last_name", "") or "",
-            # identification ajuda a liberar boleto/pix
-            "identification": {"type": "CPF", "number": cpf_limpo} if cpf_limpo else None,
-            # address ajuda a liberar boleto
-            "address": {
-                "zip_code": cep or None,
-                "street_name": rua or None,
-                "street_number": numero or None,
-                "neighborhood": bairro or None,
-                "city": cidade or None,
-                "federal_unit": uf or None,
-            },
-            "phone": {"area_code": "", "number": telefone} if telefone else None,
-        }
-        # remove chaves vazias/None
-        payer = {k: v for k, v in payer.items() if v}
+            # --- Payer completo (ajuda a liberar boleto/pix no fluxo convidado) ---
+            cpf_limpo = (getattr(request.user, "cpf", "") or "").replace(".", "").replace("-", "")
+            cep = (request.data.get("cep") or "").replace("-", "").strip()
+            rua = request.data.get("rua") or ""
+            numero = request.data.get("numero") or ""
+            bairro = request.data.get("bairro") or ""
+            cidade = request.data.get("cidade") or ""
+            uf = (request.data.get("uf") or "").upper()[:2]
+            telefone = request.data.get("telefone") or ""
 
-        mp = MercadoPagoService()
-        resultado = mp.criar_preferencia_checkout_pro(
-            titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
-            quantidade=1,
-            valor_unitario=float(contrato.valor),
-            external_reference=str(contrato.id),
-            back_urls=back_urls,
-            auto_return="approved",
-            payer=payer,  # <-- agora vai completo
-        )
+            payer = {
+                "email": request.user.email,
+                "name": getattr(request.user, "nome", "") or getattr(request.user, "first_name", "") or "Cliente",
+                "surname": getattr(request.user, "sobrenome", "") or getattr(request.user, "last_name", "") or "",
+                "identification": {"type": "CPF", "number": cpf_limpo} if cpf_limpo else None,
+                "address": {
+                    "zip_code": cep or None,
+                    "street_name": rua or None,
+                    "street_number": numero or None,
+                    "neighborhood": bairro or None,
+                    "city": cidade or None,
+                    "federal_unit": uf or None,
+                },
+                "phone": {"area_code": "", "number": telefone} if telefone else None,
+            }
+            payer = {k: v for k, v in payer.items() if v}
 
-        if not resultado.get("sucesso"):
-            return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
+            mp = MercadoPagoService()
+            resultado = mp.criar_preferencia_checkout_pro(
+                titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
+                quantidade=1,
+                valor_unitario=float(contrato.valor),
+                external_reference=str(contrato.id),
+                back_urls=back_urls,
+                auto_return="approved",
+                payer=payer,
+            )
 
-        return Response({
-            "sucesso": True,
-            "preference_id": resultado["preference_id"],
-            "init_point": resultado["init_point"],
-            "sandbox_init_point": resultado.get("sandbox_init_point"),
-        }, status=201)
+            if not resultado.get("sucesso"):
+                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
 
-    except Exception as e:
-        logger.exception("Erro ao criar preference do Checkout Pro")
-        return Response({"erro": f"Erro interno: {e}"}, status=500)
+            return Response({
+                "sucesso": True,
+                "preference_id": resultado["preference_id"],
+                "init_point": resultado["init_point"],
+                "sandbox_init_point": resultado.get("sandbox_init_point"),
+            }, status=201)
+
+        except Exception as e:
+            logger.exception("Erro ao criar preference do Checkout Pro")
+            return Response({"erro": f"Erro interno: {e}"}, status=500)
+
+    # Alias opcional (aceita também com hífen no caminho)
+    @action(detail=False, methods=['post'], url_path=r'checkout-pro/criar-preferencia')
+    def criar_preferencia_checkout_pro_alias(self, request):
+        return self.criar_preferencia_checkout_pro(request)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
@@ -494,11 +495,9 @@ def mercadopago_retorno(request):
     O Mercado Pago redireciona o comprador para esta URL pública (success/pending/failure).
     Aqui só repassamos os parâmetros para a rota do front.
     """
-    # Rota do front que você criou (pública ou local)
     front_return = (getattr(settings, "FRONT_RETURN_URL", None)
                     or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/checkout/retorno").rstrip("/")
 
-    # Anexa os query params recebidos do MP
     qs = request.GET.urlencode()
     destino = f"{front_return}?{qs}" if qs else front_return
     logger.info(f"↪️ Redirecionando retorno do MP para o front: {destino}")
@@ -540,10 +539,8 @@ def mercadopago_webhook(request):
             logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP")
             return JsonResponse({"status": "ok"}, status=200)
 
-        # Tenta localizar pagamento pelo payment_id
         pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
 
-        # Se não existir (fluxo comum do Checkout Pro), criamos um novo a partir do external_reference
         if not pagamento:
             external_ref = payment_info.get("external_reference")
             if external_ref:

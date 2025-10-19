@@ -47,7 +47,7 @@ export default function PagamentoContrato() {
     })();
   }, [id]);
 
-  // Poll do status (PIX/BOLETO). Para Checkout Pro, o status será exibido na rota /checkout/retorno.
+  // Poll do status (PIX/BOLETO). Para Checkout Pro, o status virá por webhook/retorno.
   useEffect(() => {
     if (!pagamentoId) return;
     const timer = setInterval(async () => {
@@ -133,14 +133,15 @@ export default function PagamentoContrato() {
   const criarPreferenceCheckoutPro = async () => {
     setErro(""); setSucesso(""); setProcessandoPagamento(true);
     try {
-      // Enviamos endereço também (opcional). Ajuda a habilitar boleto/pix lá dentro sem login.
+      // Enviamos endereço também (opcional). Ajuda a liberar boleto/pix lá dentro sem login.
       const payload = {
         contrato_id: contrato?.id,
         cep: (cep || "").replace(/\D/g, ""),
         rua, numero, bairro, cidade,
         uf: (uf || "").toUpperCase().slice(0, 2),
       };
-      const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", payload);
+      // ⚠️ usa o endpoint com underscore (garantido no backend)
+      const resp = await api.post("/pagamentos/checkout_pro/criar_preferencia/", payload);
       const initPoint = resp.data?.init_point;
       if (!initPoint) throw new Error("Não foi possível obter o link de pagamento.");
       window.location.href = initPoint; // redireciona para o fluxo do Mercado Pago
