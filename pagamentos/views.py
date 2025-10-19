@@ -349,12 +349,11 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ============ CHECKOUT PRO (criar preference) ============
-    @action(detail=False, methods=['post'], url_path=r'checkout_pro/criar_preferencia')
+    @action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
     def criar_preferencia_checkout_pro(self, request):
         """
-        Cria uma preference do Checkout Pro para o contrato informado.
-        POST /api/pagamentos/checkout_pro/criar_preferencia/
-        Body: { "contrato_id": 123,  (opcionais) "cep","rua","numero","cidade","uf","bairro","telefone" }
+        Cria uma preference do Checkout Pro e usa o endpoint público do backend
+        /mercadopago/retorno/ como back_urls (o backend redireciona para o front).
         """
         try:
             contrato_id = request.data.get("contrato_id")
@@ -370,24 +369,20 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             if contrato.cliente != request.user:
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            # back_urls do frontend:
-            front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
-            back_urls = {
-                "success": front_return,
-                "pending": front_return,
-                "failure": front_return,
-            }
+            # === back_urls públicas (sempre https) ===
+            # usamos o backend para garantir que é público; ele redireciona ao front depois.
+            site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+            if not site or not site.startswith("https://"):
+                return Response(
+                    {"erro": "Configuração inválida: defina SITE_URL com seu domínio HTTPS (ex.: https://seuapp.railway.app)."},
+                    status=400
+                )
+            retorno_backend = f"{site}/mercadopago/retorno/"
+            back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
 
-            # --- Payer completo (ajuda a liberar boleto/pix no fluxo convidado) ---
-            cpf_limpo = (getattr(request.user, "cpf", "") or "").replace(".", "").replace("-", "")
+            # --- Payer opcional (ajuda a habilitar boleto/pix dentro do Checkout Pro) ---
+            cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
             cep = (request.data.get("cep") or "").replace("-", "").strip()
-            rua = request.data.get("rua") or ""
-            numero = request.data.get("numero") or ""
-            bairro = request.data.get("bairro") or ""
-            cidade = request.data.get("cidade") or ""
-            uf = (request.data.get("uf") or "").upper()[:2]
-            telefone = request.data.get("telefone") or ""
-
             payer = {
                 "email": request.user.email,
                 "name": getattr(request.user, "nome", "") or getattr(request.user, "first_name", "") or "Cliente",
@@ -395,13 +390,12 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 "identification": {"type": "CPF", "number": cpf_limpo} if cpf_limpo else None,
                 "address": {
                     "zip_code": cep or None,
-                    "street_name": rua or None,
-                    "street_number": numero or None,
-                    "neighborhood": bairro or None,
-                    "city": cidade or None,
-                    "federal_unit": uf or None,
+                    "street_name": request.data.get("rua") or None,
+                    "street_number": request.data.get("numero") or None,
+                    "neighborhood": request.data.get("bairro") or None,
+                    "city": request.data.get("cidade") or None,
+                    "federal_unit": (request.data.get("uf") or "").upper()[:2] or None,
                 },
-                "phone": {"area_code": "", "number": telefone} if telefone else None,
             }
             payer = {k: v for k, v in payer.items() if v}
 
@@ -412,8 +406,8 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 valor_unitario=float(contrato.valor),
                 external_reference=str(contrato.id),
                 back_urls=back_urls,
-                auto_return="approved",
-                payer=payer,
+                auto_return="approved",  # só funciona se back_urls.success for HTTPS e válido
+                payer=payer or None,
             )
 
             if not resultado.get("sucesso"):
@@ -485,7 +479,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             mensagem=f"O contrato do trabalho '{contrato.trabalho.titulo}' foi concluído após o pagamento.",
             link=f"/contratos/{contrato.id}"
         )
-
 
 # ------------------------
 # Retorno do Checkout Pro (redireciona ao front)
