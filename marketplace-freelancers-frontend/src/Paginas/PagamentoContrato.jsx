@@ -25,7 +25,7 @@ export default function PagamentoContrato() {
   // BOLETO
   const [boletoUrl, setBoletoUrl] = useState("");
 
-  // Endereço para BOLETO
+  // Endereço do pagador (usado para BOLETO e opcionalmente enviado ao Checkout Pro)
   const [cep, setCep] = useState("");
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
@@ -94,7 +94,7 @@ export default function PagamentoContrato() {
     setErro(msg);
   };
 
-  // Ações
+  // --- Ações ---
 
   // PIX
   const criarPagamentoPix = async () => {
@@ -133,13 +133,17 @@ export default function PagamentoContrato() {
   const criarPreferenceCheckoutPro = async () => {
     setErro(""); setSucesso(""); setProcessandoPagamento(true);
     try {
-      const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", {
+      // Enviamos endereço também (opcional). Ajuda a habilitar boleto/pix lá dentro sem login.
+      const payload = {
         contrato_id: contrato?.id,
-      });
+        cep: (cep || "").replace(/\D/g, ""),
+        rua, numero, bairro, cidade,
+        uf: (uf || "").toUpperCase().slice(0, 2),
+      };
+      const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", payload);
       const initPoint = resp.data?.init_point;
       if (!initPoint) throw new Error("Não foi possível obter o link de pagamento.");
-      // redireciona o usuário para o fluxo do Mercado Pago
-      window.location.href = initPoint;
+      window.location.href = initPoint; // redireciona para o fluxo do Mercado Pago
     } catch (e) {
       handleErro(e);
       setProcessandoPagamento(false);
@@ -370,7 +374,11 @@ export default function PagamentoContrato() {
                 <button
                   onClick={confirmarPagamento}
                   className="btn-confirmar"
-                  disabled={processandoPagamento || !metodo || (metodo==="boleto" && (!cep||!rua||!numero||!bairro||!cidade||!uf))}
+                  disabled={
+                    processandoPagamento ||
+                    !metodo ||
+                    (metodo === "boleto" && (!cep || !rua || !numero || !bairro || !cidade || !uf))
+                  }
                 >
                   {processandoPagamento ? (
                     <>
@@ -378,7 +386,8 @@ export default function PagamentoContrato() {
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-check-lg"></i> {metodo === "checkout_pro" ? "Ir para pagamento" : "Gerar Pagamento"}
+                      <i className="bi bi-check-lg"></i>{" "}
+                      {metodo === "checkout_pro" ? "Ir para pagamento" : "Gerar Pagamento"}
                     </>
                   )}
                 </button>

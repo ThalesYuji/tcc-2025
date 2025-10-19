@@ -349,64 +349,90 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ============ CHECKOUT PRO (criar preference) ============
-    @action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
-    def criar_preferencia_checkout_pro(self, request):
-        """
-        Cria uma preference do Checkout Pro para o contrato informado.
-        POST /api/pagamentos/checkout-pro/criar-preferencia/
-        Body: { "contrato_id": 123 }
-        Retorna: { init_point, sandbox_init_point, preference_id }
-        """
+# dentro de PagamentoViewSet
+@action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
+def criar_preferencia_checkout_pro(self, request):
+    """
+    Cria uma preference do Checkout Pro para o contrato informado.
+    POST /api/pagamentos/checkout-pro/criar-preferencia/
+    Body: { "contrato_id": 123,  (opcionais p/ boleto/pix) "cep","rua","numero","cidade","uf","bairro","telefone" }
+    """
+    try:
+        contrato_id = request.data.get("contrato_id")
+        if not contrato_id:
+            return Response({"erro": "contrato_id é obrigatório"}, status=400)
+
+        from contratos.models import Contrato
         try:
-            contrato_id = request.data.get("contrato_id")
-            if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+            contrato = Contrato.objects.get(id=contrato_id)
+        except Contrato.DoesNotExist:
+            return Response({"erro": "Contrato não encontrado"}, status=404)
 
-            from contratos.models import Contrato
-            try:
-                contrato = Contrato.objects.get(id=contrato_id)
-            except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        if contrato.cliente != request.user:
+            return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+        # back_urls do frontend:
+        front_return = getattr(settings, "FRONT_RETURN_URL", None) or "http://localhost:3000/checkout/retorno"
+        back_urls = {
+            "success": front_return,
+            "pending": front_return,
+            "failure": front_return,
+        }
 
-            # back_urls DEVEM ser públicas (https). Usamos o backend e depois redirecionamos ao front.
-            site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
-            if not site:
-                return Response({"erro": "SITE_URL não configurada no backend."}, status=500)
+        # --- Monta payer completo (habilita boleto/pix como convidado) ---
+        cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
+        cep = (request.data.get("cep") or "").replace("-", "").strip()
+        rua = request.data.get("rua") or ""
+        numero = request.data.get("numero") or ""
+        bairro = request.data.get("bairro") or ""
+        cidade = request.data.get("cidade") or ""
+        uf = (request.data.get("uf") or "").upper()[:2]
+        telefone = request.data.get("telefone") or ""
 
-            backend_return = f"{site}/mercadopago/retorno/"
-            back_urls = {
-                "success": backend_return,
-                "pending": backend_return,
-                "failure": backend_return,
-            }
+        payer = {
+            "email": request.user.email,
+            "name": getattr(request.user, "nome", "") or getattr(request.user, "first_name", "") or "Cliente",
+            "surname": getattr(request.user, "sobrenome", "") or getattr(request.user, "last_name", "") or "",
+            # identification ajuda a liberar boleto/pix
+            "identification": {"type": "CPF", "number": cpf_limpo} if cpf_limpo else None,
+            # address ajuda a liberar boleto
+            "address": {
+                "zip_code": cep or None,
+                "street_name": rua or None,
+                "street_number": numero or None,
+                "neighborhood": bairro or None,
+                "city": cidade or None,
+                "federal_unit": uf or None,
+            },
+            "phone": {"area_code": "", "number": telefone} if telefone else None,
+        }
+        # remove chaves vazias/None
+        payer = {k: v for k, v in payer.items() if v}
 
-            mp = MercadoPagoService()
-            resultado = mp.criar_preferencia_checkout_pro(
-                titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
-                quantidade=1,
-                valor_unitario=float(contrato.valor),
-                external_reference=str(contrato.id),
-                back_urls=back_urls,
-                auto_return="approved",
-                payer={"email": request.user.email} if request.user.email else None,
-            )
+        mp = MercadoPagoService()
+        resultado = mp.criar_preferencia_checkout_pro(
+            titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
+            quantidade=1,
+            valor_unitario=float(contrato.valor),
+            external_reference=str(contrato.id),
+            back_urls=back_urls,
+            auto_return="approved",
+            payer=payer,  # <-- agora vai completo
+        )
 
-            if not resultado.get("sucesso"):
-                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=status.HTTP_400_BAD_REQUEST)
+        if not resultado.get("sucesso"):
+            return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=400)
 
-            return Response({
-                "sucesso": True,
-                "preference_id": resultado["preference_id"],
-                "init_point": resultado["init_point"],
-                "sandbox_init_point": resultado.get("sandbox_init_point"),
-            }, status=status.HTTP_201_CREATED)
+        return Response({
+            "sucesso": True,
+            "preference_id": resultado["preference_id"],
+            "init_point": resultado["init_point"],
+            "sandbox_init_point": resultado.get("sandbox_init_point"),
+        }, status=201)
 
-        except Exception as e:
-            logger.exception("Erro ao criar preference do Checkout Pro")
-            return Response({"erro": f"Erro interno: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        logger.exception("Erro ao criar preference do Checkout Pro")
+        return Response({"erro": f"Erro interno: {e}"}, status=500)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
