@@ -1,8 +1,8 @@
 # pagamentos/urls.py
 from django.urls import path
-from .views import mercadopago_webhook
+from .views import mercadopago_webhook, mercadopago_retorno
 
-# URLs públicas do app pagamentos (SEM autenticação)
 urlpatterns = [
     path('webhook/', mercadopago_webhook, name='mercadopago-webhook'),
+    path('retorno/', mercadopago_retorno, name='mercadopago-retorno'),
 ]
