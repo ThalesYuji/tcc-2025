@@ -19,6 +19,9 @@ from .permissoes import PermissaoPagamento
 from services.mercadopago import MercadoPagoService
 from notificacoes.utils import enviar_notificacao
 
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import user_passes_test
+
 logger = logging.getLogger(__name__)
 
 
@@ -477,3 +480,31 @@ def mercadopago_webhook(request):
             )
 
     return JsonResponse({"status": "ok"}, status=200)
+
+# --- APENAS DEV: força aprovação de um pagamento ---
+@csrf_exempt
+@require_POST
+@user_passes_test(lambda u: u.is_staff, login_url=None, redirect_field_name=None)  # só staff pode usar
+def force_approve_payment(request, pagamento_id: int):
+    """
+    Marca um Pagamento como 'aprovado' e conclui o contrato (APENAS DEBUG).
+    Exemplo: POST /mercadopago/test/force-approve/123/
+    """
+    if not settings.DEBUG:
+        return HttpResponse(status=404)
+
+    try:
+        pagamento = Pagamento.objects.get(id=pagamento_id)
+    except Pagamento.DoesNotExist:
+        return JsonResponse({"erro": "Pagamento não encontrado"}, status=404)
+
+    status_antigo = pagamento.status
+    pagamento.status = "aprovado"
+    pagamento.save()
+
+    # conclui contrato se ainda não estiver
+    if pagamento.contrato.status != "concluido":
+        PagamentoViewSet()._concluir_contrato(pagamento.contrato)
+
+    logger.info(f"🔧 Forçado: pagamento #{pagamento.id} {status_antigo} -> aprovado (DEV)")
+    return JsonResponse({"ok": True, "pagamento_id": pagamento.id, "novo_status": pagamento.status})
