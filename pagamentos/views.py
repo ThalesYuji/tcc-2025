@@ -3,12 +3,15 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.shortcuts import redirect
+
 import logging
+import json
 
 from .models import Pagamento
 from .serializers import PagamentoSerializer
@@ -24,11 +27,11 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     serializer_class = PagamentoSerializer
     permission_classes = [IsAuthenticated, PermissaoPagamento]
 
+    # ---------------- Queryset por usuário ----------------
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
             return Pagamento.objects.all()
-
         return Pagamento.objects.filter(
             Q(cliente=user) |
             Q(contrato__cliente=user) |
@@ -40,55 +43,40 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     def criar_pix(self, request):
         try:
             contrato_id = request.data.get('contrato_id')
-            logger.info(f"📥 Recebido contrato_id: {contrato_id}")
-
             if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "contrato_id é obrigatório"}, status=400)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
-                logger.info(f"✅ Contrato encontrado: #{contrato.id}")
             except Contrato.DoesNotExist:
-                logger.error(f"❌ Contrato {contrato_id} não encontrado")
-                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"erro": "Contrato não encontrado"}, status=404)
 
             if contrato.cliente != request.user:
-                logger.error(f"❌ Usuário {request.user.id} não é cliente")
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            pagamento_existente = Pagamento.objects.filter(
-                contrato=contrato,
-                status__in=['pendente', 'em_processamento']
-            ).first()
-            if pagamento_existente:
-                logger.warning(f"⚠️ Pagamento pendente já existe: #{pagamento_existente.id}")
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
+            # evita duplicidade
+            if Pagamento.objects.filter(
+                contrato=contrato, status__in=['pendente', 'em_processamento']
+            ).exists():
+                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
 
             if not request.user.cpf:
-                logger.error("❌ Usuário sem CPF")
-                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=400)
 
             cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
-            logger.info(f"🔐 CPF processado: {cpf_limpo[:3]}***")
 
-            mp_service = MercadoPagoService()
-            logger.info("💳 Criando pagamento PIX no Mercado Pago...")
-
-            resultado = mp_service.criar_pagamento_pix(
+            mp = MercadoPagoService()
+            res = mp.criar_pagamento_pix(
                 valor=float(contrato.valor),
                 descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
                 email_pagador=request.user.email,
                 cpf_pagador=cpf_limpo,
-                nome_pagador=request.user.nome,
-                external_reference=str(contrato.id)
+                nome_pagador=getattr(request.user, "nome", "") or request.user.get_full_name() or "Cliente",
+                external_reference=str(contrato.id),
             )
-
-            if not resultado.get("sucesso"):
-                logger.error(f"❌ Erro MP: {resultado.get('erro')}")
-                return Response({"erro": resultado.get("erro", "Erro ao criar pagamento no Mercado Pago")}, status=status.HTTP_400_BAD_REQUEST)
-
-            logger.info(f"✅ Pagamento criado no MP: {resultado['payment_id']}")
+            if not res.get("sucesso"):
+                return Response({"erro": res.get("erro", "Erro ao criar pagamento no Mercado Pago")}, status=400)
 
             pagamento = Pagamento.objects.create(
                 contrato=contrato,
@@ -96,77 +84,62 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 valor=contrato.valor,
                 metodo='pix',
                 status='pendente',
-                mercadopago_payment_id=resultado['payment_id'],
-                codigo_transacao=resultado['qr_code']
+                mercadopago_payment_id=res['payment_id'],
+                codigo_transacao=res.get('qr_code') or "",
             )
-
-            logger.info(f"✅ Pagamento salvo no banco: #{pagamento.id}")
 
             try:
                 enviar_notificacao(
                     usuario=request.user,
-                    mensagem=f"Pagamento PIX criado para o contrato '{contrato.trabalho.titulo}'. Use o QR Code para pagar.",
-                    link=f"/contratos/{contrato.id}/pagamento"
+                    mensagem=f"Pagamento PIX criado para o contrato '{contrato.trabalho.titulo}'.",
+                    link=f"/contratos/{contrato.id}/pagamento",
                 )
-            except Exception as e:
-                logger.warning(f"⚠️ Erro ao enviar notificação: {str(e)}")
+            except Exception:
+                logger.warning("Falha ao enviar notificação do PIX", exc_info=True)
 
             return Response({
                 "sucesso": True,
                 "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": resultado['payment_id'],
-                "qr_code": resultado['qr_code'],
-                "qr_code_base64": resultado['qr_code_base64'],
-                "ticket_url": resultado['ticket_url'],
-                "expiration_date": resultado.get('expiration_date'),
-            }, status=status.HTTP_201_CREATED)
+                "mercadopago_payment_id": res['payment_id'],
+                "qr_code": res.get('qr_code'),
+                "qr_code_base64": res.get('qr_code_base64'),
+                "ticket_url": res.get('ticket_url'),
+                "expiration_date": res.get('expiration_date'),
+            }, status=201)
 
         except Exception as e:
-            logger.error(f"❌ Erro inesperado ao criar pagamento PIX: {str(e)}", exc_info=True)
-            return Response({"erro": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Erro inesperado ao criar pagamento PIX")
+            return Response({"erro": f"Erro interno: {e}"}, status=500)
 
     # =================== BOLETO ====================
     @action(detail=False, methods=['post'], url_path='criar-boleto')
     def criar_boleto(self, request):
         try:
             contrato_id = request.data.get('contrato_id')
-            logger.info(f"📥 Recebido contrato_id para boleto: {contrato_id}")
-
             if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "contrato_id é obrigatório"}, status=400)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
-                logger.info(f"✅ Contrato encontrado: #{contrato.id}")
             except Contrato.DoesNotExist:
-                logger.error(f"❌ Contrato {contrato_id} não encontrado")
-                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"erro": "Contrato não encontrado"}, status=404)
 
             if contrato.cliente != request.user:
-                logger.error(f"❌ Usuário {request.user.id} não é cliente")
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
             if float(contrato.valor) < 3:
-                return Response(
-                    {"erro": "O valor mínimo para boleto é R$ 3,00."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"erro": "O valor mínimo para boleto é R$ 3,00."}, status=400)
 
-            pagamento_existente = Pagamento.objects.filter(
-                contrato=contrato,
-                status__in=['pendente', 'em_processamento']
-            ).first()
-            if pagamento_existente:
-                logger.warning(f"⚠️ Pagamento pendente já existe: #{pagamento_existente.id}")
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
+            if Pagamento.objects.filter(
+                contrato=contrato, status__in=['pendente', 'em_processamento']
+            ).exists():
+                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
 
             if not request.user.cpf:
-                logger.error("❌ Usuário sem CPF")
-                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=400)
 
             cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
-            logger.info(f"🔐 CPF processado: {cpf_limpo[:3]}***")
 
             endereco = {
                 "zip_code": (request.data.get("cep") or "").replace("-", "").strip(),
@@ -181,27 +154,21 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 return Response(
                     {"erro": "Para gerar boleto, informe CEP, rua, número, bairro, cidade e UF.",
                      "campos_faltando": faltando},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=400
                 )
 
-            mp_service = MercadoPagoService()
-            logger.info("📄 Criando boleto no Mercado Pago...")
-
-            resultado = mp_service.criar_pagamento_boleto(
+            mp = MercadoPagoService()
+            res = mp.criar_pagamento_boleto(
                 valor=float(contrato.valor),
                 descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
                 email_pagador=request.user.email,
                 cpf_pagador=cpf_limpo,
-                nome_pagador=request.user.nome,
+                nome_pagador=getattr(request.user, "nome", "") or request.user.get_full_name() or "Cliente",
                 external_reference=str(contrato.id),
                 endereco=endereco,
             )
-
-            if not resultado.get("sucesso"):
-                logger.error(f"❌ Erro MP: {resultado.get('erro')}")
-                return Response({"erro": resultado.get("erro", "Erro ao criar boleto no Mercado Pago")}, status=status.HTTP_400_BAD_REQUEST)
-
-            logger.info(f"✅ Boleto criado no MP: {resultado['payment_id']}")
+            if not res.get("sucesso"):
+                return Response({"erro": res.get("erro", "Erro ao criar boleto no Mercado Pago")}, status=400)
 
             pagamento = Pagamento.objects.create(
                 contrato=contrato,
@@ -209,33 +176,31 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 valor=contrato.valor,
                 metodo='boleto',
                 status='pendente',
-                mercadopago_payment_id=resultado['payment_id'],
-                codigo_transacao=resultado['boleto_url']
+                mercadopago_payment_id=res['payment_id'],
+                codigo_transacao=res['boleto_url'],
             )
-
-            logger.info(f"✅ Pagamento salvo no banco: #{pagamento.id}")
 
             try:
                 enviar_notificacao(
                     usuario=request.user,
-                    mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'. Acesse o link para pagar.",
-                    link=f"/contratos/{contrato.id}/pagamento"
+                    mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'.",
+                    link=f"/contratos/{contrato.id}/pagamento",
                 )
-            except Exception as e:
-                logger.warning(f"⚠️ Erro ao enviar notificação: {str(e)}")
+            except Exception:
+                logger.warning("Falha ao enviar notificação do Boleto", exc_info=True)
 
             return Response({
                 "sucesso": True,
                 "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": resultado['payment_id'],
-                "boleto_url": resultado['boleto_url'],
-                "barcode": resultado.get('barcode'),
-                "expiration_date": resultado.get('expiration_date'),
-            }, status=status.HTTP_201_CREATED)
+                "mercadopago_payment_id": res['payment_id'],
+                "boleto_url": res['boleto_url'],
+                "barcode": res.get('barcode'),
+                "expiration_date": res.get('expiration_date'),
+            }, status=201)
 
         except Exception as e:
-            logger.error(f"❌ Erro inesperado ao criar boleto: {str(e)}", exc_info=True)
-            return Response({"erro": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Erro inesperado ao criar boleto")
+            return Response({"erro": f"Erro interno: {e}"}, status=500)
 
     # =================== CARTÃO ====================
     @action(detail=False, methods=['post'], url_path='criar-cartao')
@@ -246,49 +211,45 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             parcelas = request.data.get('parcelas', 1)
 
             if not all([contrato_id, token_cartao]):
-                return Response({"erro": "contrato_id e token são obrigatórios"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "contrato_id e token são obrigatórios"}, status=400)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
             except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"erro": "Contrato não encontrado"}, status=404)
 
             if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            pagamento_existente = Pagamento.objects.filter(
-                contrato=contrato,
-                status__in=['pendente', 'em_processamento']
-            ).first()
-            if pagamento_existente:
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=status.HTTP_400_BAD_REQUEST)
+            if Pagamento.objects.filter(
+                contrato=contrato, status__in=['pendente', 'em_processamento']
+            ).exists():
+                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
 
-            mp_service = MercadoPagoService()
+            mp = MercadoPagoService()
             cpf_limpo = request.user.cpf.replace(".", "").replace("-", "") if request.user.cpf else ""
 
-            resultado = mp_service.criar_pagamento_cartao(
+            res = mp.criar_pagamento_cartao(
                 valor=float(contrato.valor),
                 descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
                 token_cartao=token_cartao,
                 parcelas=int(parcelas),
                 email_pagador=request.user.email,
                 cpf_pagador=cpf_limpo,
-                external_reference=str(contrato.id)
+                external_reference=str(contrato.id),
             )
+            if not res.get("sucesso"):
+                return Response({"erro": res.get("erro", "Erro ao criar pagamento")}, status=400)
 
-            if not resultado.get("sucesso"):
-                return Response({"erro": resultado.get("erro", "Erro ao criar pagamento")}, status=status.HTTP_400_BAD_REQUEST)
-
-            status_local = mp_service.mapear_status_mp_para_local(resultado['status'])
-
+            status_local = mp.mapear_status_mp_para_local(res['status'])
             pagamento = Pagamento.objects.create(
                 contrato=contrato,
                 cliente=request.user,
                 valor=contrato.valor,
                 metodo='card',
                 status=status_local,
-                mercadopago_payment_id=resultado['payment_id']
+                mercadopago_payment_id=res['payment_id'],
             )
 
             if status_local == 'aprovado':
@@ -297,23 +258,24 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             enviar_notificacao(
                 usuario=request.user,
                 mensagem=f"Pagamento com cartão processado para o contrato '{contrato.trabalho.titulo}'.",
-                link=f"/contratos/{contrato.id}/pagamento"
+                link=f"/contratos/{contrato.id}/pagamento",
             )
 
             return Response({
                 "sucesso": True,
                 "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": resultado['payment_id'],
+                "mercadopago_payment_id": res['payment_id'],
                 "status": status_local,
-                "status_detail": resultado.get('status_detail'),
-            }, status=status.HTTP_201_CREATED)
+                "status_detail": res.get('status_detail'),
+            }, status=201)
 
         except Exception as e:
-            logger.error(f"❌ Erro ao criar pagamento Cartão: {str(e)}")
-            return Response({"erro": "Erro interno ao processar pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Erro ao criar pagamento no cartão")
+            return Response({"erro": "Erro interno ao processar pagamento"}, status=500)
 
     # ============ CHECKOUT PRO (criar preference) ============
-    @action(detail=False, methods=['post'], url_path='checkout-pro/criar-preferencia')
+    # aceita /checkout-pro/criar-preferencia/ e /checkout_pro/criar_preferencia/
+    @action(detail=False, methods=['post'], url_path=r'checkout[-_]pro/criar[-_]preferencia')
     def criar_preferencia_checkout_pro(self, request):
         """
         Cria uma preference do Checkout Pro.
@@ -322,26 +284,26 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         try:
             contrato_id = request.data.get("contrato_id")
             if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"erro": "contrato_id é obrigatório"}, status=400)
 
             from contratos.models import Contrato
             try:
                 contrato = Contrato.objects.get(id=contrato_id)
             except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"erro": "Contrato não encontrado"}, status=404)
 
             if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            # SEMPRE usar a URL pública do backend para o retorno
-            site_url = getattr(settings, "SITE_URL", "").rstrip("/")
+            # back_urls SEMPRE para o backend (evita erro de auto_return)
+            site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
             if not site_url:
-                return Response({"erro": "SITE_URL não configurada no backend."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"erro": "SITE_URL não configurada no backend."}, status=500)
 
-            back_to_backend = f"{site_url}/mercadopago/retorno/"
-            back_urls = {"success": back_to_backend, "pending": back_to_backend, "failure": back_to_backend}
+            retorno_backend = f"{site_url}/mercadopago/retorno/"
+            back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
 
-            # Monta payer (ajuda a liberar boleto/pix dentro do Checkout Pro)
+            # payer completo ajuda a liberar boleto/pix dentro do Checkout Pro
             cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
             payer = {
                 "email": request.user.email,
@@ -352,44 +314,39 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 payer["identification"] = {"type": "CPF", "number": cpf_limpo}
 
             # endereço opcional
-            cep = (request.data.get("cep") or "").replace("-", "")
             addr = {
-                "zip_code": cep or None,
+                "zip_code": (request.data.get("cep") or "").replace("-", "") or None,
                 "street_name": (request.data.get("rua") or None),
                 "street_number": (request.data.get("numero") or None),
                 "neighborhood": (request.data.get("bairro") or None),
                 "city": (request.data.get("cidade") or None),
                 "federal_unit": ((request.data.get("uf") or "").upper()[:2] or None),
             }
-            # remove None
-            addr = {k: v for k, v in addr.items() if v}
-            if addr:
-                payer["address"] = addr
+            payer["address"] = {k: v for k, v in addr.items() if v}
 
             mp = MercadoPagoService()
-            resultado = mp.criar_preferencia_checkout_pro(
+            res = mp.criar_preferencia_checkout_pro(
                 titulo=f"Contrato #{contrato.id} - {contrato.trabalho.titulo}",
                 quantidade=1,
                 valor_unitario=float(contrato.valor),
                 external_reference=str(contrato.id),
                 back_urls=back_urls,
                 auto_return="approved",
-                payer=payer,
+                payer={k: v for k, v in payer.items() if v},
             )
-
-            if not resultado.get("sucesso"):
-                return Response({"erro": resultado.get("erro", "Falha ao criar preferência")}, status=status.HTTP_400_BAD_REQUEST)
+            if not res.get("sucesso"):
+                return Response({"erro": res.get("erro", "Falha ao criar preferência")}, status=400)
 
             return Response({
                 "sucesso": True,
-                "preference_id": resultado["preference_id"],
-                "init_point": resultado["init_point"],
-                "sandbox_init_point": resultado.get("sandbox_init_point"),
-            }, status=status.HTTP_201_CREATED)
+                "preference_id": res["preference_id"],
+                "init_point": res["init_point"],
+                "sandbox_init_point": res.get("sandbox_init_point"),
+            }, status=201)
 
         except Exception as e:
             logger.exception("Erro ao criar preference do Checkout Pro")
-            return Response({"erro": f"Erro interno: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"erro": f"Erro interno: {e}"}, status=500)
 
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
@@ -398,24 +355,22 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             pagamento = self.get_object()
 
             if pagamento.mercadopago_payment_id:
-                mp_service = MercadoPagoService()
-                payment_info = mp_service.consultar_pagamento(pagamento.mercadopago_payment_id)
-
-                if payment_info:
-                    novo_status = mp_service.mapear_status_mp_para_local(payment_info['status'])
-                    if novo_status != pagamento.status:
-                        pagamento.status = novo_status
+                mp = MercadoPagoService()
+                info = mp.consultar_pagamento(pagamento.mercadopago_payment_id)
+                if info:
+                    novo = mp.mapear_status_mp_para_local(info['status'])
+                    if novo != pagamento.status:
+                        pagamento.status = novo
                         pagamento.save()
-
-                        if novo_status == 'aprovado':
+                        if novo == 'aprovado':
                             self._concluir_contrato(pagamento.contrato)
 
             serializer = self.get_serializer(pagamento)
-            return Response(serializer.data)
+            return Response(serializer.data, status=200)
 
         except Exception as e:
-            logger.error(f"❌ Erro ao consultar status: {str(e)}")
-            return Response({"erro": "Erro ao consultar status do pagamento"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Erro ao consultar status")
+            return Response({"erro": "Erro ao consultar status do pagamento"}, status=500)
 
     # ================== HELPER ==================
     def _concluir_contrato(self, contrato):
@@ -444,10 +399,11 @@ def mercadopago_retorno(request):
     O Mercado Pago redireciona o comprador para esta URL pública (success/pending/failure).
     Aqui só repassamos os parâmetros para a rota do front.
     """
-    front_base = getattr(settings, "FRONT_RETURN_URL", None) or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno"
+    front_base = (getattr(settings, "FRONT_RETURN_URL", None)
+                  or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno")
     qs = request.GET.urlencode()
     destino = f"{front_base}?{qs}" if qs else front_base
-    logger.info(f"↪️ Redirecionando retorno do MP para o front: {destino}")
+    logger.info("↪️ Redirecionando retorno do MP para o front: %s", destino)
     return redirect(destino)
 
 
@@ -459,33 +415,29 @@ def mercadopago_webhook(request):
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    import json
     try:
-        data = json.loads(request.body)
+        data = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         logger.error("❌ Webhook MP: JSON inválido")
         return JsonResponse({"error": "JSON inválido"}, status=400)
 
-    logger.info(f"🔔 Webhook recebido do Mercado Pago: {data.get('type')}")
+    logger.info("🔔 Webhook recebido do Mercado Pago: %s", data.get('type'))
 
     if data.get("type") == "payment":
         payment_id = data.get("data", {}).get("id")
-
         if not payment_id:
-            logger.warning("⚠️ Webhook MP: payment_id não encontrado")
             return JsonResponse({"status": "ok"}, status=200)
 
-        mp_service = MercadoPagoService()
-        payment_info = mp_service.consultar_pagamento(str(payment_id))
-
-        if not payment_info:
-            logger.warning(f"⚠️ Pagamento {payment_id} não encontrado no MP")
+        mp = MercadoPagoService()
+        info = mp.consultar_pagamento(str(payment_id))
+        if not info:
             return JsonResponse({"status": "ok"}, status=200)
 
         pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
 
+        # Se pagamento não existir (caso do Checkout Pro), cria a partir do external_reference
         if not pagamento:
-            external_ref = payment_info.get("external_reference")
+            external_ref = info.get("external_reference")
             if external_ref:
                 try:
                     from contratos.models import Contrato
@@ -494,42 +446,34 @@ def mercadopago_webhook(request):
                     contrato = None
 
                 if contrato:
-                    status_local = mp_service.mapear_status_mp_para_local(payment_info['status'])
+                    status_local = mp.mapear_status_mp_para_local(info['status'])
                     pagamento = Pagamento.objects.create(
                         contrato=contrato,
                         cliente=contrato.cliente,
-                        valor=payment_info.get("transaction_amount") or contrato.valor,
+                        valor=info.get("transaction_amount") or contrato.valor,
                         metodo='checkout_pro',
                         status=status_local,
                         mercadopago_payment_id=str(payment_id),
                     )
-                    logger.info(f"🆕 Pagamento criado via webhook para contrato #{contrato.id} (Checkout Pro).")
                 else:
-                    logger.warning(f"⚠️ Webhook: external_reference '{external_ref}' não mapeado para contrato.")
                     return JsonResponse({"status": "ok"}, status=200)
             else:
-                logger.warning("⚠️ Webhook: pagamento sem external_reference; não foi possível criar registro.")
                 return JsonResponse({"status": "ok"}, status=200)
 
         status_antigo = pagamento.status
-        pagamento.status = mp_service.mapear_status_mp_para_local(payment_info['status'])
+        pagamento.status = mp.mapear_status_mp_para_local(info['status'])
         pagamento.save()
-
-        logger.info(f"✅ Pagamento #{pagamento.id} atualizado: {status_antigo} → {pagamento.status}")
 
         if pagamento.status == 'aprovado' and status_antigo != 'aprovado':
             contrato = pagamento.contrato
             if contrato.status != "concluido":
                 viewset = PagamentoViewSet()
                 viewset._concluir_contrato(contrato)
-                logger.info(f"✅ Contrato #{contrato.id} concluído automaticamente")
-
         elif pagamento.status == 'rejeitado' and status_antigo != 'rejeitado':
             enviar_notificacao(
                 usuario=pagamento.contrato.cliente,
                 mensagem=f"O pagamento do contrato '{pagamento.contrato.trabalho.titulo}' foi rejeitado. Tente novamente.",
                 link=f"/contratos/{pagamento.contrato.id}/pagamento"
             )
-            logger.info(f"📧 Notificação de rejeição enviada para cliente #{pagamento.contrato.cliente.id}")
 
     return JsonResponse({"status": "ok"}, status=200)

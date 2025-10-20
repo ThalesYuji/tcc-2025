@@ -140,8 +140,8 @@ export default function PagamentoContrato() {
         rua, numero, bairro, cidade,
         uf: (uf || "").toUpperCase().slice(0, 2),
       };
-      // ⚠️ usa o endpoint com underscore (garantido no backend)
-      const resp = await api.post("/pagamentos/checkout_pro/criar_preferencia/", payload);
+      // Rota do backend com HÍFEN (igual ao @action do Django)
+      const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", payload);
       const initPoint = resp.data?.init_point;
       if (!initPoint) throw new Error("Não foi possível obter o link de pagamento.");
       window.location.href = initPoint; // redireciona para o fluxo do Mercado Pago
@@ -190,7 +190,6 @@ export default function PagamentoContrato() {
     maximumFractionDigits: 2,
   });
 
-  // opções de pagamento
   const metodosDisponiveis = [
     { value: "checkout_pro", label: "Pagar no Mercado Pago", descricao: "Checkout Pro (redirecionamento)", icon: "bi bi-shop-window" },
     { value: "pix", label: "PIX", descricao: "Transferência instantânea", icon: "bi bi-lightning-charge" },

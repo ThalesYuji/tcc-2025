@@ -1,7 +1,10 @@
+# services/mercadopago.py
 """
 Serviço para integração com Mercado Pago
 Suporta: PIX, Boleto (registrado), Cartão e Checkout Pro (preference)
 """
+from __future__ import annotations
+
 import logging
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
@@ -12,6 +15,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+# ---------------- Utils ----------------
 def _split_nome_completo(nome: str) -> Tuple[str, str]:
     nome = (nome or "").strip()
     if not nome:
@@ -22,7 +26,11 @@ def _split_nome_completo(nome: str) -> Tuple[str, str]:
     return primeiro, ultimo
 
 
-def _extrair_msg_erro_mp(resp: dict) -> str:
+def _only_digits(s: Optional[str]) -> str:
+    return "".join(c for c in (s or "") if c.isdigit())
+
+
+def _extrair_msg_erro_mp(resp: object) -> str:
     """
     Tenta extrair a melhor mensagem de erro do Mercado Pago.
     Estruturas comuns:
@@ -30,7 +38,7 @@ def _extrair_msg_erro_mp(resp: dict) -> str:
     """
     if not isinstance(resp, dict):
         return str(resp)
-    msg = resp.get("message") or resp.get("error") or str(resp)
+    msg = resp.get("message") or resp.get("error") or resp.get("status_detail") or str(resp)
     cause = resp.get("cause")
     if isinstance(cause, list) and cause:
         msg = cause[0].get("description") or msg
@@ -47,8 +55,8 @@ def _url_valida(url: Optional[str]) -> bool:
             return False
         if not p.netloc:
             return False
-        host = p.hostname or ""
-        if host in ("localhost", "127.0.0.1", "0.0.0.0"):
+        host = (p.hostname or "").lower()
+        if host in {"localhost", "127.0.0.1", "0.0.0.0"}:
             return False
         return True
     except Exception:
@@ -58,7 +66,7 @@ def _url_valida(url: Optional[str]) -> bool:
 def _build_notification_url() -> Optional[str]:
     """
     Tenta montar a notification_url a partir de MP_WEBHOOK_URL ou SITE_URL.
-    Só retorna se for uma URL pública válida; caso contrário, retorna None.
+    Só retorna se for uma URL pública válida; caso contrário, None.
     """
     url = getattr(settings, "MP_WEBHOOK_URL", None)
     if _url_valida(url):
@@ -66,20 +74,30 @@ def _build_notification_url() -> Optional[str]:
 
     base = getattr(settings, "SITE_URL", "") or ""
     if base:
-        base = base.rstrip("/")
-        candidate = f"{base}/mercadopago/webhook/"
+        candidate = f"{base.rstrip('/')}/mercadopago/webhook/"
         if _url_valida(candidate):
             return candidate.rstrip("/")
-
     return None
 
 
+def _back_urls_completas(back_urls: Optional[Dict[str, str]]) -> Dict[str, str]:
+    """Garante que success/pending/failure existam, usando FRONT_RETURN_URL como fallback."""
+    default_return = (getattr(settings, "FRONT_RETURN_URL", None)
+                      or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/checkout/retorno").rstrip("/")
+    b = dict(back_urls or {})
+    b.setdefault("success", default_return)
+    b.setdefault("pending", default_return)
+    b.setdefault("failure", default_return)
+    return b
+
+
+# --------------- Serviço ---------------
 class MercadoPagoService:
-    """Classe para gerenciar operações do Mercado Pago"""
+    """Classe para gerenciar operações do Mercado Pago (SDK oficial)."""
 
     def __init__(self):
-        """Inicializa o SDK do Mercado Pago"""
-        self.sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+        access = settings.MERCADOPAGO_ACCESS_TOKEN
+        self.sdk = mercadopago.SDK(access)
 
     # ---------------- PIX ----------------
     def criar_pagamento_pix(
@@ -89,12 +107,11 @@ class MercadoPagoService:
         email_pagador: str,
         cpf_pagador: str,
         nome_pagador: str,
-        external_reference: str = None
+        external_reference: Optional[str] = None,
     ) -> Dict:
         """Cria um pagamento via PIX"""
         try:
             primeiro, ultimo = _split_nome_completo(nome_pagador)
-
             payment_data = {
                 "transaction_amount": float(valor),
                 "description": descricao,
@@ -103,7 +120,7 @@ class MercadoPagoService:
                     "email": email_pagador,
                     "first_name": primeiro,
                     "last_name": ultimo,
-                    "identification": {"type": "CPF", "number": cpf_pagador},
+                    "identification": {"type": "CPF", "number": _only_digits(cpf_pagador)},
                 },
             }
             if external_reference:
@@ -113,14 +130,14 @@ class MercadoPagoService:
             if notif:
                 payment_data["notification_url"] = notif
 
-            logger.info(f"MP PIX → payload: {payment_data}")
+            logger.info("MP PIX → payload: %s", payment_data)
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
-            payment = result.get("response", {})
-            logger.info(f"MP PIX ← status={status}")
+            payment = result.get("response", {}) or {}
+            logger.info("MP PIX ← status=%s", status)
 
             if status not in (200, 201) or "id" not in payment:
-                logger.error(f"MP PIX ERRO RAW: {result}")
+                logger.error("MP PIX ERRO RAW: %s", result)
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
             poi = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
@@ -134,9 +151,8 @@ class MercadoPagoService:
                 "ticket_url": poi.get("ticket_url"),
                 "expiration_date": payment.get("date_of_expiration"),
             }
-
         except Exception as e:
-            logger.exception(f"❌ Erro ao criar pagamento PIX: {e}")
+            logger.exception("❌ Erro ao criar pagamento PIX")
             return {"sucesso": False, "erro": str(e)}
 
     # -------------- BOLETO (REGISTRADO) --------------
@@ -147,8 +163,8 @@ class MercadoPagoService:
         email_pagador: str,
         cpf_pagador: str,
         nome_pagador: str,
-        external_reference: str = None,
-        endereco: dict | None = None,
+        external_reference: Optional[str] = None,
+        endereco: Optional[dict] = None,
     ) -> Dict:
         """
         Cria um pagamento via Boleto Registrado.
@@ -156,19 +172,14 @@ class MercadoPagoService:
         """
         try:
             primeiro, ultimo = _split_nome_completo(nome_pagador)
-
-            cep = (endereco or {}).get("zip_code")
-            if cep:
-                cep = "".join(c for c in str(cep) if c.isdigit())
-            uf = (endereco or {}).get("federal_unit")
-            if uf:
-                uf = str(uf).upper()[:2]
+            cep = _only_digits((endereco or {}).get("zip_code"))
+            uf = ((endereco or {}).get("federal_unit") or "").upper()[:2] or None
 
             payer = {
                 "email": email_pagador,
                 "first_name": primeiro,
                 "last_name": ultimo,
-                "identification": {"type": "CPF", "number": cpf_pagador},
+                "identification": {"type": "CPF", "number": _only_digits(cpf_pagador)},
             }
             if endereco:
                 payer["address"] = {
@@ -193,14 +204,14 @@ class MercadoPagoService:
             if notif:
                 payment_data["notification_url"] = notif
 
-            logger.info(f"MP BOLETO → payload: {payment_data}")
+            logger.info("MP BOLETO → payload: %s", payment_data)
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
-            payment = result.get("response", {})
-            logger.info(f"MP BOLETO ← status={status}")
+            payment = result.get("response", {}) or {}
+            logger.info("MP BOLETO ← status=%s", status)
 
             if status not in (200, 201) or "id" not in payment:
-                logger.error(f"MP BOLETO ERRO RAW: {result}")
+                logger.error("MP BOLETO ERRO RAW: %s", result)
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
             poi_tx = (payment.get("point_of_interaction") or {}).get("transaction_data") or {}
@@ -225,9 +236,8 @@ class MercadoPagoService:
                 "barcode": barcode,
                 "expiration_date": expiration_date,
             }
-
         except Exception as e:
-            logger.exception(f"❌ Erro ao criar pagamento Boleto: {e}")
+            logger.exception("❌ Erro ao criar pagamento Boleto")
             return {"sucesso": False, "erro": str(e)}
 
     # ---------------- CARTÃO ----------------
@@ -239,7 +249,7 @@ class MercadoPagoService:
         parcelas: int,
         email_pagador: str,
         cpf_pagador: str,
-        external_reference: str = None
+        external_reference: Optional[str] = None,
     ) -> Dict:
         """Cria um pagamento via Cartão de Crédito"""
         try:
@@ -250,7 +260,7 @@ class MercadoPagoService:
                 "installments": int(parcelas),
                 "payer": {
                     "email": email_pagador,
-                    "identification": {"type": "CPF", "number": cpf_pagador},
+                    "identification": {"type": "CPF", "number": _only_digits(cpf_pagador)},
                 },
             }
             if external_reference:
@@ -260,14 +270,14 @@ class MercadoPagoService:
             if notif:
                 payment_data["notification_url"] = notif
 
-            logger.info(f"MP CARTAO → payload: {payment_data}")
+            logger.info("MP CARTAO → payload: %s", payment_data)
             result = self.sdk.payment().create(payment_data)
             status = result.get("status")
-            payment = result.get("response", {})
-            logger.info(f"MP CARTAO ← status={status}")
+            payment = result.get("response", {}) or {}
+            logger.info("MP CARTAO ← status=%s", status)
 
             if status not in (200, 201) or "id" not in payment:
-                logger.error(f"MP CARTAO ERRO RAW: {result}")
+                logger.error("MP CARTAO ERRO RAW: %s", result)
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(payment)}
 
             return {
@@ -276,9 +286,8 @@ class MercadoPagoService:
                 "status": payment.get("status"),
                 "status_detail": payment.get("status_detail"),
             }
-
         except Exception as e:
-            logger.exception(f"❌ Erro ao criar pagamento Cartão: {e}")
+            logger.exception("❌ Erro ao criar pagamento Cartão")
             return {"sucesso": False, "erro": str(e)}
 
     # -------------- CHECKOUT PRO (PREFERENCE) --------------
@@ -307,7 +316,7 @@ class MercadoPagoService:
                         "currency_id": "BRL",
                     }
                 ],
-                "back_urls": back_urls,
+                "back_urls": _back_urls_completas(back_urls),
                 "auto_return": auto_return,
             }
 
@@ -321,19 +330,19 @@ class MercadoPagoService:
             if payer:
                 preference["payer"] = payer
 
-            logger.info(f"MP PREF → payload: {preference}")
+            logger.info("MP PREF → payload: %s", preference)
             res = self.sdk.preference().create(preference)
             status = res.get("status")
-            body = res.get("response", {})
-            logger.info(f"MP PREF ← status={status}")
+            body = res.get("response", {}) or {}
+            logger.info("MP PREF ← status=%s", status)
 
             if status not in (200, 201) or "id" not in body:
-                logger.error(f"MP PREF ERRO RAW: {res}")
+                logger.error("MP PREF ERRO RAW: %s", res)
                 return {"sucesso": False, "erro": _extrair_msg_erro_mp(body)}
 
             return {
                 "sucesso": True,
-                "preference_id": body["id"],
+                "preference_id": body.get("id"),
                 "init_point": body.get("init_point"),
                 "sandbox_init_point": body.get("sandbox_init_point"),
             }
@@ -345,14 +354,14 @@ class MercadoPagoService:
     def consultar_pagamento(self, payment_id: str) -> Optional[Dict]:
         """Consulta o status de um pagamento"""
         try:
-            logger.info(f"MP GET pagamento → {payment_id}")
+            logger.info("MP GET pagamento → %s", payment_id)
             result = self.sdk.payment().get(payment_id)
             status = result.get("status")
-            payment = result.get("response", {})
-            logger.info(f"MP GET pagamento ← status={status}")
+            payment = result.get("response", {}) or {}
+            logger.info("MP GET pagamento ← status=%s", status)
 
             if status not in (200, 201) or "id" not in payment:
-                logger.warning(f"MP GET pagamento não encontrado/erro: {result}")
+                logger.warning("MP GET pagamento não encontrado/erro: %s", result)
                 return None
 
             return {
@@ -364,9 +373,8 @@ class MercadoPagoService:
                 "date_approved": payment.get("date_approved"),
                 "external_reference": payment.get("external_reference"),
             }
-
         except Exception as e:
-            logger.exception(f"❌ Erro ao consultar pagamento {payment_id}: {e}")
+            logger.exception("❌ Erro ao consultar pagamento %s", payment_id)
             return None
 
     # -------------- MAPA STATUS --------------
@@ -379,5 +387,6 @@ class MercadoPagoService:
             "rejected": "rejeitado",
             "refunded": "reembolsado",
             "cancelled": "rejeitado",
+            "charged_back": "estornado",
         }
         return mapeamento.get(status_mp, "pendente")
