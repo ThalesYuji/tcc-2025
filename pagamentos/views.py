@@ -508,3 +508,70 @@ def force_approve_payment(request, pagamento_id: int):
 
     logger.info(f"🔧 Forçado: pagamento #{pagamento.id} {status_antigo} -> aprovado (DEV)")
     return JsonResponse({"ok": True, "pagamento_id": pagamento.id, "novo_status": pagamento.status})
+
+# --- TESTE: forçar aprovação de pagamento (somente staff/superuser) ---
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def force_approve_payment(request, pagamento_id: int):
+    """
+    Somente para testes em sandbox.
+    Requer JWT e usuário staff/superuser.
+    1) Busca o pagamento no MP pelo payment_id.
+    2) Garante que exista um Pagamento local (cria se ainda não veio via webhook).
+    3) Marca como 'aprovado' e conclui o contrato.
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({"erro": "Acesso restrito a staff/superuser."}, status=403)
+
+    mp_id = str(pagamento_id)
+    mp = MercadoPagoService()
+
+    # Tenta obter dados no MP (para descobrir external_reference/valor)
+    info = mp.consultar_pagamento(mp_id)
+    if not info:
+        return Response({"erro": f"Pagamento {mp_id} não encontrado no Mercado Pago."}, status=404)
+
+    # Procura o registro local pelo payment_id
+    pagamento = Pagamento.objects.filter(mercadopago_payment_id=mp_id).first()
+
+    # Se não existir, tenta criar a partir do external_reference (id do contrato)
+    if not pagamento:
+        external_ref = info.get("external_reference")
+        contrato = None
+        if external_ref:
+            try:
+                from contratos.models import Contrato
+                contrato = Contrato.objects.get(id=int(external_ref))
+            except Exception:
+                contrato = None
+
+        if not contrato:
+            return Response({"erro": "Não há Pagamento local e o external_reference não mapeia um contrato."}, status=404)
+
+        pagamento = Pagamento.objects.create(
+            contrato=contrato,
+            cliente=contrato.cliente,
+            valor=info.get("transaction_amount") or contrato.valor,
+            metodo='checkout_pro',
+            status='pendente',
+            mercadopago_payment_id=mp_id,
+        )
+
+    status_antigo = pagamento.status
+    pagamento.status = 'aprovado'
+    pagamento.save()
+
+    # Conclui o contrato se mudou de status
+    if status_antigo != 'aprovado':
+        viewset = PagamentoViewSet()
+        viewset._concluir_contrato(pagamento.contrato)
+
+    return Response({
+        "ok": True,
+        "payment_id": mp_id,
+        "pagamento_local_id": pagamento.id,
+        "status": pagamento.status,
+    }, status=200)

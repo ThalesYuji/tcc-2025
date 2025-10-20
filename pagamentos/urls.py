@@ -1,15 +1,11 @@
-# pagamentos/urls.py
 from django.urls import path
-from django.conf import settings
 from . import views
 
 urlpatterns = [
+    # Retorno e webhook públicos
     path('retorno/', views.mercadopago_retorno, name='mp-retorno'),
     path('webhook/', views.mercadopago_webhook, name='mp-webhook'),
-]
 
-# 🔧 Endpoint DEV para aprovar manualmente um pagamento (NÃO SUBIR EM PRODUÇÃO)
-if settings.DEBUG:
-    urlpatterns += [
-        path('test/force-approve/<int:pagamento_id>/', views.force_approve_payment, name='mp-force-approve'),
-    ]
+    # ⚠️ Somente para testes em sandbox (protegido por JWT + staff/superuser)
+    path('test/force-approve/<int:pagamento_id>/', views.force_approve_payment, name='mp-force-approve'),
+]
