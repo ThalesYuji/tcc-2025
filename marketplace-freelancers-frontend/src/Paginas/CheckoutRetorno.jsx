@@ -1,89 +1,195 @@
 // src/Paginas/CheckoutRetorno.jsx
-// Tela de retorno do Checkout Pro. Exibe status enquanto o webhook confirma.
-import React, { useEffect, useState } from "react";
+// Tela de retorno do Checkout Pro. Mostra IDs, copia dados e faz polling do status no backend.
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
+
+function Row({ label, value, onCopy }) {
+  return (
+    <div style={{display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8}}>
+      <div style={{fontWeight: 600, minWidth: 160}}>{label}</div>
+      <div style={{flex: 1, wordBreak: "break-all"}}>{value ?? "—"}</div>
+      {value ? (
+        <button className="btn btn-sm btn-outline-secondary" onClick={() => onCopy?.(value)}>
+          Copiar
+        </button>
+      ) : (
+        <div style={{ width: 80 }} />
+      )}
+    </div>
+  );
+}
 
 export default function CheckoutRetorno() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [mensagem, setMensagem] = useState("Processando pagamento...");
+
+  // --- Params vindos do MP ---
+  const qs = useMemo(() => new URLSearchParams(params), [params]);
+  const paymentId = qs.get("payment_id") || qs.get("collection_id"); // em alguns fluxos vem collection_id
+  const status = qs.get("status"); // approved | pending | failure (do redirect)
+  const externalReference = qs.get("external_reference"); // seu id do contrato
+  const preferenceId = qs.get("preference_id");
+  const paymentType = qs.get("payment_type");
+  const merchantOrderId = qs.get("merchant_order_id");
+
+  // --- Estado de confirmação no backend ---
+  const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
   const [tipo, setTipo] = useState("info"); // info | sucesso | erro
+  const [pagamentoLocal, setPagamentoLocal] = useState(null); // {id,status,mercadopago_payment_id,...}
+  const [tentativas, setTentativas] = useState(0);
 
-  // O MP retorna alguns params como: status, payment_id, preference_id, external_reference etc.
-  const externalReference = params.get("external_reference"); // é o id do contrato que mandamos
-  const mpPaymentId = params.get("payment_id");
-  const statusUrlParam = params.get("status"); // approved | pending | failure (pelo redirecionamento)
+  // Copiar helper
+  const copiar = async (texto) => {
+    try {
+      await navigator.clipboard.writeText(String(texto));
+    } catch {}
+  };
 
+  // Poll no backend buscando o pagamento pelo payment_id ou pelo contrato (external_reference)
   useEffect(() => {
-    let polling;
-    const start = async () => {
-      // Se veio 'approved' já pelo redirect, ainda assim esperamos o webhook aplicar no backend.
-      setMensagem("Confirmando pagamento com o servidor...");
-      let tentativas = 0;
+    let t = 0;
+    async function tick() {
+      setTentativas((v) => v + 1);
+      try {
+        // pegue bastante para garantir que venha o registro criado via webhook
+        const resp = await api.get("/pagamentos/?page_size=50");
+        const results = resp?.data?.results || [];
 
-      polling = setInterval(async () => {
-        tentativas += 1;
-
-        try {
-          // Estratégia simples: buscar os pagamentos do usuário e checar se algum do contrato foi aprovado.
-          // Se você tiver endpoint específico para buscar pagamento por contrato, use-o aqui.
-          // Abaixo exemplificamos chamando sua listagem geral e filtrando no front:
-          const lista = await api.get("/pagamentos/?page_size=50");
-          const pagamentos = lista.data?.results || [];
-
-          // prioridade: se conhecemos o payment_id retornado pelo MP
-          let pagamento = null;
-          if (mpPaymentId) {
-            pagamento = pagamentos.find(p => String(p.mercadopago_payment_id) === String(mpPaymentId));
-          }
-          // fallback: pelo external_reference (id do contrato)
-          if (!pagamento && externalReference) {
-            pagamento = pagamentos.find(p => String(p.contrato?.id) === String(externalReference));
-          }
-
-          if (pagamento?.status === "aprovado") {
-            clearInterval(polling);
-            setTipo("sucesso");
-            setMensagem("✅ Pagamento aprovado! Concluindo...");
-            setTimeout(() => navigate("/contratos"), 2000);
-          } else if (pagamento?.status === "rejeitado") {
-            clearInterval(polling);
-            setTipo("erro");
-            setMensagem("❌ Pagamento rejeitado. Tente novamente.");
-          }
-        } catch {
-          // ignora e segue tentando
-        }
-
-        // timeout de segurança (~60s)
-        if (tentativas >= 20) {
-          clearInterval(polling);
-          setTipo(statusUrlParam === "approved" ? "sucesso" : "erro");
-          setMensagem(
-            statusUrlParam === "approved"
-              ? "Pagamento possivelmente aprovado, mas não confirmado ainda. Verifique seus contratos em alguns instantes."
-              : "Não foi possível confirmar o pagamento. Tente novamente."
+        let encontrado = null;
+        if (paymentId) {
+          encontrado = results.find(
+            (p) => String(p.mercadopago_payment_id) === String(paymentId)
           );
         }
-      }, 3000);
-    };
+        if (!encontrado && externalReference) {
+          encontrado = results.find(
+            (p) => String(p.contrato?.id) === String(externalReference)
+          );
+        }
 
-    start();
-    return () => polling && clearInterval(polling);
+        if (encontrado) {
+          setPagamentoLocal(encontrado);
+
+          if (encontrado.status === "aprovado") {
+            setTipo("sucesso");
+            setMsg("✅ Pagamento aprovado! Concluindo…");
+            return; // para o polling
+          }
+          if (encontrado.status === "rejeitado") {
+            setTipo("erro");
+            setMsg("❌ Pagamento rejeitado. Tente novamente.");
+            return; // para o polling
+          }
+
+          // ainda pendente ou em_processamento
+          setTipo("info");
+          setMsg("Aguardando confirmação do Mercado Pago (webhook)...");
+        } else {
+          // ainda não chegou via webhook
+          setTipo(status === "approved" ? "info" : "info");
+          setMsg(
+            status === "approved"
+              ? "Pagamento possivelmente aprovado. Aguardando o webhook confirmar…"
+              : "Aguardando confirmação do Mercado Pago…"
+          );
+        }
+      } catch {
+        // ignora erros transitórios
+      }
+
+      // timeout de ~60s
+      if (t >= 19) {
+        setTipo(status === "approved" ? "sucesso" : "erro");
+        setMsg(
+          status === "approved"
+            ? "Pagamento pode ter sido aprovado, mas não confirmou ainda. Verifique seus contratos em alguns instantes."
+            : "Não foi possível confirmar o pagamento agora."
+        );
+        return;
+      }
+
+      t += 1;
+      poll();
+    }
+
+    function poll() {
+      setTimeout(tick, 3000);
+    }
+
+    tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [paymentId, externalReference, status]);
 
   return (
-    <div style={{maxWidth: 600, margin: "40px auto", textAlign: "center"}}>
-      <h2>Retornando do Mercado Pago</h2>
-      <p className={tipo === "sucesso" ? "text-success" : tipo === "erro" ? "text-danger" : "text-muted"}>
-        {mensagem}
-      </p>
-      <div style={{marginTop: 20}}>
-        <button className="btn btn-secondary" onClick={()=>navigate("/contratos")}>
-          Voltar aos contratos
-        </button>
+    <div style={{maxWidth: 760, margin: "40px auto"}}>
+      <h2 style={{textAlign: "center"}}>Retornando do Mercado Pago</h2>
+
+      <div
+        style={{
+          marginTop: 16,
+          padding: 16,
+          borderRadius: 12,
+          border: "1px solid #e6e6e6",
+          background: "#fafafa",
+        }}
+      >
+        <p
+          className={
+            tipo === "sucesso"
+              ? "text-success"
+              : tipo === "erro"
+              ? "text-danger"
+              : "text-muted"
+          }
+          style={{marginBottom: 8}}
+        >
+          {msg}
+        </p>
+
+        <div style={{marginTop: 12}}>
+          <h5 style={{marginBottom: 12}}>Parâmetros recebidos do Mercado Pago</h5>
+
+          <Row label="payment_id / collection_id" value={paymentId} onCopy={copiar} />
+          <Row label="status" value={status} onCopy={copiar} />
+          <Row label="external_reference (Contrato)" value={externalReference} onCopy={copiar} />
+          <Row label="preference_id" value={preferenceId} onCopy={copiar} />
+          <Row label="payment_type" value={paymentType} onCopy={copiar} />
+          <Row label="merchant_order_id" value={merchantOrderId} onCopy={copiar} />
+          <Row label="URL completa" value={window.location.href} onCopy={copiar} />
+        </div>
+
+        <div style={{marginTop: 24}}>
+          <h5 style={{marginBottom: 12}}>Status no seu backend</h5>
+          <Row
+            label="Pagamento local ID"
+            value={pagamentoLocal?.id ? String(pagamentoLocal.id) : null}
+            onCopy={copiar}
+          />
+          <Row
+            label="Status local"
+            value={pagamentoLocal?.status || null}
+            onCopy={copiar}
+          />
+          <Row
+            label="MP payment_id salvo"
+            value={pagamentoLocal?.mercadopago_payment_id || null}
+            onCopy={copiar}
+          />
+        </div>
+
+        <div style={{display: "flex", gap: 12, marginTop: 24, justifyContent: "center"}}>
+          <button className="btn btn-secondary" onClick={() => navigate("/contratos")}>
+            Voltar aos contratos
+          </button>
+          <button className="btn btn-outline-secondary" onClick={() => window.location.reload()}>
+            Recarregar página
+          </button>
+        </div>
+
+        <div style={{marginTop: 12, textAlign: "center", fontSize: 12, color: "#888"}}>
+          Tentativas de verificação: {tentativas}
+        </div>
       </div>
     </div>
   );
