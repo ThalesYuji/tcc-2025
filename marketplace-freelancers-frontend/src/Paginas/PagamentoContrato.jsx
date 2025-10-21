@@ -246,19 +246,17 @@ export default function PagamentoContrato() {
                 <div className="detalhes-grid">
                   <div className="detalhe-item">
                     <span className="detalhe-label">CEP</span>
-                    <div className="cep-input-wrapper">
-                      <input 
-                        className={`form-control ${buscandoCep ? 'loading' : ''}`}
-                        value={cep} 
-                        onChange={handleCepChange}
-                        placeholder="12345-678"
-                        maxLength={9}
-                      />
-                      {buscandoCep && <div className="cep-loading"></div>}
-                      {cepEncontrado && !buscandoCep && (
-                        <i className="bi bi-check-circle-fill cep-success"></i>
-                      )}
-                    </div>
+                    <input 
+                      className={`form-control ${buscandoCep ? 'loading' : ''}`}
+                      value={cep} 
+                      onChange={handleCepChange}
+                      placeholder="12345-678"
+                      maxLength={9}
+                    />
+                    {buscandoCep && <div className="cep-loading"></div>}
+                    {cepEncontrado && !buscandoCep && (
+                      <i className="bi bi-check-circle-fill cep-success"></i>
+                    )}
                     {erroCep && (
                       <div className="cep-error-msg">
                         <i className="bi bi-exclamation-circle"></i>
@@ -272,6 +270,7 @@ export default function PagamentoContrato() {
                       className="form-control" 
                       value={rua} 
                       onChange={(e)=>setRua(e.target.value)}
+                      placeholder="Av. Paulista"
                       disabled={buscandoCep}
                     />
                   </div>
@@ -281,6 +280,7 @@ export default function PagamentoContrato() {
                       className="form-control" 
                       value={numero} 
                       onChange={(e)=>setNumero(e.target.value)}
+                      placeholder="1000"
                       disabled={buscandoCep}
                     />
                   </div>
@@ -290,6 +290,7 @@ export default function PagamentoContrato() {
                       className="form-control" 
                       value={bairro} 
                       onChange={(e)=>setBairro(e.target.value)}
+                      placeholder="Centro"
                       disabled={buscandoCep}
                     />
                   </div>
@@ -299,6 +300,7 @@ export default function PagamentoContrato() {
                       className="form-control" 
                       value={cidade} 
                       onChange={(e)=>setCidade(e.target.value)}
+                      placeholder="São Paulo"
                       disabled={buscandoCep}
                     />
                   </div>
