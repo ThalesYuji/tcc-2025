@@ -4,25 +4,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import "../styles/CheckoutRetorno.css";
 
-function Row({ label, value, onCopy }) {
-  return (
-    <div className="data-row">
-      <div className="data-row-label">{label}</div>
-      <div className={`data-row-value ${!value ? 'empty' : ''}`}>
-        {value || "—"}
-      </div>
-      {value ? (
-        <button className="btn-copy" onClick={() => onCopy?.(value)}>
-          <i className="bi bi-clipboard"></i>
-          Copiar
-        </button>
-      ) : (
-        <div className="btn-copy-placeholder" />
-      )}
-    </div>
-  );
-}
-
 export default function CheckoutRetorno() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -30,24 +11,13 @@ export default function CheckoutRetorno() {
   // Params do MP
   const qs = useMemo(() => new URLSearchParams(params), [params]);
   const paymentId = qs.get("payment_id") || qs.get("collection_id");
-  const status = qs.get("status"); // approved | pending | failure
+  const status = qs.get("status");
   const externalReference = qs.get("external_reference");
-  const preferenceId = qs.get("preference_id");
-  const paymentType = qs.get("payment_type");
-  const merchantOrderId = qs.get("merchant_order_id");
 
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
   const [tipo, setTipo] = useState("info"); // info | sucesso | erro
-  const [pagamentoLocal, setPagamentoLocal] = useState(null);
-  const [tentativas, setTentativas] = useState(0);
 
-  const copiar = async (texto) => {
-    try { 
-      await navigator.clipboard.writeText(String(texto));
-    } catch {}
-  };
-
-  // Chama um endpoint de confirmação (fallback do webhook) uma vez
+  // Fallback do webhook: tenta forçar confirmação no backend (apenas uma vez)
   useEffect(() => {
     (async () => {
       try {
@@ -62,12 +32,23 @@ export default function CheckoutRetorno() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentId, externalReference]);
 
+  // REDIRECIONA automaticamente quando confirmar (tipo === "sucesso")
+  useEffect(() => {
+    if (tipo !== "sucesso") return;
+    const t = setTimeout(() => {
+      navigate("/contratos", { replace: true });
+    }, 2000); // 2s para o usuário ver a mensagem de sucesso
+    return () => clearTimeout(t);
+  }, [tipo, navigate]);
+
   // Poll no backend procurando o pagamento local
   useEffect(() => {
+    let parar = false;
     let t = 0;
 
     async function tick() {
-      setTentativas((v) => v + 1);
+      if (parar) return;
+
       try {
         const resp = await api.get("/pagamentos/?page_size=50");
         const results = resp?.data?.results || [];
@@ -85,153 +66,136 @@ export default function CheckoutRetorno() {
         }
 
         if (encontrado) {
-          setPagamentoLocal(encontrado);
-
           if (encontrado.status === "aprovado") {
             setTipo("sucesso");
-            setMsg("Pagamento aprovado! Concluindo…");
-            return;
+            setMsg("Pagamento aprovado com sucesso!");
+            parar = true;
+            return; // para o polling; o useEffect acima fará o redirect
           }
           if (encontrado.status === "rejeitado") {
             setTipo("erro");
-            setMsg("Pagamento rejeitado. Tente novamente.");
+            setMsg("Pagamento rejeitado. Tente novamente ou entre em contato com o suporte.");
+            parar = true;
             return;
           }
 
           setTipo("info");
-          setMsg("Aguardando confirmação do Mercado Pago (webhook)...");
+          setMsg("Aguardando confirmação do pagamento...");
         } else {
           setTipo("info");
           setMsg(
             status === "approved"
-              ? "Pagamento possivelmente aprovado. Aguardando o webhook confirmar…"
-              : "Aguardando confirmação do Mercado Pago…"
+              ? "Processando pagamento aprovado..."
+              : "Aguardando confirmação do Mercado Pago..."
           );
         }
-      } catch {
-        // ignora erros temporários
-      }
-
-      if (t >= 22) { // ~44s
-        setTipo(status === "approved" ? "sucesso" : "erro");
-        setMsg(
-          status === "approved"
-            ? "Pagamento pode ter sido aprovado, mas ainda não confirmou. Verifique seus contratos em alguns instantes."
-            : "Não foi possível confirmar o pagamento agora."
-        );
-        return;
+      } catch (error) {
+        console.error("Erro ao verificar pagamento:", error);
+        // continua tentando mesmo com erro
       }
 
       t += 1;
-      setTimeout(tick, 2000);
+
+      if (t >= 30) { // ~60s
+        if (status === "approved") {
+          setTipo("sucesso");
+          setMsg("Pagamento processado! Redirecionando...");
+        } else {
+          setTipo("erro");
+          setMsg("Não foi possível confirmar o pagamento. Verifique seus contratos ou tente novamente.");
+        }
+        parar = true;
+        return;
+      }
+
+      // Continua o polling se não parou
+      if (!parar) {
+        setTimeout(tick, 2000);
+      }
     }
 
+    // Inicia o polling
     tick();
+
+    // Cleanup
+    return () => {
+      parar = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentId, externalReference, status]);
 
   const getStatusIcon = () => {
     if (tipo === "sucesso") return "bi-check-circle-fill";
     if (tipo === "erro") return "bi-x-circle-fill";
-    return "bi-arrow-repeat";
+    return "bi-hourglass-split";
   };
 
-  const showLoadingDots = tipo === "info" && tentativas > 0;
+  const getStatusClass = () => {
+    if (tipo === "sucesso") return "status-sucesso";
+    if (tipo === "erro") return "status-erro";
+    return "status-info";
+  };
 
   return (
-    <div className="checkout-retorno-container">
-      <div className="checkout-retorno-content">
-        {/* Header */}
-        <div className="checkout-retorno-header">
-          <h2>
-            <div className="checkout-retorno-icon">
-              <i className="bi bi-credit-card-2-front"></i>
-            </div>
-            Retornando do Mercado Pago
-          </h2>
-        </div>
-
-        {/* Card principal */}
-        <div className="checkout-retorno-card">
-          {/* Mensagem de status */}
-          <div className={`status-message ${tipo}`}>
+    <div className="checkout-retorno-page">
+      <div className="checkout-retorno-wrapper">
+        <div className="checkout-retorno-box">
+          {/* Ícone de status */}
+          <div className={`status-icon-wrapper ${getStatusClass()}`}>
             <i className={`bi ${getStatusIcon()}`}></i>
-            <div>
-              {msg}
-              {showLoadingDots && (
-                <span className="loading-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </span>
-              )}
+          </div>
+
+          {/* Mensagem principal */}
+          <h2 className="status-title">{msg}</h2>
+
+          {/* Descrição adicional */}
+          {tipo === "info" && (
+            <p className="status-description">
+              Estamos verificando seu pagamento com o Mercado Pago. 
+              <br />
+              Isso pode levar alguns segundos...
+            </p>
+          )}
+
+          {tipo === "sucesso" && (
+            <p className="status-description">
+              Você será redirecionado automaticamente para seus contratos.
+            </p>
+          )}
+
+          {tipo === "erro" && (
+            <p className="status-description">
+              Caso tenha realizado o pagamento, ele pode estar sendo processado.
+              <br />
+              Verifique seus contratos em alguns minutos.
+            </p>
+          )}
+
+          {/* Loading spinner (apenas quando info) */}
+          {tipo === "info" && (
+            <div className="loading-spinner-large"></div>
+          )}
+
+          {/* Botão de ação (apenas em erro) */}
+          {tipo === "erro" && (
+            <div className="action-buttons">
+              <button 
+                className="btn-voltar-contratos" 
+                onClick={() => navigate("/contratos")}
+              >
+                <i className="bi bi-arrow-left-circle"></i>
+                Ir para contratos
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Parâmetros do Mercado Pago */}
-          <div className="info-section">
-            <h5>
-              <i className="bi bi-receipt"></i>
-              Parâmetros recebidos do Mercado Pago
-            </h5>
-            <Row label="Payment ID / Collection ID" value={paymentId} onCopy={copiar} />
-            <Row label="Status" value={status} onCopy={copiar} />
-            <Row label="External Reference (Contrato)" value={externalReference} onCopy={copiar} />
-            <Row label="Preference ID" value={preferenceId} onCopy={copiar} />
-            <Row label="Payment Type" value={paymentType} onCopy={copiar} />
-            <Row label="Merchant Order ID" value={merchantOrderId} onCopy={copiar} />
-            <Row label="URL Completa" value={window.location.href} onCopy={copiar} />
-          </div>
-
-          {/* Status no backend */}
-          <div className="info-section">
-            <h5>
-              <i className="bi bi-server"></i>
-              Status no seu backend
-            </h5>
-            <Row 
-              label="Pagamento Local ID" 
-              value={pagamentoLocal?.id ? String(pagamentoLocal.id) : null} 
-              onCopy={copiar}
-            />
-            <Row 
-              label="Status Local" 
-              value={pagamentoLocal?.status || null} 
-              onCopy={copiar}
-            />
-            <Row 
-              label="MP Payment ID Salvo" 
-              value={pagamentoLocal?.mercadopago_payment_id || null} 
-              onCopy={copiar}
-            />
-          </div>
-
-          {/* Ações */}
-          <div className="checkout-actions">
-            <button 
-              className="btn-primary-action" 
-              onClick={() => navigate("/contratos")}
-            >
-              <i className="bi bi-arrow-left-circle"></i>
-              Voltar aos contratos
-            </button>
-            <button 
-              className="btn-secondary-action" 
-              onClick={() => window.location.reload()}
-            >
-              <i className="bi bi-arrow-clockwise"></i>
-              Recarregar página
-            </button>
-          </div>
-
-          {/* Footer com tentativas */}
-          <div className="checkout-footer">
-            <div className="tentativas-info">
-              <i className="bi bi-clock-history"></i>
-              Tentativas de verificação: 
-              <span className="tentativas-numero">{tentativas}</span>
+          {/* Indicador de redirecionamento (apenas em sucesso) */}
+          {tipo === "sucesso" && (
+            <div className="redirect-indicator">
+              <div className="redirect-spinner"></div>
+              <span>Redirecionando...</span>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
