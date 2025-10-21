@@ -268,6 +268,8 @@ CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
 MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET")
+MP_INCLUDE_PAYER = False
+
 
 # URLs usadas na integração (expostas nos services/views)
 # - SITE_URL: backend público

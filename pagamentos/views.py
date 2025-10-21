@@ -71,7 +71,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             retorno_backend = f"{site_url}/mercadopago/retorno/"
             back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
 
-            # payer (ajuda o MP a liberar meios lá dentro)
+            # montar payer (será enviado apenas se flag permitir)
             cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
             payer = {
                 "email": request.user.email,
@@ -90,7 +90,14 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 "city": (request.data.get("cidade") or None),
                 "federal_unit": ((request.data.get("uf") or "").upper()[:2] or None),
             }
-            payer["address"] = {k: v for k, v in addr.items() if v}
+            # só adiciona se existir algo
+            addr_clean = {k: v for k, v in addr.items() if v}
+            if addr_clean:
+                payer["address"] = addr_clean
+
+            # flag para enviar/omitir o payer no Checkout Pro
+            include_payer = getattr(settings, "MP_INCLUDE_PAYER", False)
+            payer_arg = ({k: v for k, v in payer.items() if v} if include_payer else None)
 
             mp = MercadoPagoService()
             res = mp.criar_preferencia_checkout_pro(
@@ -100,7 +107,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 external_reference=str(contrato.id),
                 back_urls=back_urls,
                 auto_return="approved",
-                payer={k: v for k, v in payer.items() if v},
+                payer=payer_arg,  # controlado via flag
             )
             if not res.get("sucesso"):
                 return Response({"erro": res.get("erro", "Falha ao criar preferência")}, status=400)
@@ -218,7 +225,7 @@ def mercadopago_webhook(request):
                         contrato=contrato,
                         cliente=contrato.cliente,
                         valor=info.get("transaction_amount") or contrato.valor,
-                        metodo='checkout_pro',  # <- padronizado
+                        metodo='checkout_pro',
                         status=status_local,
                         mercadopago_payment_id=str(payment_id),
                     )
@@ -286,7 +293,7 @@ def force_approve_payment(request, pagamento_id: int):
             contrato=contrato,
             cliente=contrato.cliente,
             valor=info.get("transaction_amount") or contrato.valor,
-            metodo='checkout_pro',  # <- padronizado
+            metodo='checkout_pro',
             status='pendente',
             mercadopago_payment_id=mp_id,
         )
