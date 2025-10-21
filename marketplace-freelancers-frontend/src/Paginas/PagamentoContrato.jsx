@@ -1,6 +1,6 @@
 // src/Paginas/PagamentoContrato.jsx
-// Pagamento de contrato com PIX, Boleto e Checkout Pro (Mercado Pago)
-import React, { useEffect, useState } from "react";
+// Pagamento de contrato - somente Checkout Pro (Mercado Pago)
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import "../styles/PagamentoContrato.css";
@@ -11,21 +11,10 @@ export default function PagamentoContrato() {
 
   const [contrato, setContrato] = useState(null);
   const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState("");
-  const [metodo, setMetodo] = useState(""); // pix | boleto | checkout_pro
   const [carregando, setCarregando] = useState(true);
   const [processandoPagamento, setProcessandoPagamento] = useState(false);
-  const [pagamentoId, setPagamentoId] = useState(null);
 
-  // PIX
-  const [qrCode, setQrCode] = useState("");
-  const [qrCodeBase64, setQrCodeBase64] = useState("");
-  const [pixCopiado, setPixCopiado] = useState(false);
-
-  // BOLETO
-  const [boletoUrl, setBoletoUrl] = useState("");
-
-  // Endereço do pagador (usado para BOLETO e opcionalmente enviado ao Checkout Pro)
+  // Endereço (opcional – enviado ao Checkout Pro se houver algo)
   const [cep, setCep] = useState("");
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
@@ -33,7 +22,19 @@ export default function PagamentoContrato() {
   const [cidade, setCidade] = useState("");
   const [uf, setUf] = useState("");
 
-  // Carrega o contrato
+  // Estados para busca de CEP
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [cepEncontrado, setCepEncontrado] = useState(false);
+  const [erroCep, setErroCep] = useState("");
+
+  // Accordion: aberto/fechado
+  const [mostrarEndereco, setMostrarEndereco] = useState(false);
+
+  const enderecoPreenchido = useMemo(
+    () => Boolean(cep || rua || numero || bairro || cidade || uf),
+    [cep, rua, numero, bairro, cidade, uf]
+  );
+
   useEffect(() => {
     (async () => {
       try {
@@ -47,40 +48,69 @@ export default function PagamentoContrato() {
     })();
   }, [id]);
 
-  // Poll do status (PIX/BOLETO). Para Checkout Pro, o status virá por webhook/retorno.
+  // Buscar CEP automaticamente quando digitar 8 dígitos
   useEffect(() => {
-    if (!pagamentoId) return;
-    const timer = setInterval(async () => {
-      try {
-        const resp = await api.get(`/pagamentos/${pagamentoId}/status/`);
-        const statusAtual = resp.data.status;
-        if (statusAtual === "aprovado") {
-          clearInterval(timer);
-          setSucesso("✅ Pagamento confirmado! Contrato concluído com sucesso.");
-          setProcessandoPagamento(false);
-          setTimeout(() => navigate("/contratos"), 2000);
-        } else if (statusAtual === "rejeitado") {
-          clearInterval(timer);
-          setErro("❌ Pagamento rejeitado. Tente novamente.");
-          setProcessandoPagamento(false);
-        }
-      } catch {
-        // mantém polling silencioso
-      }
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [pagamentoId, navigate]);
+    const cepLimpo = cep.replace(/\D/g, "");
+    
+    if (cepLimpo.length === 8) {
+      buscarCep(cepLimpo);
+    } else {
+      setCepEncontrado(false);
+      setErroCep("");
+    }
+  }, [cep]);
 
-  // Utils
-  const copiarPixCode = () => {
-    if (!qrCode) return;
-    navigator.clipboard.writeText(qrCode);
-    setPixCopiado(true);
-    setTimeout(() => setPixCopiado(false), 2000);
+  const buscarCep = async (cepNumerico) => {
+    setBuscandoCep(true);
+    setErroCep("");
+    setCepEncontrado(false);
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cepNumerico}/json/`);
+      const dados = await response.json();
+
+      if (dados.erro) {
+        setErroCep("CEP não encontrado");
+        limparCamposEndereco();
+      } else {
+        // Preenche os campos automaticamente
+        setRua(dados.logradouro || "");
+        setBairro(dados.bairro || "");
+        setCidade(dados.localidade || "");
+        setUf(dados.uf || "");
+        setCepEncontrado(true);
+        setErroCep("");
+      }
+    } catch (error) {
+      setErroCep("Erro ao buscar CEP");
+      limparCamposEndereco();
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
+  const limparCamposEndereco = () => {
+    setRua("");
+    setBairro("");
+    setCidade("");
+    setUf("");
+  };
+
+  const formatarCep = (valor) => {
+    const numeros = valor.replace(/\D/g, "");
+    if (numeros.length <= 5) {
+      return numeros;
+    }
+    return `${numeros.slice(0, 5)}-${numeros.slice(5, 8)}`;
+  };
+
+  const handleCepChange = (e) => {
+    const valorFormatado = formatarCep(e.target.value);
+    setCep(valorFormatado);
   };
 
   const handleErro = (error) => {
-    let msg = "Erro ao registrar pagamento.";
+    let msg = "Erro ao iniciar o pagamento.";
     const data = error?.response?.data;
     if (data) {
       if (typeof data === "string") msg = data;
@@ -90,78 +120,39 @@ export default function PagamentoContrato() {
         const primeiro = Object.values(data)[0];
         msg = Array.isArray(primeiro) ? primeiro[0] : primeiro;
       }
+    } else if (error?.message) {
+      msg = error.message;
     }
     setErro(msg);
   };
 
-  // --- Ações ---
-
-  // PIX
-  const criarPagamentoPix = async () => {
-    setErro(""); setSucesso(""); setProcessandoPagamento(true);
-    try {
-      const resp = await api.post("/pagamentos/criar-pix/", { contrato_id: contrato?.id });
-      setPagamentoId(resp.data.pagamento_id);
-      setQrCode(resp.data.qr_code);
-      setQrCodeBase64(resp.data.qr_code_base64);
-      setSucesso("💳 QR Code PIX gerado! Pague pelo app do seu banco.");
-    } catch (e) {
-      handleErro(e); setProcessandoPagamento(false);
-    }
-  };
-
-  // BOLETO
-  const criarPagamentoBoleto = async () => {
-    setErro(""); setSucesso(""); setProcessandoPagamento(true);
-    try {
-      const payload = {
-        contrato_id: contrato?.id,
-        cep: (cep || "").replace(/\D/g, ""),
-        rua, numero, bairro, cidade,
-        uf: (uf || "").toUpperCase().slice(0, 2),
-      };
-      const resp = await api.post("/pagamentos/criar-boleto/", payload);
-      setPagamentoId(resp.data.pagamento_id);
-      setBoletoUrl(resp.data.boleto_url);
-      setSucesso("📄 Boleto gerado! Clique para baixar.");
-    } catch (e) {
-      handleErro(e); setProcessandoPagamento(false);
-    }
-  };
-
-  // CHECKOUT PRO (redireciona para o Mercado Pago)
   const criarPreferenceCheckoutPro = async () => {
-    setErro(""); setSucesso(""); setProcessandoPagamento(true);
+    if (!contrato?.id) return;
+    setErro("");
+    setProcessandoPagamento(true);
     try {
-      // Enviamos endereço também (opcional). Ajuda a liberar boleto/pix lá dentro sem login.
-      const payload = {
-        contrato_id: contrato?.id,
-        cep: (cep || "").replace(/\D/g, ""),
-        rua, numero, bairro, cidade,
-        uf: (uf || "").toUpperCase().slice(0, 2),
-      };
-      // Rota do backend com HÍFEN (igual ao @action do Django)
+      const payload = { contrato_id: contrato.id };
+
+      // Só inclui endereço se houver algo preenchido
+      if (enderecoPreenchido) {
+        payload.cep = (cep || "").replace(/\D/g, "");
+        payload.rua = rua || "";
+        payload.numero = numero || "";
+        payload.bairro = bairro || "";
+        payload.cidade = cidade || "";
+        payload.uf = (uf || "").toUpperCase().slice(0, 2);
+      }
+
       const resp = await api.post("/pagamentos/checkout-pro/criar-preferencia/", payload);
-      const initPoint = resp.data?.init_point;
+      const initPoint = resp.data?.init_point || resp.data?.sandbox_init_point;
       if (!initPoint) throw new Error("Não foi possível obter o link de pagamento.");
-      window.location.href = initPoint; // redireciona para o fluxo do Mercado Pago
+      window.location.href = initPoint;
     } catch (e) {
       handleErro(e);
       setProcessandoPagamento(false);
     }
   };
 
-  const confirmarPagamento = () => {
-    if (!metodo) {
-      setErro("Escolha um método de pagamento.");
-      return;
-    }
-    if (metodo === "pix") return criarPagamentoPix();
-    if (metodo === "boleto") return criarPagamentoBoleto();
-    if (metodo === "checkout_pro") return criarPreferenceCheckoutPro();
-  };
-
-  // ---- RENDER ----
   if (carregando) {
     return (
       <div className="pagamento-container">
@@ -190,12 +181,6 @@ export default function PagamentoContrato() {
     maximumFractionDigits: 2,
   });
 
-  const metodosDisponiveis = [
-    { value: "checkout_pro", label: "Pagar no Mercado Pago", descricao: "Checkout Pro (redirecionamento)", icon: "bi bi-shop-window" },
-    { value: "pix", label: "PIX", descricao: "Transferência instantânea", icon: "bi bi-lightning-charge" },
-    { value: "boleto", label: "Boleto Bancário", descricao: "Vencimento em 3 dias úteis", icon: "bi bi-upc-scan" },
-  ];
-
   return (
     <div className="pagamento-container">
       {/* Header */}
@@ -205,7 +190,7 @@ export default function PagamentoContrato() {
           Pagamento do Contrato
         </h1>
         <p className="pagamento-subtitle">
-          Finalize o pagamento para concluir seu projeto com segurança
+          O pagamento é feito externamente via Mercado Pago (Checkout Pro).
         </p>
       </div>
 
@@ -216,14 +201,7 @@ export default function PagamentoContrato() {
           <span>{erro}</span>
         </div>
       )}
-      {sucesso && (
-        <div className="pagamento-msg sucesso">
-          <i className="bi bi-check-circle"></i>
-          <span>{sucesso}</span>
-        </div>
-      )}
 
-      {/* Conteúdo */}
       <div className="pagamento-content">
         {/* Esquerda */}
         <div className="pagamento-main">
@@ -250,101 +228,98 @@ export default function PagamentoContrato() {
             </div>
           </div>
 
-          {/* Form de Endereço (somente quando o usuário escolhe boleto e ainda não gerou nada) */}
-          {!qrCodeBase64 && !boletoUrl && metodo === "boleto" && (
-            <div className="pagamento-form">
-              <h4><i className="bi bi-geo-alt"></i> Endereço do Pagador (obrigatório para Boleto)</h4>
-              <div className="detalhes-grid">
-                <div className="detalhe-item">
-                  <span className="detalhe-label">CEP</span>
-                  <input className="form-control" value={cep} onChange={(e)=>setCep(e.target.value)} placeholder="12345678"/>
-                </div>
-                <div className="detalhe-item">
-                  <span className="detalhe-label">Rua</span>
-                  <input className="form-control" value={rua} onChange={(e)=>setRua(e.target.value)} />
-                </div>
-                <div className="detalhe-item">
-                  <span className="detalhe-label">Número</span>
-                  <input className="form-control" value={numero} onChange={(e)=>setNumero(e.target.value)} />
-                </div>
-                <div className="detalhe-item">
-                  <span className="detalhe-label">Bairro</span>
-                  <input className="form-control" value={bairro} onChange={(e)=>setBairro(e.target.value)} />
-                </div>
-                <div className="detalhe-item">
-                  <span className="detalhe-label">Cidade</span>
-                  <input className="form-control" value={cidade} onChange={(e)=>setCidade(e.target.value)} />
-                </div>
-                <div className="detalhe-item">
-                  <span className="detalhe-label">UF</span>
-                  <input className="form-control" value={uf} onChange={(e)=>setUf(e.target.value)} maxLength={2} placeholder="SP" />
-                </div>
-              </div>
-              <small className="text-muted">Preencha para gerar <strong>Boleto</strong>.</small>
-            </div>
-          )}
+          {/* Endereço (opcional) - Accordion */}
+          <div className="pagamento-form pagamento-form-accordion">
+            <button
+              type="button"
+              className={`accordion-toggle ${mostrarEndereco ? "aberto" : ""}`}
+              onClick={() => setMostrarEndereco((v) => !v)}
+              aria-expanded={mostrarEndereco}
+              aria-controls="endereco-accordion"
+            >
+              <span><i className="bi bi-geo-alt"></i> Endereço do Pagador (opcional)</span>
+              <i className={`bi ${mostrarEndereco ? "bi-chevron-up" : "bi-chevron-down"}`}></i>
+            </button>
 
-          {/* Escolha de método (quando ainda não abriu PIX/BOLETO) */}
-          {!qrCodeBase64 && !boletoUrl && (
-            <div className="pagamento-form">
-              <h4><i className="bi bi-wallet2"></i> Escolha o método de pagamento</h4>
-              <div className="pagamento-opcoes">
-                {metodosDisponiveis.map((opcao) => (
-                  <label
-                    key={opcao.value}
-                    className={`opcao-box ${metodo === opcao.value ? "ativo" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      value={opcao.value}
-                      checked={metodo === opcao.value}
-                      onChange={(e) => setMetodo(e.target.value)}
-                      disabled={processandoPagamento}
-                    />
-                    <div className="icone"><i className={opcao.icon}></i></div>
-                    <div className="opcao-info">
-                      <div className="opcao-titulo">{opcao.label}</div>
-                      <div className="opcao-descricao">{opcao.descricao}</div>
+            {mostrarEndereco && (
+              <div id="endereco-accordion" className="accordion-content">
+                <div className="detalhes-grid">
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">CEP</span>
+                    <div className="cep-input-wrapper">
+                      <input 
+                        className={`form-control ${buscandoCep ? 'loading' : ''}`}
+                        value={cep} 
+                        onChange={handleCepChange}
+                        placeholder="12345-678"
+                        maxLength={9}
+                      />
+                      {buscandoCep && <div className="cep-loading"></div>}
+                      {cepEncontrado && !buscandoCep && (
+                        <i className="bi bi-check-circle-fill cep-success"></i>
+                      )}
                     </div>
-                  </label>
-                ))}
+                    {erroCep && (
+                      <div className="cep-error-msg">
+                        <i className="bi bi-exclamation-circle"></i>
+                        {erroCep}
+                      </div>
+                    )}
+                  </div>
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">Rua</span>
+                    <input 
+                      className="form-control" 
+                      value={rua} 
+                      onChange={(e)=>setRua(e.target.value)}
+                      disabled={buscandoCep}
+                    />
+                  </div>
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">Número</span>
+                    <input 
+                      className="form-control" 
+                      value={numero} 
+                      onChange={(e)=>setNumero(e.target.value)}
+                      disabled={buscandoCep}
+                    />
+                  </div>
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">Bairro</span>
+                    <input 
+                      className="form-control" 
+                      value={bairro} 
+                      onChange={(e)=>setBairro(e.target.value)}
+                      disabled={buscandoCep}
+                    />
+                  </div>
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">Cidade</span>
+                    <input 
+                      className="form-control" 
+                      value={cidade} 
+                      onChange={(e)=>setCidade(e.target.value)}
+                      disabled={buscandoCep}
+                    />
+                  </div>
+                  <div className="detalhe-item">
+                    <span className="detalhe-label">UF</span>
+                    <input 
+                      className="form-control" 
+                      value={uf} 
+                      onChange={(e)=>setUf(e.target.value)} 
+                      maxLength={2} 
+                      placeholder="SP"
+                      disabled={buscandoCep}
+                    />
+                  </div>
+                </div>
+                <small className="text-muted">
+                  Digite o CEP e os campos serão preenchidos automaticamente. Esses dados podem ser enviados ao Checkout Pro para agilizar o pagamento.
+                </small>
               </div>
-            </div>
-          )}
-
-          {/* PIX */}
-          {qrCodeBase64 && (
-            <div className="pix-container">
-              <h4><i className="bi bi-qr-code"></i> QR Code PIX</h4>
-              <div className="qr-code-display">
-                <img src={`data:image/png;base64,${qrCodeBase64}`} alt="QR Code PIX" />
-              </div>
-              <div className="pix-actions">
-                <button onClick={copiarPixCode} className="btn-copiar-pix">
-                  <i className={pixCopiado ? "bi bi-check-lg" : "bi bi-clipboard"}></i>
-                  {pixCopiado ? "Código copiado!" : "Copiar código PIX"}
-                </button>
-              </div>
-              <p className="pix-instrucoes">
-                Abra o app do seu banco, escaneie o QR Code ou cole o código e confirme o pagamento.
-              </p>
-            </div>
-          )}
-
-          {/* BOLETO */}
-          {boletoUrl && (
-            <div className="boleto-container">
-              <h4><i className="bi bi-file-earmark-text"></i> Boleto Bancário</h4>
-              <div className="boleto-actions">
-                <a href={boletoUrl} target="_blank" rel="noopener noreferrer" className="btn-baixar-boleto">
-                  <i className="bi bi-download"></i> Baixar Boleto
-                </a>
-              </div>
-              <p className="boleto-instrucoes">
-                Pague em qualquer banco ou lotérica. A confirmação pode levar até 2 dias úteis.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -356,42 +331,26 @@ export default function PagamentoContrato() {
               <span className="resumo-valor">R$ {valorFormatado}</span>
             </div>
 
-            {pagamentoId && (
-              <div className="pagamento-status">
-                <span className="status-label">Status:</span>
-                <span className="status-badge processando">
-                  <i className="bi bi-clock-history"></i> Aguardando confirmação
-                </span>
-              </div>
-            )}
-
             <div className="pagamento-actions">
               <button onClick={() => navigate("/contratos")} className="btn-voltar" disabled={processandoPagamento}>
-                <i className="bi bi-arrow-left"></i> {pagamentoId ? "Fechar" : "Cancelar"}
+                <i className="bi bi-arrow-left"></i> Cancelar
               </button>
 
-              {!pagamentoId && (
-                <button
-                  onClick={confirmarPagamento}
-                  className="btn-confirmar"
-                  disabled={
-                    processandoPagamento ||
-                    !metodo ||
-                    (metodo === "boleto" && (!cep || !rua || !numero || !bairro || !cidade || !uf))
-                  }
-                >
-                  {processandoPagamento ? (
-                    <>
-                      <div className="loading-spinner small"></div> Processando...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-check-lg"></i>{" "}
-                      {metodo === "checkout_pro" ? "Ir para pagamento" : "Gerar Pagamento"}
-                    </>
-                  )}
-                </button>
-              )}
+              <button
+                onClick={criarPreferenceCheckoutPro}
+                className="btn-confirmar"
+                disabled={processandoPagamento || !contrato?.id}
+              >
+                {processandoPagamento ? (
+                  <>
+                    <div className="loading-spinner small"></div> Processando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-shop-window"></i> Ir para o pagamento
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

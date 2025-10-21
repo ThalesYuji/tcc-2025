@@ -1,6 +1,6 @@
 # pagamentos/views.py
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,18 +19,18 @@ from .permissoes import PermissaoPagamento
 from services.mercadopago import MercadoPagoService
 from notificacoes.utils import enviar_notificacao
 
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import user_passes_test
-
 logger = logging.getLogger(__name__)
 
 
 class PagamentoViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de Pagamento + ações de Checkout Pro.
+    Agora sem PIX/BOLETO/CARTÃO direto: só criamos a preferência e confirmamos via webhook.
+    """
     queryset = Pagamento.objects.all()
     serializer_class = PagamentoSerializer
     permission_classes = [IsAuthenticated, PermissaoPagamento]
 
-    # ---------------- Queryset por usuário ----------------
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
@@ -41,248 +41,13 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             Q(contrato__freelancer=user)
         ).distinct()
 
-    # ===================== PIX =====================
-    @action(detail=False, methods=['post'], url_path='criar-pix')
-    def criar_pix(self, request):
-        try:
-            contrato_id = request.data.get('contrato_id')
-            if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=400)
-
-            from contratos.models import Contrato
-            try:
-                contrato = Contrato.objects.get(id=contrato_id)
-            except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=404)
-
-            if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
-
-            # evita duplicidade
-            if Pagamento.objects.filter(
-                contrato=contrato, status__in=['pendente', 'em_processamento']
-            ).exists():
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
-
-            if not request.user.cpf:
-                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=400)
-
-            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
-
-            mp = MercadoPagoService()
-            res = mp.criar_pagamento_pix(
-                valor=float(contrato.valor),
-                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
-                email_pagador=request.user.email,
-                cpf_pagador=cpf_limpo,
-                nome_pagador=getattr(request.user, "nome", "") or request.user.get_full_name() or "Cliente",
-                external_reference=str(contrato.id),
-            )
-            if not res.get("sucesso"):
-                return Response({"erro": res.get("erro", "Erro ao criar pagamento no Mercado Pago")}, status=400)
-
-            pagamento = Pagamento.objects.create(
-                contrato=contrato,
-                cliente=request.user,
-                valor=contrato.valor,
-                metodo='pix',
-                status='pendente',
-                mercadopago_payment_id=res['payment_id'],
-                codigo_transacao=res.get('qr_code') or "",
-            )
-
-            try:
-                enviar_notificacao(
-                    usuario=request.user,
-                    mensagem=f"Pagamento PIX criado para o contrato '{contrato.trabalho.titulo}'.",
-                    link=f"/contratos/{contrato.id}/pagamento",
-                )
-            except Exception:
-                logger.warning("Falha ao enviar notificação do PIX", exc_info=True)
-
-            return Response({
-                "sucesso": True,
-                "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": res['payment_id'],
-                "qr_code": res.get('qr_code'),
-                "qr_code_base64": res.get('qr_code_base64'),
-                "ticket_url": res.get('ticket_url'),
-                "expiration_date": res.get('expiration_date'),
-            }, status=201)
-
-        except Exception as e:
-            logger.exception("Erro inesperado ao criar pagamento PIX")
-            return Response({"erro": f"Erro interno: {e}"}, status=500)
-
-    # =================== BOLETO ====================
-    @action(detail=False, methods=['post'], url_path='criar-boleto')
-    def criar_boleto(self, request):
-        try:
-            contrato_id = request.data.get('contrato_id')
-            if not contrato_id:
-                return Response({"erro": "contrato_id é obrigatório"}, status=400)
-
-            from contratos.models import Contrato
-            try:
-                contrato = Contrato.objects.get(id=contrato_id)
-            except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=404)
-
-            if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
-
-            if float(contrato.valor) < 3:
-                return Response({"erro": "O valor mínimo para boleto é R$ 3,00."}, status=400)
-
-            if Pagamento.objects.filter(
-                contrato=contrato, status__in=['pendente', 'em_processamento']
-            ).exists():
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
-
-            if not request.user.cpf:
-                return Response({"erro": "É necessário ter um CPF cadastrado para realizar pagamentos"}, status=400)
-
-            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "").replace(" ", "")
-
-            endereco = {
-                "zip_code": (request.data.get("cep") or "").replace("-", "").strip(),
-                "street_name": request.data.get("rua"),
-                "street_number": request.data.get("numero"),
-                "neighborhood": request.data.get("bairro"),
-                "city": request.data.get("cidade"),
-                "federal_unit": (request.data.get("uf") or "").upper()[:2],
-            }
-            faltando = [k for k, v in endereco.items() if not v]
-            if faltando:
-                return Response(
-                    {"erro": "Para gerar boleto, informe CEP, rua, número, bairro, cidade e UF.",
-                     "campos_faltando": faltando},
-                    status=400
-                )
-
-            mp = MercadoPagoService()
-            res = mp.criar_pagamento_boleto(
-                valor=float(contrato.valor),
-                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
-                email_pagador=request.user.email,
-                cpf_pagador=cpf_limpo,
-                nome_pagador=getattr(request.user, "nome", "") or request.user.get_full_name() or "Cliente",
-                external_reference=str(contrato.id),
-                endereco=endereco,
-            )
-            if not res.get("sucesso"):
-                return Response({"erro": res.get("erro", "Erro ao criar boleto no Mercado Pago")}, status=400)
-
-            pagamento = Pagamento.objects.create(
-                contrato=contrato,
-                cliente=request.user,
-                valor=contrato.valor,
-                metodo='boleto',
-                status='pendente',
-                mercadopago_payment_id=res['payment_id'],
-                codigo_transacao=res['boleto_url'],
-            )
-
-            try:
-                enviar_notificacao(
-                    usuario=request.user,
-                    mensagem=f"Boleto gerado para o contrato '{contrato.trabalho.titulo}'.",
-                    link=f"/contratos/{contrato.id}/pagamento",
-                )
-            except Exception:
-                logger.warning("Falha ao enviar notificação do Boleto", exc_info=True)
-
-            return Response({
-                "sucesso": True,
-                "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": res['payment_id'],
-                "boleto_url": res['boleto_url'],
-                "barcode": res.get('barcode'),
-                "expiration_date": res.get('expiration_date'),
-            }, status=201)
-
-        except Exception as e:
-            logger.exception("Erro inesperado ao criar boleto")
-            return Response({"erro": f"Erro interno: {e}"}, status=500)
-
-    # =================== CARTÃO ====================
-    @action(detail=False, methods=['post'], url_path='criar-cartao')
-    def criar_cartao(self, request):
-        try:
-            contrato_id = request.data.get('contrato_id')
-            token_cartao = request.data.get('token')
-            parcelas = request.data.get('parcelas', 1)
-
-            if not all([contrato_id, token_cartao]):
-                return Response({"erro": "contrato_id e token são obrigatórios"}, status=400)
-
-            from contratos.models import Contrato
-            try:
-                contrato = Contrato.objects.get(id=contrato_id)
-            except Contrato.DoesNotExist:
-                return Response({"erro": "Contrato não encontrado"}, status=404)
-
-            if contrato.cliente != request.user:
-                return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
-
-            if Pagamento.objects.filter(
-                contrato=contrato, status__in=['pendente', 'em_processamento']
-            ).exists():
-                return Response({"erro": "Já existe um pagamento pendente para este contrato"}, status=400)
-
-            mp = MercadoPagoService()
-            cpf_limpo = request.user.cpf.replace(".", "").replace("-", "") if request.user.cpf else ""
-
-            res = mp.criar_pagamento_cartao(
-                valor=float(contrato.valor),
-                descricao=f"Pagamento do contrato #{contrato.id} - {contrato.trabalho.titulo}",
-                token_cartao=token_cartao,
-                parcelas=int(parcelas),
-                email_pagador=request.user.email,
-                cpf_pagador=cpf_limpo,
-                external_reference=str(contrato.id),
-            )
-            if not res.get("sucesso"):
-                return Response({"erro": res.get("erro", "Erro ao criar pagamento")}, status=400)
-
-            status_local = mp.mapear_status_mp_para_local(res['status'])
-            pagamento = Pagamento.objects.create(
-                contrato=contrato,
-                cliente=request.user,
-                valor=contrato.valor,
-                metodo='card',
-                status=status_local,
-                mercadopago_payment_id=res['payment_id'],
-            )
-
-            if status_local == 'aprovado':
-                self._concluir_contrato(contrato)
-
-            enviar_notificacao(
-                usuario=request.user,
-                mensagem=f"Pagamento com cartão processado para o contrato '{contrato.trabalho.titulo}'.",
-                link=f"/contratos/{contrato.id}/pagamento",
-            )
-
-            return Response({
-                "sucesso": True,
-                "pagamento_id": pagamento.id,
-                "mercadopago_payment_id": res['payment_id'],
-                "status": status_local,
-                "status_detail": res.get('status_detail'),
-            }, status=201)
-
-        except Exception as e:
-            logger.exception("Erro ao criar pagamento no cartão")
-            return Response({"erro": "Erro interno ao processar pagamento"}, status=500)
-
     # ============ CHECKOUT PRO (criar preference) ============
     # aceita /checkout-pro/criar-preferencia/ e /checkout_pro/criar_preferencia/
     @action(detail=False, methods=['post'], url_path=r'checkout[-_]pro/criar[-_]preferencia')
     def criar_preferencia_checkout_pro(self, request):
         """
-        Cria uma preference do Checkout Pro.
-        Body: { "contrato_id": 123, (opcionais) "cep","rua","numero","bairro","cidade","uf","telefone" }
+        Body: { "contrato_id": 123, (opcionais) "cep","rua","numero","bairro","cidade","uf" }
+        Cria a preferência e retorna init_point para redirecionar o usuário.
         """
         try:
             contrato_id = request.data.get("contrato_id")
@@ -298,7 +63,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             if contrato.cliente != request.user:
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            # back_urls SEMPRE para o backend (evita erro de auto_return)
+            # back_urls sempre no backend (evita problemas de auto_return)
             site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
             if not site_url:
                 return Response({"erro": "SITE_URL não configurada no backend."}, status=500)
@@ -306,7 +71,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             retorno_backend = f"{site_url}/mercadopago/retorno/"
             back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
 
-            # payer completo ajuda a liberar boleto/pix dentro do Checkout Pro
+            # payer (ajuda o MP a liberar meios lá dentro)
             cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
             payer = {
                 "email": request.user.email,
@@ -354,6 +119,9 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
+        """
+        Consulta status no MP pelo payment_id (quando existir) e sincroniza local.
+        """
         try:
             pagamento = self.get_object()
 
@@ -371,11 +139,11 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(pagamento)
             return Response(serializer.data, status=200)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Erro ao consultar status")
             return Response({"erro": "Erro ao consultar status do pagamento"}, status=500)
 
-    # ================== HELPER ==================
+    # helper: conclui contrato e notifica
     def _concluir_contrato(self, contrato):
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
@@ -395,13 +163,9 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
 
 # ------------------------
-# Retorno do Checkout Pro (redireciona ao front)
+# Retorno do Checkout Pro -> redireciona para o front
 # ------------------------
 def mercadopago_retorno(request):
-    """
-    O Mercado Pago redireciona o comprador para esta URL pública (success/pending/failure).
-    Aqui só repassamos os parâmetros para a rota do front.
-    """
     front_base = (getattr(settings, "FRONT_RETURN_URL", None)
                   or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno")
     qs = request.GET.urlencode()
@@ -411,7 +175,7 @@ def mercadopago_retorno(request):
 
 
 # ------------------------
-# Webhook Mercado Pago (sem DRF, sem JWT, só Django puro)
+# Webhook Mercado Pago (sem JWT)
 # ------------------------
 @csrf_exempt
 def mercadopago_webhook(request):
@@ -438,7 +202,7 @@ def mercadopago_webhook(request):
 
         pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
 
-        # Se pagamento não existir (caso do Checkout Pro), cria a partir do external_reference
+        # se não existir (caso Checkout Pro), cria pelo external_reference (id do contrato)
         if not pagamento:
             external_ref = info.get("external_reference")
             if external_ref:
@@ -454,7 +218,7 @@ def mercadopago_webhook(request):
                         contrato=contrato,
                         cliente=contrato.cliente,
                         valor=info.get("transaction_amount") or contrato.valor,
-                        metodo='checkout_pro',
+                        metodo='checkout_pro',  # <- padronizado
                         status=status_local,
                         mercadopago_payment_id=str(payment_id),
                     )
@@ -470,8 +234,7 @@ def mercadopago_webhook(request):
         if pagamento.status == 'aprovado' and status_antigo != 'aprovado':
             contrato = pagamento.contrato
             if contrato.status != "concluido":
-                viewset = PagamentoViewSet()
-                viewset._concluir_contrato(contrato)
+                PagamentoViewSet()._concluir_contrato(contrato)
         elif pagamento.status == 'rejeitado' and status_antigo != 'rejeitado':
             enviar_notificacao(
                 usuario=pagamento.contrato.cliente,
@@ -481,47 +244,18 @@ def mercadopago_webhook(request):
 
     return JsonResponse({"status": "ok"}, status=200)
 
-# --- APENAS DEV: força aprovação de um pagamento ---
-@csrf_exempt
-@require_POST
-@user_passes_test(lambda u: u.is_staff, login_url=None, redirect_field_name=None)  # só staff pode usar
-def force_approve_payment(request, pagamento_id: int):
-    """
-    Marca um Pagamento como 'aprovado' e conclui o contrato (APENAS DEBUG).
-    Exemplo: POST /mercadopago/test/force-approve/123/
-    """
-    if not settings.DEBUG:
-        return HttpResponse(status=404)
 
-    try:
-        pagamento = Pagamento.objects.get(id=pagamento_id)
-    except Pagamento.DoesNotExist:
-        return JsonResponse({"erro": "Pagamento não encontrado"}, status=404)
-
-    status_antigo = pagamento.status
-    pagamento.status = "aprovado"
-    pagamento.save()
-
-    # conclui contrato se ainda não estiver
-    if pagamento.contrato.status != "concluido":
-        PagamentoViewSet()._concluir_contrato(pagamento.contrato)
-
-    logger.info(f"🔧 Forçado: pagamento #{pagamento.id} {status_antigo} -> aprovado (DEV)")
-    return JsonResponse({"ok": True, "pagamento_id": pagamento.id, "novo_status": pagamento.status})
-
-# --- TESTE: forçar aprovação de pagamento (somente staff/superuser) ---
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-
+# ------------------------
+# DEV: força aprovação (sandbox) - precisa JWT + staff/superuser
+# ------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def force_approve_payment(request, pagamento_id: int):
     """
-    Somente para testes em sandbox.
-    Requer JWT e usuário staff/superuser.
-    1) Busca o pagamento no MP pelo payment_id.
-    2) Garante que exista um Pagamento local (cria se ainda não veio via webhook).
-    3) Marca como 'aprovado' e conclui o contrato.
+    Endpoint de teste:
+    - Busca infos no MP pelo payment_id
+    - Garante Pagamento local
+    - Marca como 'aprovado' e conclui o contrato
     """
     if not (request.user.is_staff or request.user.is_superuser):
         return Response({"erro": "Acesso restrito a staff/superuser."}, status=403)
@@ -529,15 +263,12 @@ def force_approve_payment(request, pagamento_id: int):
     mp_id = str(pagamento_id)
     mp = MercadoPagoService()
 
-    # Tenta obter dados no MP (para descobrir external_reference/valor)
     info = mp.consultar_pagamento(mp_id)
     if not info:
         return Response({"erro": f"Pagamento {mp_id} não encontrado no Mercado Pago."}, status=404)
 
-    # Procura o registro local pelo payment_id
     pagamento = Pagamento.objects.filter(mercadopago_payment_id=mp_id).first()
 
-    # Se não existir, tenta criar a partir do external_reference (id do contrato)
     if not pagamento:
         external_ref = info.get("external_reference")
         contrato = None
@@ -555,7 +286,7 @@ def force_approve_payment(request, pagamento_id: int):
             contrato=contrato,
             cliente=contrato.cliente,
             valor=info.get("transaction_amount") or contrato.valor,
-            metodo='checkout_pro',
+            metodo='checkout_pro',  # <- padronizado
             status='pendente',
             mercadopago_payment_id=mp_id,
         )
@@ -564,10 +295,8 @@ def force_approve_payment(request, pagamento_id: int):
     pagamento.status = 'aprovado'
     pagamento.save()
 
-    # Conclui o contrato se mudou de status
     if status_antigo != 'aprovado':
-        viewset = PagamentoViewSet()
-        viewset._concluir_contrato(pagamento.contrato)
+        PagamentoViewSet()._concluir_contrato(pagamento.contrato)
 
     return Response({
         "ok": True,
