@@ -12,6 +12,7 @@ from django.shortcuts import redirect
 
 import logging
 import json
+import re
 
 from .models import Pagamento
 from .serializers import PagamentoSerializer
@@ -25,7 +26,8 @@ logger = logging.getLogger(__name__)
 class PagamentoViewSet(viewsets.ModelViewSet):
     """
     CRUD de Pagamento + ações de Checkout Pro.
-    Agora sem PIX/BOLETO/CARTÃO direto: só criamos a preferência e confirmamos via webhook.
+    PIX/BOLETO/CARTÃO não são feitos aqui — só criamos a preferência (Checkout Pro)
+    e confirmamos via webhook ou 'confirmar_retorno'.
     """
     queryset = Pagamento.objects.all()
     serializer_class = PagamentoSerializer
@@ -42,13 +44,8 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         ).distinct()
 
     # ============ CHECKOUT PRO (criar preference) ============
-    # aceita /checkout-pro/criar-preferencia/ e /checkout_pro/criar_preferencia/
     @action(detail=False, methods=['post'], url_path=r'checkout[-_]pro/criar[-_]preferencia')
     def criar_preferencia_checkout_pro(self, request):
-        """
-        Body: { "contrato_id": 123, (opcionais) "cep","rua","numero","bairro","cidade","uf" }
-        Cria a preferência e retorna init_point para redirecionar o usuário.
-        """
         try:
             contrato_id = request.data.get("contrato_id")
             if not contrato_id:
@@ -63,7 +60,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             if contrato.cliente != request.user:
                 return Response({"erro": "Você não tem permissão para pagar este contrato"}, status=403)
 
-            # back_urls sempre no backend (evita problemas de auto_return)
             site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
             if not site_url:
                 return Response({"erro": "SITE_URL não configurada no backend."}, status=500)
@@ -71,7 +67,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             retorno_backend = f"{site_url}/mercadopago/retorno/"
             back_urls = {"success": retorno_backend, "pending": retorno_backend, "failure": retorno_backend}
 
-            # montar payer (será enviado apenas se flag permitir)
+            # payer opcional (controlado por flag)
             cpf_limpo = (request.user.cpf or "").replace(".", "").replace("-", "")
             payer = {
                 "email": request.user.email,
@@ -81,7 +77,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             if cpf_limpo:
                 payer["identification"] = {"type": "CPF", "number": cpf_limpo}
 
-            # endereço opcional
             addr = {
                 "zip_code": (request.data.get("cep") or "").replace("-", "") or None,
                 "street_name": (request.data.get("rua") or None),
@@ -90,12 +85,10 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 "city": (request.data.get("cidade") or None),
                 "federal_unit": ((request.data.get("uf") or "").upper()[:2] or None),
             }
-            # só adiciona se existir algo
             addr_clean = {k: v for k, v in addr.items() if v}
             if addr_clean:
                 payer["address"] = addr_clean
 
-            # flag para enviar/omitir o payer no Checkout Pro
             include_payer = getattr(settings, "MP_INCLUDE_PAYER", False)
             payer_arg = ({k: v for k, v in payer.items() if v} if include_payer else None)
 
@@ -107,7 +100,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 external_reference=str(contrato.id),
                 back_urls=back_urls,
                 auto_return="approved",
-                payer=payer_arg,  # controlado via flag
+                payer=payer_arg,
             )
             if not res.get("sucesso"):
                 return Response({"erro": res.get("erro", "Falha ao criar preferência")}, status=400)
@@ -123,15 +116,68 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             logger.exception("Erro ao criar preference do Checkout Pro")
             return Response({"erro": f"Erro interno: {e}"}, status=500)
 
+    # --------- CONFIRMAR RETORNO (fallback ao webhook) ---------
+    @action(detail=False, methods=['post'], url_path='confirmar_retorno')
+    def confirmar_retorno(self, request):
+        """
+        Recebe payment_id/external_reference do front após o redirect
+        e garante que exista/atualize o Pagamento local consultando o MP.
+        Body: { payment_id?: str, external_reference?: str }
+        """
+        mp_id = (request.data.get("payment_id") or "").strip()
+        ext_ref = (request.data.get("external_reference") or "").strip()
+
+        if not mp_id and not ext_ref:
+            return Response({"erro": "Informe payment_id ou external_reference."}, status=400)
+
+        mp = MercadoPagoService()
+
+        info = None
+        if mp_id:
+            info = mp.consultar_pagamento(mp_id)
+
+        # se não conseguiu por ID e tem external_reference, não há como consultar direto todos;
+        # então apenas retorna pendente (o webhook deve criar).
+        if not info:
+            return Response({"ok": True, "status": "aguardando_webhook"}, status=200)
+
+        # garante/atualiza pagamento local
+        pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(info["payment_id"])).first()
+
+        if not pagamento:
+            contrato = None
+            if info.get("external_reference"):
+                try:
+                    from contratos.models import Contrato
+                    contrato = Contrato.objects.get(id=int(info["external_reference"]))
+                except Exception:
+                    contrato = None
+
+            if not contrato:
+                return Response({"erro": "Pagamento no MP não referencia um contrato válido."}, status=404)
+
+            pagamento = Pagamento.objects.create(
+                contrato=contrato,
+                cliente=contrato.cliente,
+                valor=info.get("transaction_amount") or contrato.valor,
+                metodo='checkout_pro',
+                status=mp.mapear_status_mp_para_local(info['status']),
+                mercadopago_payment_id=str(info["payment_id"]),
+            )
+        else:
+            pagamento.status = mp.mapear_status_mp_para_local(info['status'])
+            pagamento.save()
+
+        if pagamento.status == 'aprovado':
+            self._concluir_contrato(pagamento.contrato)
+
+        return Response(PagamentoSerializer(pagamento, context={"request": request}).data, status=200)
+
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
-        """
-        Consulta status no MP pelo payment_id (quando existir) e sincroniza local.
-        """
         try:
             pagamento = self.get_object()
-
             if pagamento.mercadopago_payment_id:
                 mp = MercadoPagoService()
                 info = mp.consultar_pagamento(pagamento.mercadopago_payment_id)
@@ -145,18 +191,16 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
             serializer = self.get_serializer(pagamento)
             return Response(serializer.data, status=200)
-
         except Exception:
             logger.exception("Erro ao consultar status")
             return Response({"erro": "Erro ao consultar status do pagamento"}, status=500)
 
-    # helper: conclui contrato e notifica
+    # helper
     def _concluir_contrato(self, contrato):
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
         contrato.trabalho.save()
         contrato.save()
-
         enviar_notificacao(
             usuario=contrato.cliente,
             mensagem=f"O contrato do trabalho '{contrato.trabalho.titulo}' foi concluído após o pagamento.",
@@ -169,9 +213,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         )
 
 
-# ------------------------
-# Retorno do Checkout Pro -> redireciona para o front
-# ------------------------
+# ------------------------ Retorno do Checkout Pro ------------------------
 def mercadopago_retorno(request):
     front_base = (getattr(settings, "FRONT_RETURN_URL", None)
                   or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno")
@@ -181,9 +223,7 @@ def mercadopago_retorno(request):
     return redirect(destino)
 
 
-# ------------------------
-# Webhook Mercado Pago (sem JWT)
-# ------------------------
+# ------------------------ Webhook Mercado Pago ------------------------
 @csrf_exempt
 def mercadopago_webhook(request):
     if request.method != "POST":
@@ -195,23 +235,29 @@ def mercadopago_webhook(request):
         logger.error("❌ Webhook MP: JSON inválido")
         return JsonResponse({"error": "JSON inválido"}, status=400)
 
-    logger.info("🔔 Webhook recebido do Mercado Pago: %s", data.get('type'))
+    logger.info("🔔 Webhook recebido: %s", json.dumps(data, ensure_ascii=False)[:500])
 
-    if data.get("type") == "payment":
-        payment_id = data.get("data", {}).get("id")
-        if not payment_id:
-            return JsonResponse({"status": "ok"}, status=200)
+    # Mercado Pago pode enviar 'type' ou 'action' e o ID em data.id ou na URL 'resource'
+    tipo = data.get("type") or data.get("action") or ""
+    payment_id = str(data.get("data", {}).get("id") or "")
 
+    if not payment_id:
+        resource = data.get("resource") or ""
+        m = re.search(r'/v1/payments/(\d+)', resource)
+        if m:
+            payment_id = m.group(1)
+
+    if ("payment" in str(tipo).lower()) and payment_id:
         mp = MercadoPagoService()
-        info = mp.consultar_pagamento(str(payment_id))
+        info = mp.consultar_pagamento(payment_id)
         if not info:
             return JsonResponse({"status": "ok"}, status=200)
 
         pagamento = Pagamento.objects.filter(mercadopago_payment_id=str(payment_id)).first()
 
-        # se não existir (caso Checkout Pro), cria pelo external_reference (id do contrato)
         if not pagamento:
             external_ref = info.get("external_reference")
+            contrato = None
             if external_ref:
                 try:
                     from contratos.models import Contrato
@@ -219,18 +265,16 @@ def mercadopago_webhook(request):
                 except Exception:
                     contrato = None
 
-                if contrato:
-                    status_local = mp.mapear_status_mp_para_local(info['status'])
-                    pagamento = Pagamento.objects.create(
-                        contrato=contrato,
-                        cliente=contrato.cliente,
-                        valor=info.get("transaction_amount") or contrato.valor,
-                        metodo='checkout_pro',
-                        status=status_local,
-                        mercadopago_payment_id=str(payment_id),
-                    )
-                else:
-                    return JsonResponse({"status": "ok"}, status=200)
+            if contrato:
+                status_local = mp.mapear_status_mp_para_local(info['status'])
+                pagamento = Pagamento.objects.create(
+                    contrato=contrato,
+                    cliente=contrato.cliente,
+                    valor=info.get("transaction_amount") or contrato.valor,
+                    metodo='checkout_pro',
+                    status=status_local,
+                    mercadopago_payment_id=str(payment_id),
+                )
             else:
                 return JsonResponse({"status": "ok"}, status=200)
 
@@ -252,24 +296,15 @@ def mercadopago_webhook(request):
     return JsonResponse({"status": "ok"}, status=200)
 
 
-# ------------------------
-# DEV: força aprovação (sandbox) - precisa JWT + staff/superuser
-# ------------------------
+# ------------------------ DEV: força aprovação ------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def force_approve_payment(request, pagamento_id: int):
-    """
-    Endpoint de teste:
-    - Busca infos no MP pelo payment_id
-    - Garante Pagamento local
-    - Marca como 'aprovado' e conclui o contrato
-    """
     if not (request.user.is_staff or request.user.is_superuser):
         return Response({"erro": "Acesso restrito a staff/superuser."}, status=403)
 
     mp_id = str(pagamento_id)
     mp = MercadoPagoService()
-
     info = mp.consultar_pagamento(mp_id)
     if not info:
         return Response({"erro": f"Pagamento {mp_id} não encontrado no Mercado Pago."}, status=404)

@@ -1,20 +1,23 @@
 // src/Paginas/CheckoutRetorno.jsx
-// Tela de retorno do Checkout Pro. Mostra IDs, copia dados e faz polling do status no backend.
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
+import "../styles/CheckoutRetorno.css";
 
 function Row({ label, value, onCopy }) {
   return (
-    <div style={{display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8}}>
-      <div style={{fontWeight: 600, minWidth: 160}}>{label}</div>
-      <div style={{flex: 1, wordBreak: "break-all"}}>{value ?? "—"}</div>
+    <div className="data-row">
+      <div className="data-row-label">{label}</div>
+      <div className={`data-row-value ${!value ? 'empty' : ''}`}>
+        {value || "—"}
+      </div>
       {value ? (
-        <button className="btn btn-sm btn-outline-secondary" onClick={() => onCopy?.(value)}>
+        <button className="btn-copy" onClick={() => onCopy?.(value)}>
+          <i className="bi bi-clipboard"></i>
           Copiar
         </button>
       ) : (
-        <div style={{ width: 80 }} />
+        <div className="btn-copy-placeholder" />
       )}
     </div>
   );
@@ -24,35 +27,48 @@ export default function CheckoutRetorno() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
-  // --- Params vindos do MP ---
+  // Params do MP
   const qs = useMemo(() => new URLSearchParams(params), [params]);
-  const paymentId = qs.get("payment_id") || qs.get("collection_id"); // em alguns fluxos vem collection_id
-  const status = qs.get("status"); // approved | pending | failure (do redirect)
-  const externalReference = qs.get("external_reference"); // seu id do contrato
+  const paymentId = qs.get("payment_id") || qs.get("collection_id");
+  const status = qs.get("status"); // approved | pending | failure
+  const externalReference = qs.get("external_reference");
   const preferenceId = qs.get("preference_id");
   const paymentType = qs.get("payment_type");
   const merchantOrderId = qs.get("merchant_order_id");
 
-  // --- Estado de confirmação no backend ---
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
   const [tipo, setTipo] = useState("info"); // info | sucesso | erro
-  const [pagamentoLocal, setPagamentoLocal] = useState(null); // {id,status,mercadopago_payment_id,...}
+  const [pagamentoLocal, setPagamentoLocal] = useState(null);
   const [tentativas, setTentativas] = useState(0);
 
-  // Copiar helper
   const copiar = async (texto) => {
-    try {
+    try { 
       await navigator.clipboard.writeText(String(texto));
     } catch {}
   };
 
-  // Poll no backend buscando o pagamento pelo payment_id ou pelo contrato (external_reference)
+  // Chama um endpoint de confirmação (fallback do webhook) uma vez
+  useEffect(() => {
+    (async () => {
+      try {
+        await api.post("/pagamentos/confirmar_retorno/", {
+          payment_id: paymentId,
+          external_reference: externalReference,
+        });
+      } catch {
+        // silencioso — o polling abaixo continua tentando
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentId, externalReference]);
+
+  // Poll no backend procurando o pagamento local
   useEffect(() => {
     let t = 0;
+
     async function tick() {
       setTentativas((v) => v + 1);
       try {
-        // pegue bastante para garantir que venha o registro criado via webhook
         const resp = await api.get("/pagamentos/?page_size=50");
         const results = resp?.data?.results || [];
 
@@ -73,21 +89,19 @@ export default function CheckoutRetorno() {
 
           if (encontrado.status === "aprovado") {
             setTipo("sucesso");
-            setMsg("✅ Pagamento aprovado! Concluindo…");
-            return; // para o polling
+            setMsg("Pagamento aprovado! Concluindo…");
+            return;
           }
           if (encontrado.status === "rejeitado") {
             setTipo("erro");
-            setMsg("❌ Pagamento rejeitado. Tente novamente.");
-            return; // para o polling
+            setMsg("Pagamento rejeitado. Tente novamente.");
+            return;
           }
 
-          // ainda pendente ou em_processamento
           setTipo("info");
           setMsg("Aguardando confirmação do Mercado Pago (webhook)...");
         } else {
-          // ainda não chegou via webhook
-          setTipo(status === "approved" ? "info" : "info");
+          setTipo("info");
           setMsg(
             status === "approved"
               ? "Pagamento possivelmente aprovado. Aguardando o webhook confirmar…"
@@ -95,100 +109,129 @@ export default function CheckoutRetorno() {
           );
         }
       } catch {
-        // ignora erros transitórios
+        // ignora erros temporários
       }
 
-      // timeout de ~60s
-      if (t >= 19) {
+      if (t >= 22) { // ~44s
         setTipo(status === "approved" ? "sucesso" : "erro");
         setMsg(
           status === "approved"
-            ? "Pagamento pode ter sido aprovado, mas não confirmou ainda. Verifique seus contratos em alguns instantes."
+            ? "Pagamento pode ter sido aprovado, mas ainda não confirmou. Verifique seus contratos em alguns instantes."
             : "Não foi possível confirmar o pagamento agora."
         );
         return;
       }
 
       t += 1;
-      poll();
-    }
-
-    function poll() {
-      setTimeout(tick, 3000);
+      setTimeout(tick, 2000);
     }
 
     tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentId, externalReference, status]);
 
+  const getStatusIcon = () => {
+    if (tipo === "sucesso") return "bi-check-circle-fill";
+    if (tipo === "erro") return "bi-x-circle-fill";
+    return "bi-arrow-repeat";
+  };
+
+  const showLoadingDots = tipo === "info" && tentativas > 0;
+
   return (
-    <div style={{maxWidth: 760, margin: "40px auto"}}>
-      <h2 style={{textAlign: "center"}}>Retornando do Mercado Pago</h2>
-
-      <div
-        style={{
-          marginTop: 16,
-          padding: 16,
-          borderRadius: 12,
-          border: "1px solid #e6e6e6",
-          background: "#fafafa",
-        }}
-      >
-        <p
-          className={
-            tipo === "sucesso"
-              ? "text-success"
-              : tipo === "erro"
-              ? "text-danger"
-              : "text-muted"
-          }
-          style={{marginBottom: 8}}
-        >
-          {msg}
-        </p>
-
-        <div style={{marginTop: 12}}>
-          <h5 style={{marginBottom: 12}}>Parâmetros recebidos do Mercado Pago</h5>
-
-          <Row label="payment_id / collection_id" value={paymentId} onCopy={copiar} />
-          <Row label="status" value={status} onCopy={copiar} />
-          <Row label="external_reference (Contrato)" value={externalReference} onCopy={copiar} />
-          <Row label="preference_id" value={preferenceId} onCopy={copiar} />
-          <Row label="payment_type" value={paymentType} onCopy={copiar} />
-          <Row label="merchant_order_id" value={merchantOrderId} onCopy={copiar} />
-          <Row label="URL completa" value={window.location.href} onCopy={copiar} />
+    <div className="checkout-retorno-container">
+      <div className="checkout-retorno-content">
+        {/* Header */}
+        <div className="checkout-retorno-header">
+          <h2>
+            <div className="checkout-retorno-icon">
+              <i className="bi bi-credit-card-2-front"></i>
+            </div>
+            Retornando do Mercado Pago
+          </h2>
         </div>
 
-        <div style={{marginTop: 24}}>
-          <h5 style={{marginBottom: 12}}>Status no seu backend</h5>
-          <Row
-            label="Pagamento local ID"
-            value={pagamentoLocal?.id ? String(pagamentoLocal.id) : null}
-            onCopy={copiar}
-          />
-          <Row
-            label="Status local"
-            value={pagamentoLocal?.status || null}
-            onCopy={copiar}
-          />
-          <Row
-            label="MP payment_id salvo"
-            value={pagamentoLocal?.mercadopago_payment_id || null}
-            onCopy={copiar}
-          />
-        </div>
+        {/* Card principal */}
+        <div className="checkout-retorno-card">
+          {/* Mensagem de status */}
+          <div className={`status-message ${tipo}`}>
+            <i className={`bi ${getStatusIcon()}`}></i>
+            <div>
+              {msg}
+              {showLoadingDots && (
+                <span className="loading-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              )}
+            </div>
+          </div>
 
-        <div style={{display: "flex", gap: 12, marginTop: 24, justifyContent: "center"}}>
-          <button className="btn btn-secondary" onClick={() => navigate("/contratos")}>
-            Voltar aos contratos
-          </button>
-          <button className="btn btn-outline-secondary" onClick={() => window.location.reload()}>
-            Recarregar página
-          </button>
-        </div>
+          {/* Parâmetros do Mercado Pago */}
+          <div className="info-section">
+            <h5>
+              <i className="bi bi-receipt"></i>
+              Parâmetros recebidos do Mercado Pago
+            </h5>
+            <Row label="Payment ID / Collection ID" value={paymentId} onCopy={copiar} />
+            <Row label="Status" value={status} onCopy={copiar} />
+            <Row label="External Reference (Contrato)" value={externalReference} onCopy={copiar} />
+            <Row label="Preference ID" value={preferenceId} onCopy={copiar} />
+            <Row label="Payment Type" value={paymentType} onCopy={copiar} />
+            <Row label="Merchant Order ID" value={merchantOrderId} onCopy={copiar} />
+            <Row label="URL Completa" value={window.location.href} onCopy={copiar} />
+          </div>
 
-        <div style={{marginTop: 12, textAlign: "center", fontSize: 12, color: "#888"}}>
-          Tentativas de verificação: {tentativas}
+          {/* Status no backend */}
+          <div className="info-section">
+            <h5>
+              <i className="bi bi-server"></i>
+              Status no seu backend
+            </h5>
+            <Row 
+              label="Pagamento Local ID" 
+              value={pagamentoLocal?.id ? String(pagamentoLocal.id) : null} 
+              onCopy={copiar}
+            />
+            <Row 
+              label="Status Local" 
+              value={pagamentoLocal?.status || null} 
+              onCopy={copiar}
+            />
+            <Row 
+              label="MP Payment ID Salvo" 
+              value={pagamentoLocal?.mercadopago_payment_id || null} 
+              onCopy={copiar}
+            />
+          </div>
+
+          {/* Ações */}
+          <div className="checkout-actions">
+            <button 
+              className="btn-primary-action" 
+              onClick={() => navigate("/contratos")}
+            >
+              <i className="bi bi-arrow-left-circle"></i>
+              Voltar aos contratos
+            </button>
+            <button 
+              className="btn-secondary-action" 
+              onClick={() => window.location.reload()}
+            >
+              <i className="bi bi-arrow-clockwise"></i>
+              Recarregar página
+            </button>
+          </div>
+
+          {/* Footer com tentativas */}
+          <div className="checkout-footer">
+            <div className="tentativas-info">
+              <i className="bi bi-clock-history"></i>
+              Tentativas de verificação: 
+              <span className="tentativas-numero">{tentativas}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
