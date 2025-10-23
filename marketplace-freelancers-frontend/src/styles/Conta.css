@@ -305,7 +305,6 @@
   color: var(--cor-primaria);
 }
 
-/* Ícone de alerta vermelho na zona de perigo */
 .card-danger .card-header-simple h2 i.bi-exclamation-triangle {
   color: var(--cor-erro) !important;
 }
@@ -474,96 +473,54 @@ textarea.input-field {
 }
 
 /* ==============================
-   CONFIGURAÇÕES
+   SEGURANÇA
    ============================== */
-.setting-section {
-  padding: var(--space-lg) 0;
-  border-bottom: 1px solid var(--borda-light);
+.setting-section-single {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
-.setting-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.setting-section:first-child {
-  padding-top: 0;
-}
-
-.setting-header {
+.btn-text-full {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  justify-content: space-between;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--superficie-hover);
+  border: 1px solid var(--borda-light);
+  border-radius: var(--radius-md);
+  color: var(--cor-texto);
   font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--cor-secundaria);
-  margin-bottom: var(--space-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
 }
 
-.setting-header i {
-  font-size: 1rem;
+.btn-text-full:hover {
+  background: var(--superficie-card);
+  border-color: var(--cor-primaria);
   color: var(--cor-primaria);
 }
 
-.toggle-switch {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  cursor: pointer;
-  padding: var(--space-md);
-  background: var(--superficie-hover);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  border: 1px solid transparent;
+.btn-text-full i:first-child {
+  color: var(--cor-primaria);
+  font-size: 1.125rem;
 }
 
-.toggle-switch:hover {
-  border-color: var(--borda-light);
+.btn-text-full span {
+  flex: 1;
 }
 
-.toggle-switch input {
-  display: none;
-}
-
-.toggle-slider-custom {
-  width: 44px;
-  height: 24px;
-  background: var(--borda-medium);
-  border-radius: var(--radius-full);
-  position: relative;
-  transition: all var(--transition-normal);
-  flex-shrink: 0;
-}
-
-.toggle-slider-custom::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  transition: all var(--transition-normal);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider-custom {
-  background: var(--cor-primaria);
-}
-
-.toggle-switch input:checked + .toggle-slider-custom::after {
-  transform: translateX(20px);
-}
-
-.toggle-label {
+.btn-text-full i:last-child {
   font-size: 0.875rem;
-  color: var(--cor-texto);
-  font-weight: 500;
+  color: var(--cor-texto-light);
 }
 
 .password-form {
-  margin-top: var(--space-md);
+  margin-top: var(--space-sm);
   padding: var(--space-lg);
   background: var(--superficie-hover);
   border-radius: var(--radius-md);
@@ -571,6 +528,21 @@ textarea.input-field {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  animation: slideInDown 0.3s ease-out;
+}
+
+.password-form .btn-primary {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: var(--space-sm);
+  box-shadow: var(--sombra-md);
+}
+
+.password-form .btn-primary:hover:not(:disabled) {
+  box-shadow: var(--sombra-lg);
+  transform: translateY(-2px);
 }
 
 /* ==============================
@@ -886,14 +858,6 @@ button:disabled {
   border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-/* ==============================
-   ÍCONES DE ALERTA E PERIGO
-   ============================== */
-.bi-exclamation-triangle,
-.bi-exclamation-triangle-fill {
-  color: var(--cor-erro) !important;
 }
 
 /* ==============================

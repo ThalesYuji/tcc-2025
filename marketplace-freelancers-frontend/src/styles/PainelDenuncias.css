@@ -793,58 +793,6 @@
 }
 
 /* ==============================
-   PAGINAÇÃO
-   ============================== */
-.trabalhos-pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-lg);
-  margin-top: var(--space-2xl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--borda-light);
-}
-
-.pagination-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-lg);
-  background: var(--superficie-card);
-  color: var(--cor-texto);
-  border: 1px solid var(--borda-light);
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  transition: all var(--transition-normal);
-  box-shadow: var(--sombra-sm);
-  cursor: pointer;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: var(--cor-primaria);
-  color: white;
-  border-color: var(--cor-primaria);
-  transform: translateY(-1px);
-  box-shadow: var(--sombra-md);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--superficie-hover);
-}
-
-.pagination-info {
-  background: var(--superficie-card);
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--borda-light);
-  font-weight: 500;
-  color: var(--cor-texto);
-  box-shadow: var(--sombra-sm);
-}
-
-/* ==============================
    LOADING STATE
    ============================== */
 .denuncias-loading {

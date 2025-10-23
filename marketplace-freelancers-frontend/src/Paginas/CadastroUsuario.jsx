@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../Servicos/Api"; // ✅ Usando o api.js centralizado
+import api from "../Servicos/Api";
 import "../styles/CadastroUsuario.css";
 
-// Ícones
 import {
   FaUser,
   FaEnvelope,
@@ -12,6 +11,8 @@ import {
   FaIdCard,
   FaBuilding,
   FaImage,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 
 export default function CadastroUsuario() {
@@ -31,6 +32,10 @@ export default function CadastroUsuario() {
   const [erroGeral, setErroGeral] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  // 👁️ controle de visibilidade das senhas
+  const [visivel, setVisivel] = useState({ senha: false, confirmar: false });
+
   const navigate = useNavigate();
 
   // 🔹 Máscaras (telefone, CPF, CNPJ)
@@ -87,7 +92,7 @@ export default function CadastroUsuario() {
     if (!/[A-Z]/.test(senha)) errosSenha.push("letra maiúscula");
     if (!/[a-z]/.test(senha)) errosSenha.push("letra minúscula");
     if (!/[0-9]/.test(senha)) errosSenha.push("número");
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha)) errosSenha.push("símbolo especial");
+    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(senha)) errosSenha.push("símbolo especial");
     return errosSenha;
   }
 
@@ -117,7 +122,6 @@ export default function CadastroUsuario() {
     setCarregando(true);
 
     try {
-      // ✅ Usando api.js (que já aponta para Railway)
       await api.post("/usuarios/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -197,7 +201,7 @@ export default function CadastroUsuario() {
                     value={form.nome}
                     onChange={handleChange}
                     required
-                    className={`input ${erros.nome ? "input-erro" : ""}`}
+                    className={erros.nome ? "input-erro" : ""}
                   />
                 </div>
                 <div className="input-group">
@@ -209,7 +213,7 @@ export default function CadastroUsuario() {
                     value={form.email}
                     onChange={handleChange}
                     required
-                    className={`input ${erros.email ? "input-erro" : ""}`}
+                    className={erros.email ? "input-erro" : ""}
                   />
                 </div>
               </div>
@@ -220,26 +224,44 @@ export default function CadastroUsuario() {
                 <div className="input-group">
                   <FaLock className="input-icon" />
                   <input
-                    type="password"
+                    type={visivel.senha ? "text" : "password"}
                     name="senha"
                     placeholder="Senha"
                     value={form.senha}
                     onChange={handleChange}
                     required
-                    className={`input ${erros.password ? "input-erro" : ""}`}
+                    className={erros.password ? "input-erro" : ""}
                   />
+                  <button
+                    type="button"
+                    className="toggle-visibility"
+                    onClick={() => setVisivel(v => ({ ...v, senha: !v.senha }))}
+                    aria-label={visivel.senha ? "Ocultar senha" : "Mostrar senha"}
+                    title={visivel.senha ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {visivel.senha ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
                 <div className="input-group">
                   <FaLock className="input-icon" />
                   <input
-                    type="password"
+                    type={visivel.confirmar ? "text" : "password"}
                     name="confirmarSenha"
                     placeholder="Confirmar senha"
                     value={form.confirmarSenha}
                     onChange={handleChange}
                     required
-                    className={`input ${erros.confirmarSenha ? "input-erro" : ""}`}
+                    className={erros.confirmarSenha ? "input-erro" : ""}
                   />
+                  <button
+                    type="button"
+                    className="toggle-visibility"
+                    onClick={() => setVisivel(v => ({ ...v, confirmar: !v.confirmar }))}
+                    aria-label={visivel.confirmar ? "Ocultar senha" : "Mostrar senha"}
+                    title={visivel.confirmar ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {visivel.confirmar ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
               </div>
               {erros.password && <div className="error-msg">{erros.password}</div>}
@@ -272,7 +294,7 @@ export default function CadastroUsuario() {
                     onChange={handleChange}
                     required
                     maxLength="15"
-                    className={`input ${erros.telefone ? "input-erro" : ""}`}
+                    className={erros.telefone ? "input-erro" : ""}
                   />
                 </div>
               </div>
@@ -289,7 +311,7 @@ export default function CadastroUsuario() {
                     onChange={handleChange}
                     required
                     maxLength="14"
-                    className={`input ${erros.cpf ? "input-erro" : ""}`}
+                    className={erros.cpf ? "input-erro" : ""}
                   />
                 </div>
                 {form.tipo === "cliente" && (
@@ -303,7 +325,7 @@ export default function CadastroUsuario() {
                       onChange={handleChange}
                       required
                       maxLength="18"
-                      className={`input ${erros.cnpj ? "input-erro" : ""}`}
+                      className={erros.cnpj ? "input-erro" : ""}
                     />
                   </div>
                 )}
@@ -312,7 +334,7 @@ export default function CadastroUsuario() {
               {/* Upload de imagem */}
               <div className="form-row form-col">
                 <label className="input-label">
-                  <FaImage className="me-2" /> Foto de Perfil (opcional):
+                  <FaImage /> Foto de Perfil (opcional):
                 </label>
                 <label htmlFor="foto_perfil" className="file-label">
                   Selecionar arquivo
@@ -333,7 +355,7 @@ export default function CadastroUsuario() {
                 )}
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={carregando}>
+              <button type="submit" className="btn btn-primary btn-submit" disabled={carregando}>
                 {carregando ? "Cadastrando..." : "Cadastrar"}
               </button>
             </form>

@@ -42,7 +42,9 @@ export default function PerfilPublico() {
   const [usuario, setUsuario] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(null);
+  const [metricas, setMetricas] = useState(null); // 🆕 Estado para métricas reais
   const [carregando, setCarregando] = useState(true);
+  const [carregandoMetricas, setCarregandoMetricas] = useState(true); // 🆕
   const [erro, setErro] = useState("");
   const [activeTab, setActiveTab] = useState("sobre");
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
@@ -81,6 +83,31 @@ export default function PerfilPublico() {
       buscarDados();
     }
   }, [id]);
+
+  // 🆕 Buscar métricas de performance
+  useEffect(() => {
+    async function buscarMetricas() {
+      if (!usuario || usuario.tipo !== "freelancer") {
+        setCarregandoMetricas(false);
+        return;
+      }
+
+      try {
+        setCarregandoMetricas(true);
+        const resp = await api.get(`/usuarios/${id}/metricas_performance/`);
+        setMetricas(resp.data);
+      } catch (err) {
+        console.error("Erro ao buscar métricas:", err);
+        setMetricas(null);
+      } finally {
+        setCarregandoMetricas(false);
+      }
+    }
+
+    if (usuario) {
+      buscarMetricas();
+    }
+  }, [usuario, id]);
 
   const handleCompartilhar = () => {
     if (navigator.share) {
@@ -611,38 +638,52 @@ export default function PerfilPublico() {
               </div>
             </div>
 
-            {/* Performance */}
-            <div className="standard-card">
-              <div className="card-header-std">
-                <i className="bi bi-speedometer2 header-icon-std"></i>
-                <h3>Performance</h3>
-              </div>
-              <div className="card-body-std">
-                <div className="performance-list">
-                  <div className="performance-item">
-                    <div className="performance-label">
-                      <i className="bi bi-check-circle"></i>
-                      Taxa de Conclusão
+            {/* Performance - 🆕 AGORA COM DADOS REAIS */}
+            {usuario.tipo === "freelancer" && (
+              <div className="standard-card">
+                <div className="card-header-std">
+                  <i className="bi bi-speedometer2 header-icon-std"></i>
+                  <h3>Performance</h3>
+                </div>
+                <div className="card-body-std">
+                  {carregandoMetricas ? (
+                    <div className="loading-metrics">
+                      <div className="spinner-small"></div>
+                      <p>Carregando métricas...</p>
                     </div>
-                    <div className="performance-value">95%</div>
-                  </div>
-                  <div className="performance-item">
-                    <div className="performance-label">
-                      <i className="bi bi-clock-history"></i>
-                      Entrega no Prazo
+                  ) : metricas && metricas.total_contratos > 0 ? (
+                    <div className="performance-list">
+                      <div className="performance-item">
+                        <div className="performance-label">
+                          <i className="bi bi-check-circle"></i>
+                          Taxa de Conclusão
+                        </div>
+                        <div className="performance-value">{metricas.taxa_conclusao}%</div>
+                      </div>
+                      <div className="performance-item">
+                        <div className="performance-label">
+                          <i className="bi bi-clock-history"></i>
+                          Entrega no Prazo
+                        </div>
+                        <div className="performance-value">{metricas.taxa_entrega_prazo}%</div>
+                      </div>
+                      <div className="performance-item">
+                        <div className="performance-label">
+                          <i className="bi bi-arrow-repeat"></i>
+                          Recontratação
+                        </div>
+                        <div className="performance-value">{metricas.taxa_recontratacao}%</div>
+                      </div>
                     </div>
-                    <div className="performance-value">92%</div>
-                  </div>
-                  <div className="performance-item">
-                    <div className="performance-label">
-                      <i className="bi bi-arrow-repeat"></i>
-                      Recontratação
+                  ) : (
+                    <div className="empty-state-small">
+                      <i className="bi bi-info-circle"></i>
+                      <p>Sem dados suficientes para calcular performance.</p>
                     </div>
-                    <div className="performance-value">78%</div>
-                  </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

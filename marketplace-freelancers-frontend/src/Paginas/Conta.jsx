@@ -20,10 +20,6 @@ export default function Conta() {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(usuarioLogado?.nota_media);
 
-  // Notificações
-  const [notificacaoEmail, setNotificacaoEmail] = useState(usuarioLogado?.notificacao_email ?? true);
-  const [carregandoNotificacao, setCarregandoNotificacao] = useState(false);
-
   // Exclusão de conta
   const [showModalExcluir, setShowModalExcluir] = useState(false);
   const [senhaExcluir, setSenhaExcluir] = useState("");
@@ -49,6 +45,26 @@ export default function Conta() {
     if (numeros.length > 6) return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
     if (numeros.length > 2) return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
     return numeros.replace(/^(\d*)/, "($1");
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  function formatarCPF(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length <= 11) {
+      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    return valor;
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  function formatarCNPJ(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length <= 14) {
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return valor;
   }
 
   useEffect(() => {
@@ -158,20 +174,6 @@ export default function Conta() {
     setCarregando(false);
   }
 
-  async function handleToggleNotificacao(e) {
-    const novoValor = e.target.checked;
-    setCarregandoNotificacao(true);
-    try {
-      await api.patch(`/usuarios/me/`, { notificacao_email: novoValor });
-      setNotificacaoEmail(novoValor);
-      setFeedback("Preferência de notificação atualizada!");
-      setTimeout(() => setFeedback(""), 4000);
-    } catch {
-      setErro("Erro ao atualizar preferência.");
-    }
-    setCarregandoNotificacao(false);
-  }
-
   async function handleTrocarSenha(e) {
     e.preventDefault();
     setCarregandoSenha(true);
@@ -208,37 +210,37 @@ export default function Conta() {
     setCarregandoSenha(false);
   }
 
-async function handleExcluirConta(e) {
-  e.preventDefault();
-  setExcluindo(true);
-  setErroExcluir("");
-  setFeedbackExcluir("");
-  try {
-    const resp = await api.post(
-      `/usuarios/${usuarioLogado.id}/excluir_conta/`,
-      { senha: senhaExcluir }
-    );
-    setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
-    setTimeout(() => {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }, 1500);
-  } catch (err) {
-    let msg = "Erro ao excluir conta.";
-    if (err.response?.data) {
-      const backendErros = err.response.data;
-      if (backendErros.erro) msg = backendErros.erro;
-      if (typeof backendErros === "object") {
-        msg =
-          Object.values(backendErros)
-            .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-            .join(" ") || msg;
+  async function handleExcluirConta(e) {
+    e.preventDefault();
+    setExcluindo(true);
+    setErroExcluir("");
+    setFeedbackExcluir("");
+    try {
+      const resp = await api.post(
+        `/usuarios/${usuarioLogado.id}/excluir_conta/`,
+        { senha: senhaExcluir }
+      );
+      setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
+      setTimeout(() => {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }, 1500);
+    } catch (err) {
+      let msg = "Erro ao excluir conta.";
+      if (err.response?.data) {
+        const backendErros = err.response.data;
+        if (backendErros.erro) msg = backendErros.erro;
+        if (typeof backendErros === "object") {
+          msg =
+            Object.values(backendErros)
+              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+              .join(" ") || msg;
+        }
       }
+      setErroExcluir(msg);
     }
-    setErroExcluir(msg);
+    setExcluindo(false);
   }
-  setExcluindo(false);
-}
 
   if (!usuarioLogado) return null;
 
@@ -428,7 +430,7 @@ async function handleExcluirConta(e) {
                         <i className="bi bi-credit-card"></i>
                         CPF
                       </span>
-                      <span className="info-value">{usuarioLogado.cpf}</span>
+                      <span className="info-value">{formatarCPF(usuarioLogado.cpf)}</span>
                     </div>
                     {usuarioLogado.cnpj && (
                       <div className="info-row">
@@ -436,7 +438,7 @@ async function handleExcluirConta(e) {
                           <i className="bi bi-building"></i>
                           CNPJ
                         </span>
-                        <span className="info-value">{usuarioLogado.cnpj}</span>
+                        <span className="info-value">{formatarCNPJ(usuarioLogado.cnpj)}</span>
                       </div>
                     )}
                     {usuarioLogado.bio && (
@@ -503,47 +505,24 @@ async function handleExcluirConta(e) {
           {/* Coluna Direita - Configurações e ações */}
           <div className="conta-sidebar-column">
             
-            {/* Card de Configurações */}
+            {/* Card de Segurança */}
             <div className="card">
               <div className="card-header-simple">
                 <h2>
-                  <i className="bi bi-gear"></i>
-                  Configurações
+                  <i className="bi bi-shield-lock"></i>
+                  Segurança
                 </h2>
               </div>
 
               <div className="card-body">
-                
-                {/* Notificações */}
-                <div className="setting-section">
-                  <div className="setting-header">
-                    <i className="bi bi-bell"></i>
-                    <span>Notificações</span>
-                  </div>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={!!notificacaoEmail}
-                      onChange={handleToggleNotificacao}
-                      disabled={carregandoNotificacao}
-                    />
-                    <span className="toggle-slider-custom"></span>
-                    <span className="toggle-label">Receber emails</span>
-                  </label>
-                </div>
-
-                {/* Segurança */}
-                <div className="setting-section">
-                  <div className="setting-header">
-                    <i className="bi bi-shield-lock"></i>
-                    <span>Segurança</span>
-                  </div>
+                <div className="setting-section-single">
                   <button
-                    className="btn-text"
+                    className="btn-text-full"
                     onClick={() => setExibirTrocaSenha(!exibirTrocaSenha)}
                   >
                     <i className="bi bi-key"></i>
-                    {exibirTrocaSenha ? "Cancelar" : "Alterar Senha"}
+                    <span>{exibirTrocaSenha ? "Cancelar Alteração" : "Alterar Senha"}</span>
+                    <i className={`bi ${exibirTrocaSenha ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
                   </button>
 
                   {exibirTrocaSenha && (
@@ -584,20 +563,22 @@ async function handleExcluirConta(e) {
                           {erroSenha}
                         </div>
                       )}
-                      <button type="submit" className="btn-primary btn-sm" disabled={carregandoSenha}>
+                      <button type="submit" className="btn-primary btn-full" disabled={carregandoSenha}>
                         {carregandoSenha ? (
                           <>
                             <div className="spinner-small"></div>
-                            Alterando...
+                            Alterando senha...
                           </>
                         ) : (
-                          "Confirmar"
+                          <>
+                            <i className="bi bi-check-lg"></i>
+                            Confirmar Alteração
+                          </>
                         )}
                       </button>
                     </form>
                   )}
                 </div>
-
               </div>
             </div>
 

@@ -10,8 +10,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
+from django.db.models import Q, Count
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-
 
 from .models import Usuario
 from .serializers import (
@@ -25,7 +25,8 @@ from notificacoes.utils import enviar_notificacao
 # Importações para avaliações e propostas
 from avaliacoes.models import Avaliacao
 from avaliacoes.serializers import AvaliacaoSerializer
-from propostas.models import Proposta  # 🔹 para contar propostas
+from propostas.models import Proposta
+from contratos.models import Contrato
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):
@@ -42,6 +43,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - `perfil_publico`: retorna dados de qualquer usuário (sem restrição)
     - `avaliacoes_publicas`: retorna avaliações recebidas por um usuário (sem restrição)
     - `resumo`: retorna resumo para o Dashboard do usuário logado
+    - `metricas_performance`: 🆕 retorna métricas reais de performance
     """
     serializer_class = UsuarioSerializer
     queryset = Usuario.objects.all()
@@ -49,7 +51,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == "create":
             return [AllowAny()]
-        elif self.action in ["perfil_publico", "avaliacoes_publicas"]:
+        elif self.action in ["perfil_publico", "avaliacoes_publicas", "metricas_performance"]:
             return [AllowAny()]  # 🔹 acessível mesmo sem login
         elif self.action in ["retrieve", "list"]:
             return [IsAuthenticated()]
@@ -90,7 +92,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perfil_publico(self, request, pk=None):
         """Retorna dados públicos de qualquer usuário (ignora restrições do queryset)."""
         try:
-            usuario = Usuario.objects.get(pk=pk)  # 🔹 busca direta
+            usuario = Usuario.objects.get(pk=pk)
         except Usuario.DoesNotExist:
             return Response({"detail": "Usuário não encontrado."}, status=404)
 
@@ -114,6 +116,83 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         avaliacoes = Avaliacao.objects.filter(avaliado=usuario).select_related("avaliador")
         serializer = AvaliacaoSerializer(avaliacoes, many=True, context={"request": request})
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="metricas_performance",
+        url_name="metricas_performance",
+        permission_classes=[AllowAny],
+    )
+    def metricas_performance(self, request, pk=None):
+        """
+        🆕 Retorna métricas reais de performance do usuário.
+        Acessível publicamente para exibir no perfil público.
+        """
+        try:
+            usuario = Usuario.objects.get(pk=pk)
+        except Usuario.DoesNotExist:
+            return Response({"detail": "Usuário não encontrado."}, status=404)
+
+        # 📊 Métricas apenas para freelancers
+        if usuario.tipo != "freelancer":
+            return Response({
+                "taxa_conclusao": None,
+                "taxa_entrega_prazo": None,
+                "taxa_recontratacao": None,
+                "total_contratos": 0,
+                "contratos_concluidos": 0,
+                "contratos_cancelados": 0,
+                "mensagem": "Métricas disponíveis apenas para freelancers"
+            })
+
+        # 🔹 Busca contratos do freelancer
+        contratos_total = Contrato.objects.filter(freelancer=usuario)
+        contratos_concluidos = contratos_total.filter(status='concluido')
+        contratos_cancelados = contratos_total.filter(status='cancelado')
+        
+        total = contratos_total.count()
+        concluidos = contratos_concluidos.count()
+        cancelados = contratos_cancelados.count()
+
+        # 📈 Taxa de Conclusão: (concluídos / total) * 100
+        taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0
+
+        # 📈 Taxa de Entrega no Prazo: (entregues no prazo / concluídos) * 100
+        if concluidos > 0:
+            entregas_no_prazo = 0
+            for contrato in contratos_concluidos:
+                # Verifica se data_entrega existe e se foi antes ou no prazo
+                if contrato.data_entrega and contrato.trabalho.prazo:
+                    if contrato.data_entrega <= contrato.trabalho.prazo:
+                        entregas_no_prazo += 1
+            
+            taxa_entrega_prazo = round((entregas_no_prazo / concluidos) * 100, 1)
+        else:
+            taxa_entrega_prazo = 0
+
+        # 📈 Taxa de Recontratação: (clientes que contrataram 2+ vezes / total clientes únicos) * 100
+        if total > 0:
+            # Conta quantas vezes cada cliente contratou este freelancer
+            clientes_counts = contratos_total.values('cliente').annotate(
+                num_contratos=Count('id')
+            )
+            
+            total_clientes_unicos = clientes_counts.count()
+            clientes_recontrataram = sum(1 for c in clientes_counts if c['num_contratos'] >= 2)
+            
+            taxa_recontratacao = round((clientes_recontrataram / total_clientes_unicos) * 100, 1) if total_clientes_unicos > 0 else 0
+        else:
+            taxa_recontratacao = 0
+
+        return Response({
+            "taxa_conclusao": taxa_conclusao,
+            "taxa_entrega_prazo": taxa_entrega_prazo,
+            "taxa_recontratacao": taxa_recontratacao,
+            "total_contratos": total,
+            "contratos_concluidos": concluidos,
+            "contratos_cancelados": cancelados,
+        })
 
     @action(detail=True, methods=["post"], url_path="alterar_senha")
     def alterar_senha(self, request, pk=None):
@@ -205,6 +284,7 @@ class UsuarioMeAPIView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
+
 
 class PasswordResetRequestView(APIView):
     """Recebe um e-mail e envia o link de redefinição se o usuário existir."""

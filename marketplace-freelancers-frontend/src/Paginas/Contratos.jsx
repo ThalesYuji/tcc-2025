@@ -38,20 +38,14 @@ export default function Contratos() {
         const data = response.data;
         
         if (Array.isArray(data)) {
-          // Se retornar array diretamente (sem paginação)
           setContratos(data);
           setPage(1);
           setNumPages(1);
         } else {
-          // Se retornar objeto com paginação do DRF
           setContratos(data.results || []);
-          
-          // Calcular página e total de páginas a partir dos dados do DRF
           const totalItens = data.count || 0;
           const itensPorPagina = pageSize;
           const totalPaginas = Math.ceil(totalItens / itensPorPagina);
-          
-          // Calcular página atual a partir da URL
           const paginaAtual = filtros.page || page;
           
           setPage(paginaAtual);
@@ -71,23 +65,19 @@ export default function Contratos() {
       });
   }
 
-  // Carregar contratos inicial
   useEffect(() => {
     buscarContratos({ page: 1 });
     // eslint-disable-next-line
   }, [usuarioLogado]);
 
-  // Recarregar quando houver sucesso
   useEffect(() => {
     if (sucesso) {
       buscarContratos({ page });
-      // Limpar sucesso após 3 segundos
       setTimeout(() => setSucesso(""), 3000);
     }
     // eslint-disable-next-line
   }, [sucesso]);
 
-  // Funções de paginação - PADRONIZADAS
   function anterior() {
     if (page > 1) {
       const newPage = page - 1;
@@ -129,21 +119,57 @@ export default function Contratos() {
 
   function getPagamentoIcon(status) {
     switch (status) {
-      case "PAGO": return "bi-check-circle-fill";
-      case "PENDENTE": return "bi-clock-fill";
-      default: return "bi-question-circle";
+      case "PAGO":
+      case "APROVADO": 
+        return "bi-check-circle-fill";
+      case "PENDENTE": 
+        return "bi-clock-fill";
+      case "RECUSADO":
+      case "CANCELADO":
+        return "bi-x-circle-fill";
+      default: 
+        return "bi-question-circle";
     }
   }
 
   function getPagamentoColor(status) {
     switch (status) {
-      case "PAGO": return "#10B981";
-      case "PENDENTE": return "#F59E0B";
-      default: return "#64748B";
+      case "PAGO":
+      case "APROVADO": 
+        return "#10B981";
+      case "PENDENTE": 
+        return "#F59E0B";
+      case "RECUSADO":
+      case "CANCELADO":
+        return "#EF4444";
+      default: 
+        return "#64748B";
     }
   }
 
-  // Estados básicos
+  function formatarMetodoPagamento(metodo) {
+    const metodos = {
+      'CHECKOUT_PRO': 'Mercado Pago',
+      'checkout_pro': 'Mercado Pago',
+      'CARTAO_CREDITO': 'Cartão de Crédito',
+      'PIX': 'PIX',
+      'BOLETO': 'Boleto',
+      'PAYPAL': 'PayPal'
+    };
+    return metodos[metodo] || metodo;
+  }
+
+  function formatarStatusPagamento(status) {
+    const statusMap = {
+      'APROVADO': 'Aprovado',
+      'PAGO': 'Pago',
+      'PENDENTE': 'Pendente',
+      'RECUSADO': 'Recusado',
+      'CANCELADO': 'Cancelado'
+    };
+    return statusMap[status] || status;
+  }
+
   if (loading) {
     return (
       <div className="contratos-page">
@@ -176,7 +202,6 @@ export default function Contratos() {
     <div className="contratos-page">
       <div className="page-container fade-in">
         
-        {/* Header */}
         <div className="contratos-header">
           <h1 className="contratos-title">
             <div className="contratos-title-icon">
@@ -189,7 +214,6 @@ export default function Contratos() {
           </p>
         </div>
 
-        {/* Mensagens */}
         {sucesso && (
           <div className="alert-success">
             <i className="bi bi-check-circle"></i>
@@ -204,7 +228,6 @@ export default function Contratos() {
           </div>
         )}
 
-        {/* Lista vazia */}
         {contratos.length === 0 && !erro && (
           <div className="contratos-empty">
             <i className="bi bi-inbox"></i>
@@ -213,7 +236,6 @@ export default function Contratos() {
           </div>
         )}
 
-        {/* Mensagem de erro */}
         {erro && (
           <div className="error-state">
             <i className="bi bi-exclamation-triangle"></i>
@@ -229,7 +251,6 @@ export default function Contratos() {
           </div>
         )}
 
-        {/* Grid de contratos */}
         {contratos.length > 0 && (
           <div className="contratos-grid">
             {contratos.map((contrato, index) => {
@@ -244,13 +265,18 @@ export default function Contratos() {
                   className="contrato-card"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  {/* Header do card */}
                   <div className="contrato-header">
                     <div className="contrato-trabalho">
                       <i className="bi bi-briefcase"></i>
                       <span>{contrato.trabalho?.titulo || "Trabalho"}</span>
                     </div>
-                    <div className="contrato-status">
+                    <div 
+                      className="contrato-status"
+                      style={{ 
+                        background: `${getStatusColor(contrato.status)}20`,
+                        border: `1.5px solid ${getStatusColor(contrato.status)}40`
+                      }}
+                    >
                       <i 
                         className={`bi ${getStatusIcon(contrato.status)}`}
                         style={{ color: getStatusColor(contrato.status) }}
@@ -264,53 +290,85 @@ export default function Contratos() {
                     </div>
                   </div>
 
-                  {/* Body do card */}
                   <div className="contrato-body">
                     <div className="contrato-participantes">
                       <div className="participante">
                         <i className="bi bi-person-fill"></i>
-                        <span><strong>Cliente:</strong> {contrato.cliente.nome}</span>
+                        <div className="participante-info">
+                          <span className="participante-label">Cliente</span>
+                          <span className="participante-nome">{contrato.cliente.nome}</span>
+                        </div>
                       </div>
                       <div className="participante">
                         <i className="bi bi-person-gear"></i>
-                        <span><strong>Freelancer:</strong> {contrato.freelancer.nome}</span>
+                        <div className="participante-info">
+                          <span className="participante-label">Freelancer</span>
+                          <span className="participante-nome">{contrato.freelancer.nome}</span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="contrato-datas">
                       <div className="data-item">
                         <i className="bi bi-calendar-check"></i>
-                        <span><strong>Início:</strong> {formatarData(contrato.data_inicio)}</span>
+                        <div className="data-info">
+                          <span className="data-label">Início</span>
+                          <span className="data-valor">{formatarData(contrato.data_inicio)}</span>
+                        </div>
                       </div>
                       {contrato.data_fim && (
                         <div className="data-item">
                           <i className="bi bi-calendar-x"></i>
-                          <span><strong>Fim:</strong> {formatarData(contrato.data_fim)}</span>
+                          <div className="data-info">
+                            <span className="data-label">Fim</span>
+                            <span className="data-valor">{formatarData(contrato.data_fim)}</span>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Pagamento */}
                     {contrato.pagamento && (
-                      <div className="contrato-pagamento">
-                        <i 
-                          className={`bi ${getPagamentoIcon(contrato.pagamento.status)}`}
-                          style={{ color: getPagamentoColor(contrato.pagamento.status) }}
-                        />
-                        <span>
-                          <strong>Pagamento:</strong> {contrato.pagamento.metodo.toUpperCase()} - 
-                          <span style={{ color: getPagamentoColor(contrato.pagamento.status) }}>
-                            {contrato.pagamento.status.toUpperCase()}
-                          </span>
-                        </span>
+                      <div className="contrato-pagamento-moderna">
+                        <div className="pagamento-titulo">
+                          <i className="bi bi-credit-card-2-front"></i>
+                          <span>Informações de Pagamento</span>
+                        </div>
+                        <div className="pagamento-conteudo">
+                          <div className="pagamento-item">
+                            <i className="bi bi-wallet2"></i>
+                            <div className="pagamento-dados">
+                              <span className="pagamento-rotulo">Método</span>
+                              <span className="pagamento-valor">
+                                {formatarMetodoPagamento(contrato.pagamento.metodo)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="pagamento-item">
+                            <i 
+                              className={`bi ${getPagamentoIcon(contrato.pagamento.status)}`}
+                              style={{ color: getPagamentoColor(contrato.pagamento.status) }}
+                            />
+                            <div className="pagamento-dados">
+                              <span className="pagamento-rotulo">Status</span>
+                              <div 
+                                className="pagamento-badge"
+                                style={{ 
+                                  background: `${getPagamentoColor(contrato.pagamento.status)}20`,
+                                  border: `1.5px solid ${getPagamentoColor(contrato.pagamento.status)}40`,
+                                  color: getPagamentoColor(contrato.pagamento.status)
+                                }}
+                              >
+                                {formatarStatusPagamento(contrato.pagamento.status)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Footer do card */}
                   <div className="contrato-footer">
                     <div className="contrato-acoes">
-                      {/* Chat */}
                       <Link
                         to={`/contratos/${contrato.id}/chat`}
                         className="btn btn-primary"
@@ -320,7 +378,6 @@ export default function Contratos() {
                         Chat
                       </Link>
 
-                      {/* Pagamento */}
                       {contrato.status === "ativo" && souCliente && !contrato.pagamento && (
                         <button
                           onClick={() => {
@@ -334,7 +391,6 @@ export default function Contratos() {
                         </button>
                       )}
 
-                      {/* Avaliação */}
                       {contrato.status === "concluido" && 
                        (souCliente || souFreelancer) && 
                        !jaAvaliei && (
@@ -351,7 +407,6 @@ export default function Contratos() {
                       )}
                     </div>
 
-                    {/* Informações extras */}
                     {contrato.status === "ativo" && souFreelancer && !contrato.pagamento && (
                       <div className="contrato-info">
                         <i className="bi bi-info-circle"></i>
@@ -372,7 +427,6 @@ export default function Contratos() {
           </div>
         )}
 
-        {/* Paginação - PADRONIZADA */}
         {numPages > 1 && (
           <div className="trabalhos-pagination">
             <button

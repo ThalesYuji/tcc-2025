@@ -43,6 +43,7 @@ export default function DetalhesTrabalho() {
   const [formSucesso, setFormSucesso] = useState("");
   const [alerta, setAlerta] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [enviandoProposta, setEnviandoProposta] = useState(false);
   const navigate = useNavigate();
 
   // Buscar dados
@@ -140,6 +141,8 @@ export default function DetalhesTrabalho() {
       return;
     }
 
+    setEnviandoProposta(true);
+
     try {
       await api.post("/propostas/", {
         trabalho: trabalho.id,
@@ -148,8 +151,15 @@ export default function DetalhesTrabalho() {
         valor: form.valor,
         prazo_estimado: form.prazo_estimado,
       });
-      setFormSucesso("Proposta enviada com sucesso!");
+      
+      // ✅ FEEDBACK VISUAL - PROPOSTA ENVIADA
+      setFormSucesso("✅ Proposta enviada com sucesso!");
       setShowForm(false);
+      
+      // Mostra alerta de sucesso
+      mostrarAlerta("sucesso", "Proposta enviada com sucesso! O cliente será notificado.");
+      
+      // Limpa mensagem de sucesso após 3s
       setTimeout(() => setFormSucesso(""), 3000);
     } catch (err) {
       const mensagem =
@@ -157,6 +167,8 @@ export default function DetalhesTrabalho() {
         err.response?.data?.detail ||
         "Erro ao enviar proposta. Tente novamente.";
       setFormErro(mensagem);
+    } finally {
+      setEnviandoProposta(false);
     }
   };
 
@@ -237,10 +249,117 @@ export default function DetalhesTrabalho() {
         <div className="alerta-overlay">
           <div className={`alerta-box alerta-${alerta.tipo}`}>
             <i className={`bi ${
-              alerta.tipo === 'sucesso' ? 'bi-check-circle' : 
-              alerta.tipo === 'erro' ? 'bi-x-circle' : 'bi-info-circle'
+              alerta.tipo === 'sucesso' ? 'bi-check-circle-fill' : 
+              alerta.tipo === 'erro' ? 'bi-x-circle-fill' : 'bi-info-circle-fill'
             }`}></i>
-            {alerta.texto}
+            <span>{alerta.texto}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Proposta - FORA DO CARD */}
+      {showForm && (
+        <div className="proposta-modal-overlay">
+          <div className="proposta-modal-content">
+            <div className="proposta-modal-header">
+              <h4>
+                <i className="bi bi-send-fill"></i>
+                Enviar Nova Proposta
+              </h4>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowForm(false)}
+                type="button"
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={enviarProposta} className="proposta-form">
+              <div className="form-group">
+                <label>
+                  <i className="bi bi-chat-text"></i>
+                  Mensagem para o Cliente
+                </label>
+                <textarea
+                  placeholder="Descreva sua proposta, experiência relevante e por que você é a melhor escolha para este projeto..."
+                  value={form.descricao}
+                  onChange={e => setForm({ ...form, descricao: e.target.value })}
+                  rows={5}
+                  className="form-control"
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <i className="bi bi-currency-dollar"></i>
+                    Valor Proposto
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="R$ 0,00"
+                    value={form.valor}
+                    onChange={e => setForm({ ...form, valor: e.target.value })}
+                    className="form-control"
+                    min="1"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    <i className="bi bi-calendar-check"></i>
+                    Prazo Estimado
+                  </label>
+                  <input
+                    type="date"
+                    value={form.prazo_estimado}
+                    onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
+                    className="form-control"
+                    required
+                  />
+                </div>
+              </div>
+
+              {formErro && (
+                <div className="error-message">
+                  <i className="bi bi-exclamation-circle-fill"></i>
+                  {formErro}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button 
+                  type="submit" 
+                  className="btn-action btn-primary-action"
+                  disabled={enviandoProposta}
+                >
+                  {enviandoProposta ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm"></span>
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-send-fill"></i>
+                      Enviar Proposta
+                    </>
+                  )}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-action btn-secondary-action"
+                  onClick={() => setShowForm(false)}
+                  disabled={enviandoProposta}
+                >
+                  <i className="bi bi-x"></i>
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -394,6 +513,14 @@ export default function DetalhesTrabalho() {
           </div>
           
           <div className="detalhes-card-body">
+            {/* Mensagem de Sucesso Global */}
+            {formSucesso && !showForm && (
+              <div className="success-message-global">
+                <i className="bi bi-check-circle-fill"></i>
+                {formSucesso}
+              </div>
+            )}
+
             {/* Botões de Gerenciamento */}
             {podeEditarOuExcluir() && (
               <div className="action-group">
@@ -430,35 +557,47 @@ export default function DetalhesTrabalho() {
                 </button>
 
                 {showForm && (
-                  <div className="proposta-form-container">
-                    <div className="proposta-form-header">
-                      <h4>
-                        <i className="bi bi-send"></i>
-                        Nova Proposta
-                      </h4>
-                    </div>
-                    
-                    <form onSubmit={enviarProposta} className="proposta-form">
-                      <div className="form-group">
-                        <label>Mensagem para o Cliente</label>
-                        <textarea
-                          placeholder="Descreva sua proposta e experiência relevante..."
-                          value={form.descricao}
-                          onChange={e => setForm({ ...form, descricao: e.target.value })}
-                          rows={4}
-                          className="form-control"
-                          required
-                        />
+                  <div className="proposta-modal-overlay">
+                    <div className="proposta-modal-content">
+                      <div className="proposta-modal-header">
+                        <h4>
+                          <i className="bi bi-send-fill"></i>
+                          Enviar Nova Proposta
+                        </h4>
+                        <button 
+                          className="modal-close-btn"
+                          onClick={() => setShowForm(false)}
+                          type="button"
+                        >
+                          <i className="bi bi-x-lg"></i>
+                        </button>
                       </div>
-
-                      <div className="form-row">
+                      
+                      <form onSubmit={enviarProposta} className="proposta-form">
                         <div className="form-group">
-                          <label>Valor Proposto</label>
-                          <div className="input-with-icon">
-                            <i className="bi bi-currency-dollar"></i>
+                          <label>
+                            <i className="bi bi-chat-text"></i>
+                            Mensagem para o Cliente
+                          </label>
+                          <textarea
+                            placeholder="Descreva sua proposta, experiência relevante e por que você é a melhor escolha para este projeto..."
+                            value={form.descricao}
+                            onChange={e => setForm({ ...form, descricao: e.target.value })}
+                            rows={5}
+                            className="form-control"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label>
+                              <i className="bi bi-currency-dollar"></i>
+                              Valor Proposto
+                            </label>
                             <input
                               type="number"
-                              placeholder="0,00"
+                              placeholder="R$ 0,00"
                               value={form.valor}
                               onChange={e => setForm({ ...form, valor: e.target.value })}
                               className="form-control"
@@ -467,38 +606,59 @@ export default function DetalhesTrabalho() {
                               required
                             />
                           </div>
+
+                          <div className="form-group">
+                            <label>
+                              <i className="bi bi-calendar-check"></i>
+                              Prazo Estimado
+                            </label>
+                            <input
+                              type="date"
+                              value={form.prazo_estimado}
+                              onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
+                              className="form-control"
+                              required
+                            />
+                          </div>
                         </div>
 
-                        <div className="form-group">
-                          <label>Prazo Estimado</label>
-                          <input
-                            type="date"
-                            value={form.prazo_estimado}
-                            onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
-                            className="form-control"
-                            required
-                          />
+                        {formErro && (
+                          <div className="error-message">
+                            <i className="bi bi-exclamation-circle-fill"></i>
+                            {formErro}
+                          </div>
+                        )}
+
+                        <div className="form-actions">
+                          <button 
+                            type="submit" 
+                            className="btn-action btn-primary-action"
+                            disabled={enviandoProposta}
+                          >
+                            {enviandoProposta ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm"></span>
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-send-fill"></i>
+                                Enviar Proposta
+                              </>
+                            )}
+                          </button>
+                          <button 
+                            type="button" 
+                            className="btn-action btn-secondary-action"
+                            onClick={() => setShowForm(false)}
+                            disabled={enviandoProposta}
+                          >
+                            <i className="bi bi-x"></i>
+                            Cancelar
+                          </button>
                         </div>
-                      </div>
-
-                      {formErro && <div className="error-message">{formErro}</div>}
-                      {formSucesso && <div className="success-message">{formSucesso}</div>}
-
-                      <div className="form-actions">
-                        <button type="submit" className="btn-action btn-primary-action">
-                          <i className="bi bi-send"></i>
-                          Enviar Proposta
-                        </button>
-                        <button 
-                          type="button" 
-                          className="btn-action btn-secondary-action"
-                          onClick={() => setShowForm(false)}
-                        >
-                          <i className="bi bi-x"></i>
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
+                      </form>
+                    </div>
                   </div>
                 )}
               </div>

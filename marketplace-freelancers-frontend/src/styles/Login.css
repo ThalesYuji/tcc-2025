@@ -114,7 +114,7 @@
 
 /* Input com ícone */
 .input-group {
-  position: relative;
+  position: relative !important;
   margin-bottom: 1.2rem;
 }
 
@@ -126,6 +126,7 @@
   color: #94a3b8;
   font-size: 15px;
   z-index: 2;
+  pointer-events: none;
 }
 
 /* Inputs */
@@ -139,6 +140,12 @@
   transition: all 0.2s ease;
   box-sizing: border-box;
   height: 48px;
+}
+
+/* Padding extra para input de senha (com botão toggle) */
+.input-group input[type="password"],
+.input-group input[type="text"][placeholder="Senha"] {
+  padding-right: 42px;
 }
 
 .input-group input:focus {
@@ -155,6 +162,54 @@
 .input-erro {
   border-color: var(--cor-erro) !important;
   background: #fef2f2 !important;
+}
+
+/* ==============================
+   👁️ BOTÃO DE VISIBILIDADE DA SENHA
+   ============================== */
+.toggle-visibility {
+  position: absolute !important;
+  top: 50% !important;
+  right: 12px !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  padding: 4px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  z-index: 3 !important;
+  transition: color 0.15s ease !important;
+  line-height: 1 !important;
+}
+
+.toggle-visibility:hover {
+  color: #64748b !important;
+}
+
+.toggle-visibility:focus {
+  outline: none !important;
+}
+
+.toggle-visibility svg,
+.toggle-visibility svg * {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
 }
 
 /* ==============================
@@ -196,7 +251,7 @@
 }
 
 /* Botão */
-.login-box button {
+.login-box button[type="submit"] {
   width: 100%;
   margin-top: 12px;
   font-size: 1rem;
@@ -211,21 +266,21 @@
   cursor: pointer;
 }
 
-.login-box button:hover:not(:disabled) {
+.login-box button[type="submit"]:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
-.login-box button:active {
+.login-box button[type="submit"]:active {
   transform: translateY(0);
 }
 
-.login-box button:disabled {
+.login-box button[type="submit"]:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.login-box button:disabled:hover {
+.login-box button[type="submit"]:disabled:hover {
   transform: none;
 }
 
@@ -353,12 +408,24 @@
   }
   
   .input-group input,
-  .login-box button {
+  .login-box button[type="submit"] {
     height: 44px;
     font-size: 14px;
   }
   
   .esqueci-senha-link {
     font-size: 0.8rem;
+  }
+  
+  .toggle-visibility {
+    width: 18px !important;
+    height: 18px !important;
+    right: 10px !important;
+  }
+  
+  .toggle-visibility svg,
+  .toggle-visibility svg * {
+    width: 14px !important;
+    height: 14px !important;
   }
 }

@@ -224,6 +224,7 @@
   margin-bottom: var(--space-xl);
 }
 
+/* ✅ CORREÇÃO: REMOVER BORDA VERMELHA */
 .info-item {
   display: flex;
   align-items: center;
@@ -231,14 +232,14 @@
   padding: var(--space-lg);
   background: var(--superficie-card);
   border-radius: var(--radius-md);
-  border: 1px solid var(--borda-light);
+  border: 1px solid var(--borda-light) !important; /* FORÇAR BORDA CINZA */
   transition: all var(--transition-normal);
 }
 
 .info-item:hover {
   transform: translateY(-2px);
   box-shadow: var(--sombra-md);
-  border-color: var(--cor-primaria);
+  border-color: var(--cor-primaria) !important; /* HOVER AZUL */
 }
 
 .info-icon {
@@ -467,45 +468,118 @@
 }
 
 /* ==============================
-   FORMULÁRIO DE PROPOSTA REDESENHADO
+   MENSAGEM DE SUCESSO GLOBAL
    ============================== */
-.proposta-form-container {
-  margin-top: var(--space-lg);
-  background: var(--superficie-hover);
+.success-message-global {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+  color: #047857;
+  padding: var(--space-lg);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--borda-light);
-  overflow: hidden;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  animation: slideInUp 0.5s ease-out;
+  box-shadow: var(--sombra-md);
 }
 
-.proposta-form-header {
+.success-message-global i {
+  font-size: 1.5rem;
+}
+
+/* ==============================
+   MODAL DE PROPOSTA REDESENHADO
+   ============================== */
+.proposta-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+  backdrop-filter: blur(4px);
+}
+
+.proposta-modal-content {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--sombra-xl);
+  width: 90%;
+  max-width: 700px; /* ✅ LARGURA MAIOR */
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideInUp 0.4s ease-out;
+}
+
+.proposta-modal-header {
   background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
   color: white;
-  padding: var(--space-lg);
+  padding: var(--space-xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
-.proposta-form-header h4 {
+.proposta-modal-header h4 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  color: white;
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 1.25rem;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .proposta-form {
-  padding: var(--space-xl);
+  padding: var(--space-2xl);
 }
 
 .form-group {
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .form-group label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--cor-texto);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.form-group label i {
+  color: var(--cor-primaria);
+  font-size: 1rem;
 }
 
 .form-row {
@@ -516,7 +590,7 @@
 
 .form-control {
   width: 100%;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
   border: 2px solid var(--borda-light);
   border-radius: var(--radius-md);
   font-size: 0.875rem;
@@ -529,32 +603,38 @@
 .form-control:focus {
   outline: none;
   border-color: var(--cor-primaria);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
-.input-with-icon {
-  position: relative;
-}
-
-.input-with-icon .form-control {
-  padding-left: 2.5rem;
-}
-
-.input-with-icon i {
-  position: absolute;
-  left: var(--space-sm);
-  top: 50%;
-  transform: translateY(-50%);
+.form-control::placeholder {
   color: var(--cor-texto-light);
-  font-size: 1rem;
 }
 
 .form-actions {
   display: flex;
   gap: var(--space-md);
   margin-top: var(--space-xl);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-xl);
   border-top: 1px solid var(--borda-light);
+}
+
+/* ==============================
+   SPINNER DE LOADING
+   ============================== */
+.spinner-border {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-border-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
 }
 
 /* ==============================
@@ -563,21 +643,37 @@
 .error-message {
   background: rgba(239, 68, 68, 0.1);
   color: #991B1B;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 2px solid rgba(239, 68, 68, 0.3);
   font-size: 0.875rem;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 500;
+}
+
+.error-message i {
+  font-size: 1.125rem;
 }
 
 .success-message {
   background: rgba(16, 185, 129, 0.1);
   color: #047857;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 2px solid rgba(16, 185, 129, 0.3);
   font-size: 0.875rem;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 500;
+}
+
+.success-message i {
+  font-size: 1.125rem;
 }
 
 /* ==============================
@@ -615,42 +711,47 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 10000;
   animation: fadeIn 0.3s ease-out;
+  backdrop-filter: blur(4px);
 }
 
 .alerta-box {
   background: white;
-  padding: var(--space-xl);
-  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  border-radius: var(--radius-xl);
   box-shadow: var(--sombra-xl);
-  max-width: 400px;
-  text-align: center;
-  animation: slideInUp 0.3s ease-out;
+  max-width: 450px;
+  animation: slideInUp 0.4s ease-out;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+  font-size: 1.125rem;
+  font-weight: 500;
 }
 
 .alerta-box i {
-  font-size: 1.5rem;
+  font-size: 2rem;
+  flex-shrink: 0;
 }
 
 .alerta-sucesso {
   color: var(--cor-sucesso);
+  border-left: 4px solid var(--cor-sucesso);
 }
 
 .alerta-erro {
   color: var(--cor-erro);
+  border-left: 4px solid var(--cor-erro);
 }
 
 .alerta-info {
   color: var(--cor-primaria);
+  border-left: 4px solid var(--cor-primaria);
 }
 
 /* ==============================
@@ -683,6 +784,28 @@
 
 .loading-container p {
   color: var(--cor-texto-light);
+}
+
+.dashboard-error {
+  text-align: center;
+  padding: var(--space-3xl);
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-lg);
+}
+
+.error-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cor-secundaria);
+  margin-bottom: var(--space-sm);
+}
+
+.error-message {
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-xl);
 }
 
 /* ==============================
@@ -731,6 +854,19 @@
   .form-actions {
     flex-direction: column;
   }
+  
+  .proposta-modal-content {
+    width: 95%;
+    max-width: 95%;
+  }
+  
+  .proposta-form {
+    padding: var(--space-lg);
+  }
+  
+  .proposta-modal-header {
+    padding: var(--space-lg);
+  }
 }
 
 @media (max-width: 480px) {
@@ -743,7 +879,7 @@
   .detalhes-card-body,
   .detalhes-card-header,
   .proposta-form,
-  .proposta-form-header {
+  .proposta-modal-header {
     padding: var(--space-md);
   }
   
@@ -760,5 +896,7 @@
   .alerta-box {
     margin: var(--space-md);
     padding: var(--space-lg);
+    flex-direction: column;
+    text-align: center;
   }
 }

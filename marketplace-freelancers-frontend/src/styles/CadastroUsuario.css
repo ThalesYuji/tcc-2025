@@ -154,9 +154,9 @@
   gap: 8px;
 }
 
-/* Grupo com ícone */
+/* Grupo com ícone - CRITICAL: position relative */
 .input-group {
-  position: relative;
+  position: relative !important;
   width: 100%;
 }
 
@@ -168,10 +168,11 @@
   color: #94a3b8;
   font-size: 14px;
   z-index: 2;
+  pointer-events: none;
 }
 
 .input-group input {
-  padding: 12px 12px 12px 42px;
+  padding: 12px 14px 12px 42px;
   width: 100%;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
@@ -182,6 +183,13 @@
   height: 44px;
 }
 
+/* Padding extra apenas para inputs de senha (com botão de visibilidade) */
+.input-group input[type="password"],
+.input-group input[type="text"][name="senha"],
+.input-group input[type="text"][name="confirmarSenha"] {
+  padding-right: 42px;
+}
+
 .input-group input:focus {
   outline: none;
   border-color: var(--cor-primaria);
@@ -190,6 +198,54 @@
 
 .input-group input:focus ~ .input-icon {
   color: var(--cor-primaria);
+}
+
+/* ==============================
+   👁️ BOTÃO DE VISIBILIDADE - CORRIGIDO
+   ============================== */
+.toggle-visibility {
+  position: absolute !important;
+  top: 50% !important;
+  right: 12px !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  padding: 4px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  z-index: 3 !important;
+  transition: color 0.15s ease !important;
+  line-height: 1 !important;
+}
+
+.toggle-visibility:hover {
+  color: #64748b !important;
+}
+
+.toggle-visibility:focus {
+  outline: none !important;
+}
+
+.toggle-visibility svg,
+.toggle-visibility svg * {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
 }
 
 /* Select personalizado */
@@ -264,7 +320,7 @@
 }
 
 /* Botão principal */
-.login-box button {
+.login-box button[type="submit"] {
   width: 100%;
   margin-top: 1.5rem;
   height: 50px;
@@ -279,22 +335,22 @@
   cursor: pointer;
 }
 
-.login-box button:hover:not(:disabled) {
+.login-box button[type="submit"]:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
 }
 
-.login-box button:active {
+.login-box button[type="submit"]:active {
   transform: translateY(0);
 }
 
-.login-box button:disabled {
+.login-box button[type="submit"]:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* Mensagens de erro */
-.error-msg {
+/* Mensagens de erro - SEM CONFLITO */
+.form-cadastro-doisblocos .error-msg {
   margin-top: 6px;
   padding: 8px 12px;
   background: rgba(239, 68, 68, 0.1);
@@ -306,8 +362,14 @@
   animation: slideInDown 0.3s ease-out;
 }
 
-/* Mensagem de sucesso */
-.success-msg {
+.error-msg.destaque {
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid var(--cor-erro);
+  font-weight: 600;
+}
+
+/* Mensagem de sucesso - SEM CONFLITO */
+.form-cadastro-doisblocos .success-msg {
   margin-top: 1rem;
   padding: 10px 12px;
   background: rgba(16, 185, 129, 0.1);
@@ -419,7 +481,7 @@
   
   .input-group input,
   .select-input,
-  .login-box button {
+  .login-box button[type="submit"] {
     height: 42px;
     font-size: 14px;
   }
@@ -430,5 +492,17 @@
   
   .login-box h4 {
     font-size: 1rem;
+  }
+  
+  .toggle-visibility {
+    width: 18px !important;
+    height: 18px !important;
+    right: 10px !important;
+  }
+  
+  .toggle-visibility svg,
+  .toggle-visibility svg * {
+    width: 14px !important;
+    height: 14px !important;
   }
 }

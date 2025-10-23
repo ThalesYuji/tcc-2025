@@ -76,6 +76,18 @@
   font-weight: 500;
   font-size: 0.875rem;
   border: 1px solid transparent;
+  animation: slideInDown 0.4s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .alert-success {
@@ -152,7 +164,7 @@
    ============================== */
 .contratos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: var(--space-xl);
   margin-bottom: var(--space-2xl);
 }
@@ -170,7 +182,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 400px;
 }
 
 .contrato-card::before {
@@ -199,6 +211,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-md);
+  background: var(--superficie-hover);
 }
 
 .contrato-trabalho {
@@ -228,28 +241,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
-  border: 1px solid transparent;
   flex-shrink: 0;
-}
-
-.status-text[style*="color: #3B82F6"] {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.25);
-}
-
-.status-text[style*="color: #10B981"] {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.25);
-}
-
-.status-text[style*="color: #EF4444"] {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.25);
 }
 
 /* ==============================
@@ -260,68 +257,205 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .contrato-participantes {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .participante {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
+  gap: var(--space-md);
+  padding: var(--space-md);
   background: var(--superficie-hover);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-fast);
+}
+
+.participante:hover {
+  background: white;
+  border-color: var(--cor-primaria);
+  transform: translateX(4px);
 }
 
 .participante i {
   color: var(--cor-primaria);
-  width: 16px;
+  font-size: 1.25rem;
+  width: 24px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.contrato-datas {
+.participante-info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 2px;
+  flex: 1;
+}
+
+.participante-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cor-texto-light);
+}
+
+.participante-nome {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--cor-secundaria);
+}
+
+.contrato-datas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
 }
 
 .data-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-size: 0.875rem;
-  color: var(--cor-texto-light);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-fast);
+}
+
+.data-item:hover {
+  background: white;
+  border-color: var(--cor-primaria);
 }
 
 .data-item i {
   color: var(--cor-primaria);
-  width: 16px;
+  font-size: 1.1rem;
+  width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.contrato-pagamento {
+.data-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.data-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cor-texto-light);
+}
+
+.data-valor {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cor-secundaria);
+}
+
+/* ==============================
+   PAGAMENTO MODERNIZADO
+   ============================== */
+.contrato-pagamento-moderna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.pagamento-titulo {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-sm);
-  background: var(--superficie-hover);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  border: 1px solid var(--borda-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cor-texto-light);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--borda-light);
 }
 
-.contrato-pagamento i {
-  width: 16px;
+.pagamento-titulo i {
+  color: var(--cor-primaria);
+  font-size: 1rem;
+}
+
+.pagamento-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.pagamento-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--borda-light);
+  transition: all var(--transition-fast);
+}
+
+.pagamento-item:hover {
+  background: white;
+  border-color: var(--cor-primaria);
+  transform: translateX(4px);
+}
+
+.pagamento-item i {
+  font-size: 1.25rem;
+  width: 24px;
   text-align: center;
   flex-shrink: 0;
+  color: var(--cor-primaria);
+}
+
+.pagamento-dados {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.pagamento-rotulo {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cor-texto-light);
+}
+
+.pagamento-valor {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--cor-secundaria);
+}
+
+.pagamento-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: all var(--transition-fast);
+  width: fit-content;
+}
+
+.pagamento-badge:hover {
+  transform: scale(1.05);
 }
 
 /* ==============================
@@ -344,12 +478,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
   background: rgba(100, 116, 139, 0.1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   color: var(--cor-texto-light);
   font-style: italic;
+  border: 1px solid rgba(100, 116, 139, 0.2);
 }
 
 .contrato-info i {
@@ -367,11 +502,11 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
   border: none;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   transition: all var(--transition-normal);
@@ -381,8 +516,16 @@
 }
 
 .btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--sombra-md);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn i {
+  font-size: 1rem;
 }
 
 .btn-primary {
@@ -422,58 +565,6 @@
   transform: translateY(-2px);
   box-shadow: var(--sombra-lg);
   filter: brightness(1.05);
-}
-
-/* ==============================
-   PAGINAÇÃO MODERNA
-   ============================== */
-.trabalhos-pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-lg);
-  margin-top: var(--space-2xl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--borda-light);
-}
-
-.pagination-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-lg);
-  background: var(--superficie-card);
-  color: var(--cor-texto);
-  border: 1px solid var(--borda-light);
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  transition: all var(--transition-normal);
-  box-shadow: var(--sombra-sm);
-  cursor: pointer;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: var(--cor-primaria);
-  color: white;
-  border-color: var(--cor-primaria);
-  transform: translateY(-1px);
-  box-shadow: var(--sombra-md);
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--superficie-hover);
-}
-
-.pagination-info {
-  background: var(--superficie-card);
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--borda-light);
-  font-weight: 500;
-  color: var(--cor-texto);
-  box-shadow: var(--sombra-sm);
 }
 
 /* ==============================
@@ -519,7 +610,7 @@
    ============================== */
 @media (max-width: 1200px) {
   .contratos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
     gap: var(--space-lg);
   }
 }
@@ -559,6 +650,23 @@
   .contrato-status {
     align-self: flex-end;
   }
+
+  .contrato-datas {
+    grid-template-columns: 1fr;
+  }
+
+  .pagamento-conteudo {
+    gap: var(--space-sm);
+  }
+
+  .pagamento-item {
+    padding: var(--space-sm);
+  }
+
+  .pagamento-item i {
+    font-size: 1.1rem;
+    width: 20px;
+  }
   
   .contrato-acoes {
     flex-direction: column;
@@ -588,13 +696,25 @@
   }
   
   .contrato-card {
-    min-height: 280px;
+    min-height: 350px;
   }
   
   .contrato-header,
   .contrato-body,
   .contrato-footer {
     padding: var(--space-md);
+  }
+
+  .participante {
+    padding: var(--space-sm);
+  }
+
+  .data-item {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .pagamento-item {
+    padding: var(--space-sm) var(--space-md);
   }
   
   .btn {

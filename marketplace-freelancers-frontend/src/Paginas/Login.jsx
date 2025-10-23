@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, Link } from "react-router-dom";
 import "../styles/Login.css";
-import { FaEnvelope, FaLock } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -101,13 +102,22 @@ export default function Login() {
               <div className="input-group">
                 <FaLock className="input-icon" />
                 <input
-                  type="password"
+                  type={mostrarSenha ? "text" : "password"}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder="Senha"
                   required
                   className={erroCampo}
                 />
+                <button
+                  type="button"
+                  className="toggle-visibility"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                  title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {mostrarSenha ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
 
               {/* Link "Esqueci minha senha" */}

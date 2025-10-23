@@ -18,11 +18,15 @@ class Contrato(models.Model):
     valor = models.DecimalField(max_digits=10, decimal_places=2)  # 🔹 valor aceito da proposta ou do trabalho
     data_inicio = models.DateField(auto_now_add=True)
     data_fim = models.DateField(blank=True, null=True)
+    
+    # 🆕 NOVO CAMPO: Data real de entrega do trabalho
+    data_entrega = models.DateField(blank=True, null=True)
+    
     status = models.CharField(max_length=20, choices=[
         ('ativo', 'Ativo'),
         ('concluido', 'Concluído'),
         ('cancelado', 'Cancelado')
     ], default='ativo')
-
+    
     def __str__(self):
         return f"Contrato: {self.cliente.nome} ⇄ {self.freelancer.nome} | {self.trabalho.titulo}"

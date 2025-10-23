@@ -235,7 +235,7 @@ export default function Trabalhos() {
             </button>
 
             <button type="button" className="btn-limpar" onClick={limpar}>
-              <i className="bi bi-arrow-clockwise"></i>
+              <i className="bi bi-eraser-fill"></i>
               Limpar
             </button>
 
