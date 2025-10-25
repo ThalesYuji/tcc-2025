@@ -1,5 +1,5 @@
 /* ==============================
-   AVALIAÇÃO CONTRATO - SEGUINDO PADRÃO DO SITE
+   AVALIAÇÃO CONTRATO - PADRÃO SITE CORRIGIDO
    ============================== */
 
 .avaliacao-page {
@@ -9,7 +9,7 @@
 }
 
 /* ==============================
-   HEADER DA PÁGINA - PADRÃO CONTRATOS
+   HEADER DA PÁGINA - PADRÃO TRABALHOS
    ============================== */
 .page-header {
   margin-bottom: var(--space-2xl);
@@ -83,7 +83,7 @@
   transform: translateX(-50%);
   width: 120%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
   border-radius: var(--radius-xl);
   z-index: -1;
 }
@@ -91,7 +91,7 @@
 .title-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-aviso) 100%);
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
@@ -186,7 +186,7 @@
 }
 
 /* ==============================
-   COLUNA ESQUERDA - PADRÃO CARDS
+   COLUNA ESQUERDA - PADRÃO TRABALHOS
    ============================== */
 .left-column {
   display: flex;
@@ -196,7 +196,7 @@
   top: var(--space-xl);
 }
 
-/* Card do Contrato - Seguindo padrão */
+/* Card do Contrato - Gradiente Padronizado */
 .contract-overview {
   background: var(--superficie-card);
   border-radius: var(--radius-lg);
@@ -217,7 +217,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-aviso) 100%);
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
 }
 
 .card-header {
@@ -342,7 +342,7 @@
   color: var(--cor-secundaria);
 }
 
-/* Status de Avaliações - Seguindo padrão */
+/* Status de Avaliações - Cores Padronizadas */
 .evaluation-status {
   background: var(--superficie-card);
   border-radius: var(--radius-lg);
@@ -392,13 +392,13 @@
 }
 
 .status-item.completed {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .status-item.pending {
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .status-icon {
@@ -412,7 +412,7 @@
 }
 
 .status-item.pending .status-icon {
-  color: var(--cor-aviso);
+  color: var(--cor-primaria);
 }
 
 .status-text {
@@ -438,7 +438,7 @@
 }
 
 .status-item.pending .status-value {
-  color: var(--cor-aviso);
+  color: var(--cor-primaria);
 }
 
 /* Banner Informativo - Padrão site */
@@ -474,7 +474,7 @@
   gap: var(--space-xl);
 }
 
-/* Formulário de Avaliação - Padrão cards */
+/* Formulário de Avaliação - Gradiente Padronizado */
 .evaluation-form-card {
   background: var(--superficie-card);
   border-radius: var(--radius-lg);
@@ -496,7 +496,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, var(--cor-aviso) 0%, #D97706 100%);
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
 }
 
 .form-header {
@@ -508,7 +508,7 @@
 }
 
 .form-icon {
-  color: var(--cor-aviso);
+  color: var(--cor-primaria);
   font-size: 1.2rem;
   flex-shrink: 0;
 }
@@ -533,7 +533,7 @@
   gap: var(--space-lg);
 }
 
-/* Seção de Rating - Compacta */
+/* Seção de Rating - Estrelas em Laranja */
 .rating-section {
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
 }
 
 .rating-label i {
-  color: var(--cor-aviso);
+  color: #F59E0B;
 }
 
 .star-rating-container {
@@ -572,6 +572,7 @@
   font-size: 1.5rem;
   transition: all var(--transition-fast);
   cursor: pointer;
+  color: #F59E0B;
 }
 
 .star-rating.interactive:hover {
@@ -581,7 +582,7 @@
 .rating-text {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--cor-aviso);
+  color: #F59E0B;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -646,28 +647,28 @@
   color: var(--cor-texto-light);
 }
 
-/* Botão de Submit - Padrão site */
+/* Botão de Submit - Padrão Primário */
 .submit-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--cor-aviso);
+  padding: var(--space-sm) var(--space-lg);
+  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-normal);
   box-shadow: var(--sombra-sm);
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #D97706;
-  transform: translateY(-1px);
-  box-shadow: var(--sombra-md);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-lg);
+  filter: brightness(1.05);
 }
 
 .submit-btn:disabled {
@@ -676,7 +677,7 @@
   transform: none;
 }
 
-/* Cards de Avaliação - Padrão site */
+/* Cards de Avaliação - Gradientes Padronizados */
 .evaluation-card {
   background: var(--superficie-card);
   border-radius: var(--radius-lg);
@@ -789,12 +790,13 @@
 
 .eval-rating .star-rating {
   font-size: 1.2rem;
+  color: #F59E0B;
 }
 
 .rating-value {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--cor-aviso);
+  color: #F59E0B;
 }
 
 .eval-comment {

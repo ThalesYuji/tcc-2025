@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import "../styles/ChatContrato.css";
 
 export default function ChatContrato() {
   const { contratoId } = useParams();
+  const navigate = useNavigate();
 
   const [mensagens, setMensagens] = useState([]);
   const [novaMensagem, setNovaMensagem] = useState("");
@@ -189,6 +190,14 @@ export default function ChatContrato() {
           <p className="chat-page-subtitle">
             Comunicação direta e segura para seu projeto
           </p>
+        </div>
+
+        {/* Navegação - Botão de Voltar */}
+        <div style={{ marginBottom: 'var(--space-xl)' }}>
+          <button onClick={() => navigate("/contratos")} className="btn btn-primary">
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Contratos
+          </button>
         </div>
 
         {/* Container do Chat */}

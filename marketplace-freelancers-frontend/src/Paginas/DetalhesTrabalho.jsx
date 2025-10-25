@@ -152,14 +152,9 @@ export default function DetalhesTrabalho() {
         prazo_estimado: form.prazo_estimado,
       });
       
-      // ✅ FEEDBACK VISUAL - PROPOSTA ENVIADA
       setFormSucesso("✅ Proposta enviada com sucesso!");
       setShowForm(false);
-      
-      // Mostra alerta de sucesso
       mostrarAlerta("sucesso", "Proposta enviada com sucesso! O cliente será notificado.");
-      
-      // Limpa mensagem de sucesso após 3s
       setTimeout(() => setFormSucesso(""), 3000);
     } catch (err) {
       const mensagem =
@@ -212,7 +207,7 @@ export default function DetalhesTrabalho() {
           <h3 className="error-title">Erro ao Carregar</h3>
           <p className="error-message">{erro}</p>
           <button 
-            className="btn gradient-btn"
+            className="btn btn-primary"
             onClick={() => navigate("/trabalhos")}
           >
             <i className="bi bi-arrow-left"></i>
@@ -231,7 +226,7 @@ export default function DetalhesTrabalho() {
           <h3 className="error-title">Trabalho Não Encontrado</h3>
           <p className="error-message">O trabalho solicitado não foi encontrado.</p>
           <button 
-            className="btn gradient-btn"
+            className="btn btn-primary"
             onClick={() => navigate("/trabalhos")}
           >
             <i className="bi bi-arrow-left"></i>
@@ -257,7 +252,7 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* Modal de Proposta - FORA DO CARD */}
+      {/* Modal de Proposta */}
       {showForm && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
@@ -367,13 +362,6 @@ export default function DetalhesTrabalho() {
       {/* Header */}
       <div className="detalhes-header">
         <div className="detalhes-nav">
-          <button 
-            className="btn-voltar"
-            onClick={() => navigate("/trabalhos")}
-          >
-            <i className="bi bi-arrow-left"></i>
-            Voltar para Trabalhos
-          </button>
         </div>
         
         <div className="detalhes-title-section">
@@ -392,6 +380,14 @@ export default function DetalhesTrabalho() {
           </p>
         </div>
       </div>
+
+        {/* Navegação - Botão de Voltar */}
+        <div style={{ marginBottom: 'var(--space-xl)' }}>
+          <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Trabalhos
+          </button>
+        </div>
 
       {/* Conteúdo Principal */}
       <div className="detalhes-content">
@@ -555,112 +551,6 @@ export default function DetalhesTrabalho() {
                   <i className="bi bi-send"></i>
                   Enviar Proposta
                 </button>
-
-                {showForm && (
-                  <div className="proposta-modal-overlay">
-                    <div className="proposta-modal-content">
-                      <div className="proposta-modal-header">
-                        <h4>
-                          <i className="bi bi-send-fill"></i>
-                          Enviar Nova Proposta
-                        </h4>
-                        <button 
-                          className="modal-close-btn"
-                          onClick={() => setShowForm(false)}
-                          type="button"
-                        >
-                          <i className="bi bi-x-lg"></i>
-                        </button>
-                      </div>
-                      
-                      <form onSubmit={enviarProposta} className="proposta-form">
-                        <div className="form-group">
-                          <label>
-                            <i className="bi bi-chat-text"></i>
-                            Mensagem para o Cliente
-                          </label>
-                          <textarea
-                            placeholder="Descreva sua proposta, experiência relevante e por que você é a melhor escolha para este projeto..."
-                            value={form.descricao}
-                            onChange={e => setForm({ ...form, descricao: e.target.value })}
-                            rows={5}
-                            className="form-control"
-                            required
-                          />
-                        </div>
-
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label>
-                              <i className="bi bi-currency-dollar"></i>
-                              Valor Proposto
-                            </label>
-                            <input
-                              type="number"
-                              placeholder="R$ 0,00"
-                              value={form.valor}
-                              onChange={e => setForm({ ...form, valor: e.target.value })}
-                              className="form-control"
-                              min="1"
-                              step="0.01"
-                              required
-                            />
-                          </div>
-
-                          <div className="form-group">
-                            <label>
-                              <i className="bi bi-calendar-check"></i>
-                              Prazo Estimado
-                            </label>
-                            <input
-                              type="date"
-                              value={form.prazo_estimado}
-                              onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
-                              className="form-control"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        {formErro && (
-                          <div className="error-message">
-                            <i className="bi bi-exclamation-circle-fill"></i>
-                            {formErro}
-                          </div>
-                        )}
-
-                        <div className="form-actions">
-                          <button 
-                            type="submit" 
-                            className="btn-action btn-primary-action"
-                            disabled={enviandoProposta}
-                          >
-                            {enviandoProposta ? (
-                              <>
-                                <span className="spinner-border spinner-border-sm"></span>
-                                Enviando...
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-send-fill"></i>
-                                Enviar Proposta
-                              </>
-                            )}
-                          </button>
-                          <button 
-                            type="button" 
-                            className="btn-action btn-secondary-action"
-                            onClick={() => setShowForm(false)}
-                            disabled={enviandoProposta}
-                          >
-                            <i className="bi bi-x"></i>
-                            Cancelar
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

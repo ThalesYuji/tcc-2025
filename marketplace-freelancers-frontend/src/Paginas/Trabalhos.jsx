@@ -78,7 +78,7 @@ export default function Trabalhos() {
     }).format(valor);
   }
 
-  // Obter classe do status - CORRIGIDO
+  // Obter classe do status
   function getStatusClass(status) {
     switch (status?.toLowerCase()) {
       case 'concluido': 
@@ -95,7 +95,7 @@ export default function Trabalhos() {
     }
   }
 
-  // Obter ícone do status - CORRIGIDO
+  // Obter ícone do status
   function getStatusIcon(status) {
     switch (status?.toLowerCase()) {
       case 'concluido': 
@@ -110,6 +110,23 @@ export default function Trabalhos() {
       default: 
         return 'bi-clock-fill';
     }
+  }
+
+  // 🆕 Verificar se pode ver o trabalho privado
+  function podeVerTrabalhoPrivado(trabalho) {
+    if (!trabalho.is_privado) return true;
+    if (!usuarioLogado) return false;
+    
+    // Admin vê tudo
+    if (usuarioLogado.is_superuser) return true;
+    
+    // Cliente que criou
+    if (trabalho.cliente_id === usuarioLogado.id) return true;
+    
+    // Freelancer designado
+    if (trabalho.freelancer === usuarioLogado.id) return true;
+    
+    return false;
   }
 
   // Filtros
@@ -172,6 +189,9 @@ export default function Trabalhos() {
     );
   }
 
+  // 🆕 Filtrar trabalhos que o usuário pode ver
+  const trabalhosVisiveis = trabalhos.filter(podeVerTrabalhoPrivado);
+
   return (
     <div className="trabalhos-page page-container fade-in">
       {/* Header da Página */}
@@ -187,7 +207,7 @@ export default function Trabalhos() {
         </p>
       </div>
 
-      {/* Filtros - LAYOUT CORRIGIDO */}
+      {/* Filtros */}
       <div className="filtros-container">
         <form className="filtros-form" onSubmit={filtrar}>
           {/* Primeira linha - Campos de busca */}
@@ -270,7 +290,7 @@ export default function Trabalhos() {
       )}
 
       {/* Lista de Trabalhos */}
-      {trabalhos.length === 0 && !erro ? (
+      {trabalhosVisiveis.length === 0 && !erro ? (
         <div className="trabalhos-empty">
           <div className="empty-icon">
             <i className="bi bi-briefcase"></i>
@@ -291,14 +311,16 @@ export default function Trabalhos() {
         </div>
       ) : (
         <div className="trabalhos-grid">
-          {trabalhos.map((trabalho) => (
+          {trabalhosVisiveis.map((trabalho) => (
             <div key={trabalho.id} className="trabalho-card modern-card">
               {/* Header do Card */}
               <div className="trabalho-header">
-                <h3 className="trabalho-titulo">
-                  <i className="bi bi-briefcase"></i>
-                  {trabalho.titulo}
-                </h3>
+                <div className="trabalho-titulo-container">
+                  <h3 className="trabalho-titulo">
+                    <i className="bi bi-briefcase"></i>
+                    {trabalho.titulo}
+                  </h3>
+                </div>
                 <div className={`trabalho-status ${getStatusClass(trabalho.status)}`}>
                   <i className={`bi ${getStatusIcon(trabalho.status)}`}></i>
                   {trabalho.status}
@@ -337,7 +359,13 @@ export default function Trabalhos() {
                     {trabalho.nome_cliente}
                   </span>
                 </div>
-
+                  {/* 🆕 Badge de Trabalho Privado */}
+                  {trabalho.is_privado && (
+                    <div className="badge-privado-card">
+                      <i className="bi bi-lock-fill"></i>
+                      Trabalho Privado
+                    </div>
+                  )}
                 {trabalho.habilidades_detalhes?.length > 0 && (
                   <div>
                     <div className="trabalho-info-item">

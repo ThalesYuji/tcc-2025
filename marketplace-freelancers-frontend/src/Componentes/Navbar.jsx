@@ -2,15 +2,7 @@ import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { FiLogOut, FiUser, FiSettings } from "react-icons/fi";
-import { 
-  FaShieldAlt, 
-  FaExclamationTriangle, 
-  FaHome, 
-  FaBriefcase, 
-  FaFileAlt, 
-  FaHandshake, 
-  FaStar 
-} from "react-icons/fa";
+import { FaShieldAlt, FaExclamationTriangle, FaHome, FaBriefcase, FaFileAlt, FaHandshake, FaStar } from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
 import "../styles/Navbar.css";
 

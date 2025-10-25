@@ -3,6 +3,7 @@ import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useParams, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import Navbar from "../Componentes/Navbar"; // 🆕 Importar Navbar
 import "../styles/PerfilPublico.css";
 
 function StarRating({ rating, className = "stars-container" }) {
@@ -42,9 +43,9 @@ export default function PerfilPublico() {
   const [usuario, setUsuario] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(null);
-  const [metricas, setMetricas] = useState(null); // 🆕 Estado para métricas reais
+  const [metricas, setMetricas] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [carregandoMetricas, setCarregandoMetricas] = useState(true); // 🆕
+  const [carregandoMetricas, setCarregandoMetricas] = useState(true);
   const [erro, setErro] = useState("");
   const [activeTab, setActiveTab] = useState("sobre");
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
@@ -84,7 +85,6 @@ export default function PerfilPublico() {
     }
   }, [id]);
 
-  // 🆕 Buscar métricas de performance
   useEffect(() => {
     async function buscarMetricas() {
       if (!usuario || usuario.tipo !== "freelancer") {
@@ -141,33 +141,39 @@ export default function PerfilPublico() {
 
   if (carregando) {
     return (
-      <div className="perfil-redesign-container">
-        <div className="page-container">
-          <div className="loading-modern">
-            <div className="loading-spinner-modern"></div>
-            <h3>Carregando perfil</h3>
-            <p>Aguarde um momento...</p>
+      <>
+        <Navbar /> {/* 🆕 Navbar na tela de loading */}
+        <div className="perfil-redesign-container">
+          <div className="page-container">
+            <div className="loading-modern">
+              <div className="loading-spinner-modern"></div>
+              <h3>Carregando perfil</h3>
+              <p>Aguarde um momento...</p>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (erro || !usuario) {
     return (
-      <div className="perfil-redesign-container">
-        <div className="page-container">
-          <div className="error-modern">
-            <i className="bi bi-person-x"></i>
-            <h3>Perfil não encontrado</h3>
-            <p>{erro || "O usuário que você está procurando não foi encontrado."}</p>
-            <button className="action-btn primary" onClick={() => navigate("/home")}>
-              <i className="bi bi-house"></i>
-              Voltar ao início
-            </button>
+      <>
+        <Navbar /> {/* 🆕 Navbar na tela de erro */}
+        <div className="perfil-redesign-container">
+          <div className="page-container">
+            <div className="error-modern">
+              <i className="bi bi-person-x"></i>
+              <h3>Perfil não encontrado</h3>
+              <p>{erro || "O usuário que você está procurando não foi encontrado."}</p>
+              <button className="action-btn primary" onClick={() => navigate("/home")}>
+                <i className="bi bi-house"></i>
+                Voltar ao início
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -180,7 +186,6 @@ export default function PerfilPublico() {
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
   const isNewUser = new Date() - new Date(usuario.date_joined || usuario.created_at) < 30 * 24 * 60 * 60 * 1000;
 
-  // Distribuição de notas
   const distribuicaoNotas = [5, 4, 3, 2, 1].map(nota => {
     const count = avaliacoes.filter(av => Math.round(av.nota) === nota).length;
     const percentual = avaliacoes.length > 0 ? (count / avaliacoes.length) * 100 : 0;
@@ -188,505 +193,498 @@ export default function PerfilPublico() {
   });
 
   return (
-    <div className="perfil-redesign-container">
-      {/* Toast de Alerta */}
-      {mostrarAlerta && (
-        <div className="toast-alert success">
-          <div className="toast-icon">
-            <i className="bi bi-check-circle-fill"></i>
-          </div>
-          <div className="toast-content">
-            <div className="toast-title">Link copiado!</div>
-            <div className="toast-message">O link do perfil foi copiado para a área de transferência</div>
-          </div>
-          <button className="toast-close" onClick={() => setMostrarAlerta(false)}>
-            <i className="bi bi-x"></i>
-          </button>
-        </div>
-      )}
-
-      <div className="page-container fade-in">
-        
-        {/* Header Padronizado - Seguindo padrão Dashboard */}
-        <div className="perfil-header-section">
-          <h1 className="perfil-title">
-            <div className="perfil-title-icon">
-              <i className="bi bi-person-circle"></i>
+    <>
+      <Navbar /> {/* 🆕 Navbar adicionada aqui */}
+      
+      <div className="perfil-redesign-container">
+        {mostrarAlerta && (
+          <div className="toast-alert success">
+            <div className="toast-icon">
+              <i className="bi bi-check-circle-fill"></i>
             </div>
-            Perfil do Usuário
-          </h1>
-          <p className="perfil-subtitle">
-            Visualize informações profissionais e avaliações
-          </p>
-        </div>
-
-        {/* Card Principal do Perfil */}
-        <div className="perfil-card-main">
-          <div className="avatar-section">
-            <div className="avatar-container">
-              <img src={fotoPerfil} alt={usuario.nome} className="perfil-avatar-img" />
-              
-              {isTopUser && (
-                <div className="badge-top-profile">
-                  <i className="bi bi-award-fill"></i>
-                  TOP
-                </div>
-              )}
-              
-              {isNewUser && (
-                <div className="badge-new-profile">
-                  <i className="bi bi-star-fill"></i>
-                  NOVO
-                </div>
-              )}
+            <div className="toast-content">
+              <div className="toast-title">Link copiado!</div>
+              <div className="toast-message">O link do perfil foi copiado para a área de transferência</div>
             </div>
+            <button className="toast-close" onClick={() => setMostrarAlerta(false)}>
+              <i className="bi bi-x"></i>
+            </button>
           </div>
+        )}
 
-          <div className="info-section">
-            <h2 className="perfil-name">{usuario.nome}</h2>
-            
-            <div className="perfil-user-type">
-              <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
-              {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-            </div>
-
-            {notaMedia && (
-              <div className="rating-display">
-                <StarRating rating={notaMedia} />
-                <span className="rating-number">{notaMedia.toFixed(1)}</span>
-                <span className="rating-count-text">({avaliacoes.length} avaliações)</span>
-              </div>
-            )}
-
-            <div className="stats-mini-grid">
-              {usuario.tipo === "freelancer" && (
-                <div className="stat-mini-item">
-                  <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_concluidos ?? 0)}</span>
-                  <span className="stat-mini-label">Concluídos</span>
-                </div>
-              )}
-              {usuario.tipo === "cliente" && (
-                <div className="stat-mini-item">
-                  <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_publicados ?? 0)}</span>
-                  <span className="stat-mini-label">Publicados</span>
-                </div>
-              )}
-              <div className="stat-mini-item">
-                <span className="stat-mini-value">{formatarNumero(avaliacoes.length)}</span>
-                <span className="stat-mini-label">Avaliações</span>
-              </div>
-              {notaMedia && (
-                <div className="stat-mini-item">
-                  <span className="stat-mini-value">{notaMedia.toFixed(1)}</span>
-                  <span className="stat-mini-label">Estrelas</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Layout Principal */}
-        <div className="main-content-layout">
+        <div className="page-container fade-in">
           
-          {/* Coluna Principal */}
-          <div className="content-left">
-            
-            {/* Tabs */}
-            <div className="tabs-nav">
-              <button
-                className={`tab-button ${activeTab === 'sobre' ? 'active' : ''}`}
-                onClick={() => setActiveTab('sobre')}
-              >
-                <i className="bi bi-person-lines-fill"></i>
-                Sobre
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'avaliacoes' ? 'active' : ''}`}
-                onClick={() => setActiveTab('avaliacoes')}
-              >
-                <i className="bi bi-star-fill"></i>
-                Avaliações
-              </button>
-              <button
-                className={`tab-button ${activeTab === 'estatisticas' ? 'active' : ''}`}
-                onClick={() => setActiveTab('estatisticas')}
-              >
-                <i className="bi bi-graph-up"></i>
-                Estatísticas
-              </button>
-            </div>
-
-            {/* Conteúdo das Tabs */}
-            {activeTab === 'sobre' && (
-              <div className="standard-card fade-in">
-                <div className="card-header-std">
-                  <i className="bi bi-chat-left-quote-fill header-icon-std"></i>
-                  <h3>Sobre Mim</h3>
-                </div>
-                <div className="card-body-std">
-                  {usuario.bio ? (
-                    <p className="bio-text">{usuario.bio}</p>
-                  ) : (
-                    <div className="empty-state">
-                      <i className="bi bi-info-circle"></i>
-                      <p>Este usuário ainda não adicionou uma biografia.</p>
-                    </div>
-                  )}
-                </div>
+          <div className="perfil-header-section">
+            <h1 className="perfil-title">
+              <div className="perfil-title-icon">
+                <i className="bi bi-person-circle"></i>
               </div>
-            )}
+              Perfil do Usuário
+            </h1>
+            <p className="perfil-subtitle">
+              Visualize informações profissionais e avaliações
+            </p>
+          </div>
 
-            {activeTab === 'avaliacoes' && (
-              <div className="fade-in">
-                {avaliacoes.length === 0 ? (
-                  <div className="standard-card">
-                    <div className="card-body-std">
-                      <div className="empty-state">
-                        <i className="bi bi-star"></i>
-                        <h3>Nenhuma avaliação</h3>
-                        <p>Este usuário ainda não recebeu avaliações.</p>
-                      </div>
-                    </div>
+          <div className="perfil-card-main">
+            <div className="avatar-section">
+              <div className="avatar-container">
+                <img src={fotoPerfil} alt={usuario.nome} className="perfil-avatar-img" />
+                
+                {isTopUser && (
+                  <div className="badge-top-profile">
+                    <i className="bi bi-award-fill"></i>
+                    TOP
                   </div>
-                ) : (
-                  <>
-                    <div className="reviews-list">
-                      {avaliacoesPaginadas.map((av) => (
-                        <div key={av.id} className="review-item">
-                          <div className="review-header">
-                            <div className="reviewer-info">
-                              <div className="reviewer-avatar">
-                                {av.avaliador?.nome?.charAt(0)?.toUpperCase() || "?"}
-                              </div>
-                              <div className="reviewer-details">
-                                <span className="reviewer-name">
-                                  {av.avaliador?.nome || "Usuário Anônimo"}
-                                </span>
-                                <span className="review-date">
-                                  {formatarDataBR(av.data_avaliacao)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="review-rating">
-                              <StarRating rating={av.nota} className="review-stars" />
-                              <span className="review-value">{av.nota.toFixed(1)}</span>
-                            </div>
-                          </div>
-                          {av.comentario && (
-                            <div className="review-comment">
-                              <p>{av.comentario}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {totalPaginas > 1 && (
-                      <div className="pagination-container">
-                        <div className="pagination-info">
-                          Página {paginaAtual} de {totalPaginas} • {avaliacoes.length} avaliações
-                        </div>
-                        <div className="pagination-controls">
-                          <button
-                            className="pagination-btn"
-                            onClick={paginaAnterior}
-                            disabled={paginaAtual === 1}
-                          >
-                            <i className="bi bi-chevron-left"></i>
-                          </button>
-                          <button
-                            className="pagination-btn"
-                            onClick={proximaPagina}
-                            disabled={paginaAtual === totalPaginas}
-                          >
-                            <i className="bi bi-chevron-right"></i>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                )}
+                
+                {isNewUser && (
+                  <div className="badge-new-profile">
+                    <i className="bi bi-star-fill"></i>
+                    NOVO
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {activeTab === 'estatisticas' && (
-              <div className="fade-in">
-                <div className="standard-card">
+            <div className="info-section">
+              <h2 className="perfil-name">{usuario.nome}</h2>
+              
+              <div className="perfil-user-type">
+                <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
+                {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+              </div>
+
+              {notaMedia && (
+                <div className="rating-display">
+                  <StarRating rating={notaMedia} />
+                  <span className="rating-number">{notaMedia.toFixed(1)}</span>
+                  <span className="rating-count-text">({avaliacoes.length} avaliações)</span>
+                </div>
+              )}
+
+              <div className="stats-mini-grid">
+                {usuario.tipo === "freelancer" && (
+                  <div className="stat-mini-item">
+                    <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_concluidos ?? 0)}</span>
+                    <span className="stat-mini-label">Concluídos</span>
+                  </div>
+                )}
+                {usuario.tipo === "cliente" && (
+                  <div className="stat-mini-item">
+                    <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_publicados ?? 0)}</span>
+                    <span className="stat-mini-label">Publicados</span>
+                  </div>
+                )}
+                <div className="stat-mini-item">
+                  <span className="stat-mini-value">{formatarNumero(avaliacoes.length)}</span>
+                  <span className="stat-mini-label">Avaliações</span>
+                </div>
+                {notaMedia && (
+                  <div className="stat-mini-item">
+                    <span className="stat-mini-value">{notaMedia.toFixed(1)}</span>
+                    <span className="stat-mini-label">Estrelas</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="main-content-layout">
+            
+            <div className="content-left">
+              
+              <div className="tabs-nav">
+                <button
+                  className={`tab-button ${activeTab === 'sobre' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('sobre')}
+                >
+                  <i className="bi bi-person-lines-fill"></i>
+                  Sobre
+                </button>
+                <button
+                  className={`tab-button ${activeTab === 'avaliacoes' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('avaliacoes')}
+                >
+                  <i className="bi bi-star-fill"></i>
+                  Avaliações
+                </button>
+                <button
+                  className={`tab-button ${activeTab === 'estatisticas' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('estatisticas')}
+                >
+                  <i className="bi bi-graph-up"></i>
+                  Estatísticas
+                </button>
+              </div>
+
+              {activeTab === 'sobre' && (
+                <div className="standard-card fade-in">
                   <div className="card-header-std">
-                    <i className="bi bi-bar-chart-fill header-icon-std"></i>
-                    <h3>Estatísticas Detalhadas</h3>
+                    <i className="bi bi-chat-left-quote-fill header-icon-std"></i>
+                    <h3>Sobre Mim</h3>
                   </div>
                   <div className="card-body-std">
-                    <div className="stats-detailed-grid">
-                      {usuario.tipo === "cliente" && (
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon primary">
-                            <i className="bi bi-briefcase"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.trabalhos_publicados ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">Trabalhos Publicados</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {usuario.tipo === "freelancer" && (
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon success">
-                            <i className="bi bi-check-circle"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.trabalhos_concluidos ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">Trabalhos Concluídos</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="stat-detail-card">
-                        <div className="stat-detail-icon warning">
-                          <i className="bi bi-star"></i>
-                        </div>
-                        <div className="stat-detail-info">
-                          <span className="stat-detail-value">
-                            {formatarNumero(avaliacoes.length)}
-                          </span>
-                          <span className="stat-detail-label">Total de Avaliações</span>
-                        </div>
+                    {usuario.bio ? (
+                      <p className="bio-text">{usuario.bio}</p>
+                    ) : (
+                      <div className="empty-state">
+                        <i className="bi bi-info-circle"></i>
+                        <p>Este usuário ainda não adicionou uma biografia.</p>
                       </div>
-                      
-                      {notaMedia && (
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon info">
-                            <i className="bi bi-award"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">{notaMedia.toFixed(1)}/5</span>
-                            <span className="stat-detail-label">Nota Média</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
+              )}
 
-                {avaliacoes.length > 0 && (
-                  <div className="standard-card">
-                    <div className="card-header-std">
-                      <i className="bi bi-pie-chart-fill header-icon-std"></i>
-                      <h3>Distribuição de Avaliações</h3>
+              {activeTab === 'avaliacoes' && (
+                <div className="fade-in">
+                  {avaliacoes.length === 0 ? (
+                    <div className="standard-card">
+                      <div className="card-body-std">
+                        <div className="empty-state">
+                          <i className="bi bi-star"></i>
+                          <h3>Nenhuma avaliação</h3>
+                          <p>Este usuário ainda não recebeu avaliações.</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="card-body-std">
-                      <div className="distribution-chart">
-                        {distribuicaoNotas.map(({ nota, count, percentual }) => (
-                          <div key={nota} className="distribution-row">
-                            <div className="distribution-label">
-                              {nota} <i className="bi bi-star-fill"></i>
+                  ) : (
+                    <>
+                      <div className="reviews-list">
+                        {avaliacoesPaginadas.map((av) => (
+                          <div key={av.id} className="review-item">
+                            <div className="review-header">
+                              <div className="reviewer-info">
+                                <div className="reviewer-avatar">
+                                  {av.avaliador?.nome?.charAt(0)?.toUpperCase() || "?"}
+                                </div>
+                                <div className="reviewer-details">
+                                  <span className="reviewer-name">
+                                    {av.avaliador?.nome || "Usuário Anônimo"}
+                                  </span>
+                                  <span className="review-date">
+                                    {formatarDataBR(av.data_avaliacao)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="review-rating">
+                                <StarRating rating={av.nota} className="review-stars" />
+                                <span className="review-value">{av.nota.toFixed(1)}</span>
+                              </div>
                             </div>
-                            <div className="distribution-bar-container">
-                              <div 
-                                className="distribution-bar-fill"
-                                style={{ width: `${percentual}%` }}
-                              ></div>
-                            </div>
-                            <div className="distribution-count">{count}</div>
+                            {av.comentario && (
+                              <div className="review-comment">
+                                <p>{av.comentario}</p>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
-                    </div>
-                  </div>
-                )}
 
-                {(isTopUser || avaliacoes.length >= 10 || usuario.trabalhos_concluidos >= 50) && (
+                      {totalPaginas > 1 && (
+                        <div className="pagination-container">
+                          <div className="pagination-info">
+                            Página {paginaAtual} de {totalPaginas} • {avaliacoes.length} avaliações
+                          </div>
+                          <div className="pagination-controls">
+                            <button
+                              className="pagination-btn"
+                              onClick={paginaAnterior}
+                              disabled={paginaAtual === 1}
+                            >
+                              <i className="bi bi-chevron-left"></i>
+                            </button>
+                            <button
+                              className="pagination-btn"
+                              onClick={proximaPagina}
+                              disabled={paginaAtual === totalPaginas}
+                            >
+                              <i className="bi bi-chevron-right"></i>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'estatisticas' && (
+                <div className="fade-in">
                   <div className="standard-card">
                     <div className="card-header-std">
-                      <i className="bi bi-trophy-fill header-icon-std"></i>
-                      <h3>Conquistas</h3>
+                      <i className="bi bi-bar-chart-fill header-icon-std"></i>
+                      <h3>Estatísticas Detalhadas</h3>
                     </div>
                     <div className="card-body-std">
-                      <div className="achievements-grid">
-                        {isTopUser && (
-                          <div className="achievement-item">
-                            <div className="achievement-icon gold">
-                              <i className="bi bi-award-fill"></i>
+                      <div className="stats-detailed-grid">
+                        {usuario.tipo === "cliente" && (
+                          <div className="stat-detail-card">
+                            <div className="stat-detail-icon primary">
+                              <i className="bi bi-briefcase"></i>
                             </div>
-                            <div className="achievement-content">
-                              <div className="achievement-title">Profissional TOP</div>
-                              <div className="achievement-desc">Nota média superior a 4.5</div>
-                            </div>
-                          </div>
-                        )}
-                        {avaliacoes.length >= 10 && (
-                          <div className="achievement-item">
-                            <div className="achievement-icon blue">
-                              <i className="bi bi-chat-square-heart-fill"></i>
-                            </div>
-                            <div className="achievement-content">
-                              <div className="achievement-title">Bem Avaliado</div>
-                              <div className="achievement-desc">10+ avaliações recebidas</div>
+                            <div className="stat-detail-info">
+                              <span className="stat-detail-value">
+                                {formatarNumero(usuario.trabalhos_publicados ?? 0)}
+                              </span>
+                              <span className="stat-detail-label">Trabalhos Publicados</span>
                             </div>
                           </div>
                         )}
-                        {usuario.trabalhos_concluidos >= 50 && (
-                          <div className="achievement-item">
-                            <div className="achievement-icon green">
-                              <i className="bi bi-check-circle-fill"></i>
+                        
+                        {usuario.tipo === "freelancer" && (
+                          <div className="stat-detail-card">
+                            <div className="stat-detail-icon success">
+                              <i className="bi bi-check-circle"></i>
                             </div>
-                            <div className="achievement-content">
-                              <div className="achievement-title">Veterano</div>
-                              <div className="achievement-desc">50+ trabalhos concluídos</div>
+                            <div className="stat-detail-info">
+                              <span className="stat-detail-value">
+                                {formatarNumero(usuario.trabalhos_concluidos ?? 0)}
+                              </span>
+                              <span className="stat-detail-label">Trabalhos Concluídos</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="stat-detail-card">
+                          <div className="stat-detail-icon warning">
+                            <i className="bi bi-star"></i>
+                          </div>
+                          <div className="stat-detail-info">
+                            <span className="stat-detail-value">
+                              {formatarNumero(avaliacoes.length)}
+                            </span>
+                            <span className="stat-detail-label">Total de Avaliações</span>
+                          </div>
+                        </div>
+                        
+                        {notaMedia && (
+                          <div className="stat-detail-card">
+                            <div className="stat-detail-icon info">
+                              <i className="bi bi-award"></i>
+                            </div>
+                            <div className="stat-detail-info">
+                              <span className="stat-detail-value">{notaMedia.toFixed(1)}/5</span>
+                              <span className="stat-detail-label">Nota Média</span>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
 
-          {/* Sidebar */}
-          <div className="content-right">
-            
-            {/* Ações */}
-            {usuarioLogado && usuarioLogado.id !== usuario.id && (
-              <div className="standard-card">
-                <div className="card-header-std">
-                  <i className="bi bi-lightning-charge-fill header-icon-std"></i>
-                  <h3>Ações Rápidas</h3>
-                </div>
-                <div className="card-body-std">
-                  <div className="actions-list">
-                    {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
-                      <button
-                        className="action-btn primary"
-                        onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
-                      >
-                        <i className="bi bi-person-check-fill"></i>
-                        Contratar
-                      </button>
-                    )}
-                    <button
-                      className="action-btn danger"
-                      onClick={() => navigate("/denuncias/cadastrar", {
-                        state: { denunciado: usuario.id }
-                      })}
-                    >
-                      <i className="bi bi-flag-fill"></i>
-                      Denunciar
-                    </button>
-                    <button
-                      className="action-btn ghost"
-                      onClick={handleCompartilhar}
-                    >
-                      <i className="bi bi-share-fill"></i>
-                      Compartilhar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Informações */}
-            <div className="standard-card">
-              <div className="card-header-std">
-                <i className="bi bi-info-circle-fill header-icon-std"></i>
-                <h3>Informações</h3>
-              </div>
-              <div className="card-body-std">
-                <div className="info-list">
-                  <div className="info-item">
-                    <i className="bi bi-person-badge info-icon"></i>
-                    <div className="info-content">
-                      <div className="info-label">Tipo</div>
-                      <div className="info-value">
-                        <span className={`badge-type ${usuario.tipo}`}>
-                          {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
-                        </span>
+                  {avaliacoes.length > 0 && (
+                    <div className="standard-card">
+                      <div className="card-header-std">
+                        <i className="bi bi-pie-chart-fill header-icon-std"></i>
+                        <h3>Distribuição de Avaliações</h3>
                       </div>
-                    </div>
-                  </div>
-
-                  {notaMedia && (
-                    <div className="info-item">
-                      <i className="bi bi-trophy info-icon"></i>
-                      <div className="info-content">
-                        <div className="info-label">Reputação</div>
-                        <div className="info-value">
-                          {notaMedia >= 4.5 ? "Excelente" : 
-                           notaMedia >= 4.0 ? "Muito Boa" :
-                           notaMedia >= 3.0 ? "Boa" : "Regular"}
+                      <div className="card-body-std">
+                        <div className="distribution-chart">
+                          {distribuicaoNotas.map(({ nota, count, percentual }) => (
+                            <div key={nota} className="distribution-row">
+                              <div className="distribution-label">
+                                {nota} <i className="bi bi-star-fill"></i>
+                              </div>
+                              <div className="distribution-bar-container">
+                                <div 
+                                  className="distribution-bar-fill"
+                                  style={{ width: `${percentual}%` }}
+                                ></div>
+                              </div>
+                              <div className="distribution-count">{count}</div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="info-item">
-                    <i className="bi bi-activity info-icon"></i>
-                    <div className="info-content">
-                      <div className="info-label">Status</div>
-                      <div className="info-value">
-                        <span className="status-badge">Ativo</span>
+                  {(isTopUser || avaliacoes.length >= 10 || usuario.trabalhos_concluidos >= 50) && (
+                    <div className="standard-card">
+                      <div className="card-header-std">
+                        <i className="bi bi-trophy-fill header-icon-std"></i>
+                        <h3>Conquistas</h3>
+                      </div>
+                      <div className="card-body-std">
+                        <div className="achievements-grid">
+                          {isTopUser && (
+                            <div className="achievement-item">
+                              <div className="achievement-icon gold">
+                                <i className="bi bi-award-fill"></i>
+                              </div>
+                              <div className="achievement-content">
+                                <div className="achievement-title">Profissional TOP</div>
+                                <div className="achievement-desc">Nota média superior a 4.5</div>
+                              </div>
+                            </div>
+                          )}
+                          {avaliacoes.length >= 10 && (
+                            <div className="achievement-item">
+                              <div className="achievement-icon blue">
+                                <i className="bi bi-chat-square-heart-fill"></i>
+                              </div>
+                              <div className="achievement-content">
+                                <div className="achievement-title">Bem Avaliado</div>
+                                <div className="achievement-desc">10+ avaliações recebidas</div>
+                              </div>
+                            </div>
+                          )}
+                          {usuario.trabalhos_concluidos >= 50 && (
+                            <div className="achievement-item">
+                              <div className="achievement-icon green">
+                                <i className="bi bi-check-circle-fill"></i>
+                              </div>
+                              <div className="achievement-content">
+                                <div className="achievement-title">Veterano</div>
+                                <div className="achievement-desc">50+ trabalhos concluídos</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Performance - 🆕 AGORA COM DADOS REAIS */}
-            {usuario.tipo === "freelancer" && (
+            <div className="content-right">
+              
+              {usuarioLogado && usuarioLogado.id !== usuario.id && (
+                <div className="standard-card">
+                  <div className="card-header-std">
+                    <i className="bi bi-lightning-charge-fill header-icon-std"></i>
+                    <h3>Ações Rápidas</h3>
+                  </div>
+                  <div className="card-body-std">
+                    <div className="actions-list">
+                      {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
+                        <button
+                          className="action-btn primary"
+                          onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
+                        >
+                          <i className="bi bi-person-check-fill"></i>
+                          Contratar
+                        </button>
+                      )}
+                      <button
+                        className="action-btn danger"
+                        onClick={() => navigate("/denuncias/cadastrar", {
+                          state: { denunciado: usuario.id }
+                        })}
+                      >
+                        <i className="bi bi-flag-fill"></i>
+                        Denunciar
+                      </button>
+                      <button
+                        className="action-btn ghost"
+                        onClick={handleCompartilhar}
+                      >
+                        <i className="bi bi-share-fill"></i>
+                        Compartilhar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="standard-card">
                 <div className="card-header-std">
-                  <i className="bi bi-speedometer2 header-icon-std"></i>
-                  <h3>Performance</h3>
+                  <i className="bi bi-info-circle-fill header-icon-std"></i>
+                  <h3>Informações</h3>
                 </div>
                 <div className="card-body-std">
-                  {carregandoMetricas ? (
-                    <div className="loading-metrics">
-                      <div className="spinner-small"></div>
-                      <p>Carregando métricas...</p>
-                    </div>
-                  ) : metricas && metricas.total_contratos > 0 ? (
-                    <div className="performance-list">
-                      <div className="performance-item">
-                        <div className="performance-label">
-                          <i className="bi bi-check-circle"></i>
-                          Taxa de Conclusão
+                  <div className="info-list">
+                    <div className="info-item">
+                      <i className="bi bi-person-badge info-icon"></i>
+                      <div className="info-content">
+                        <div className="info-label">Tipo</div>
+                        <div className="info-value">
+                          <span className={`badge-type ${usuario.tipo}`}>
+                            {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                          </span>
                         </div>
-                        <div className="performance-value">{metricas.taxa_conclusao}%</div>
-                      </div>
-                      <div className="performance-item">
-                        <div className="performance-label">
-                          <i className="bi bi-clock-history"></i>
-                          Entrega no Prazo
-                        </div>
-                        <div className="performance-value">{metricas.taxa_entrega_prazo}%</div>
-                      </div>
-                      <div className="performance-item">
-                        <div className="performance-label">
-                          <i className="bi bi-arrow-repeat"></i>
-                          Recontratação
-                        </div>
-                        <div className="performance-value">{metricas.taxa_recontratacao}%</div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="empty-state-small">
-                      <i className="bi bi-info-circle"></i>
-                      <p>Sem dados suficientes para calcular performance.</p>
+
+                    {notaMedia && (
+                      <div className="info-item">
+                        <i className="bi bi-trophy info-icon"></i>
+                        <div className="info-content">
+                          <div className="info-label">Reputação</div>
+                          <div className="info-value">
+                            {notaMedia >= 4.5 ? "Excelente" : 
+                             notaMedia >= 4.0 ? "Muito Boa" :
+                             notaMedia >= 3.0 ? "Boa" : "Regular"}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="info-item">
+                      <i className="bi bi-activity info-icon"></i>
+                      <div className="info-content">
+                        <div className="info-label">Status</div>
+                        <div className="info-value">
+                          <span className="status-badge">Ativo</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            )}
+
+              {usuario.tipo === "freelancer" && (
+                <div className="standard-card">
+                  <div className="card-header-std">
+                    <i className="bi bi-speedometer2 header-icon-std"></i>
+                    <h3>Performance</h3>
+                  </div>
+                  <div className="card-body-std">
+                    {carregandoMetricas ? (
+                      <div className="loading-metrics">
+                        <div className="spinner-small"></div>
+                        <p>Carregando métricas...</p>
+                      </div>
+                    ) : metricas && metricas.total_contratos > 0 ? (
+                      <div className="performance-list">
+                        <div className="performance-item">
+                          <div className="performance-label">
+                            <i className="bi bi-check-circle"></i>
+                            Taxa de Conclusão
+                          </div>
+                          <div className="performance-value">{metricas.taxa_conclusao}%</div>
+                        </div>
+                        <div className="performance-item">
+                          <div className="performance-label">
+                            <i className="bi bi-clock-history"></i>
+                            Entrega no Prazo
+                          </div>
+                          <div className="performance-value">{metricas.taxa_entrega_prazo}%</div>
+                        </div>
+                        <div className="performance-item">
+                          <div className="performance-label">
+                            <i className="bi bi-arrow-repeat"></i>
+                            Recontratação
+                          </div>
+                          <div className="performance-value">{metricas.taxa_recontratacao}%</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="empty-state-small">
+                        <i className="bi bi-info-circle"></i>
+                        <p>Sem dados suficientes para calcular performance.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
