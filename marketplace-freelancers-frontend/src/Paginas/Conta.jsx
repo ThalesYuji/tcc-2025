@@ -70,17 +70,43 @@ export default function Conta() {
   useEffect(() => {
     async function buscarAvaliacoes() {
       try {
-        const resp = await api.get("/avaliacoes/");
-        const recebidas = resp.data.filter((a) => a.avaliado.id === usuarioLogado.id);
+        // ✅ Usa o endpoint certo: somente avaliações RECEBIDAS por este usuário
+        const resp = await api.get(`/usuarios/${usuarioLogado.id}/avaliacoes_publicas/`);
+        const recebidas = Array.isArray(resp.data) ? resp.data : [];
+
         setAvaliacoes(recebidas);
+
         if (recebidas.length > 0) {
-          const media = recebidas.reduce((soma, a) => soma + a.nota, 0) / recebidas.length;
+          const media =
+            recebidas.reduce((soma, a) => soma + (Number(a.nota) || 0), 0) /
+            recebidas.length;
           setNotaMedia(media);
         } else {
           setNotaMedia(null);
         }
-      } catch {
-        setAvaliacoes([]);
+      } catch (e) {
+        // fallback defensivo em caso de serializer que retorne apenas IDs
+        try {
+          const respAll = await api.get("/avaliacoes/");
+          const recebidas2 = (Array.isArray(respAll.data) ? respAll.data : []).filter(
+            (a) => {
+              const avaliadoId = a?.avaliado?.id ?? a?.avaliado;
+              return Number(avaliadoId) === Number(usuarioLogado.id);
+            }
+          );
+          setAvaliacoes(recebidas2);
+          if (recebidas2.length > 0) {
+            const media =
+              recebidas2.reduce((soma, a) => soma + (Number(a.nota) || 0), 0) /
+              recebidas2.length;
+            setNotaMedia(media);
+          } else {
+            setNotaMedia(null);
+          }
+        } catch {
+          setAvaliacoes([]);
+          setNotaMedia(null);
+        }
       }
     }
     if (usuarioLogado) buscarAvaliacoes();

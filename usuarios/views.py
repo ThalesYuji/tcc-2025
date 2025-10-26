@@ -43,7 +43,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - `perfil_publico`: retorna dados de qualquer usuário (sem restrição)
     - `avaliacoes_publicas`: retorna avaliações recebidas por um usuário (sem restrição)
     - `resumo`: retorna resumo para o Dashboard do usuário logado
-    - `metricas_performance`: 🆕 retorna métricas reais de performance
+    - `metricas_performance`: retorna métricas reais de performance
     """
     serializer_class = UsuarioSerializer
     queryset = Usuario.objects.all()
@@ -92,7 +92,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perfil_publico(self, request, pk=None):
         """Retorna dados públicos de qualquer usuário (ignora restrições do queryset)."""
         try:
-            usuario = Usuario.objects.get(pk=pk)
+            # ✅ Anota contagens para performance e correção do "concluídos"
+            usuario = (
+                Usuario.objects
+                .filter(pk=pk)
+                .annotate(
+                    trabalhos_publicados_count=Count('trabalhos_publicados', distinct=True),
+                    contratos_concluidos_count=Count(
+                        'contratos_freelancer',  # related_name em Contrato.freelancer
+                        filter=Q(contratos_freelancer__status='concluido'),
+                        distinct=True
+                    )
+                )
+                .get()
+            )
         except Usuario.DoesNotExist:
             return Response({"detail": "Usuário não encontrado."}, status=404)
 
@@ -126,8 +139,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     )
     def metricas_performance(self, request, pk=None):
         """
-        🆕 Retorna métricas reais de performance do usuário.
-        Acessível publicamente para exibir no perfil público.
+        Retorna métricas reais de performance do usuário (para freelancers).
         """
         try:
             usuario = Usuario.objects.get(pk=pk)
@@ -158,30 +170,25 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         # 📈 Taxa de Conclusão: (concluídos / total) * 100
         taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0
 
-        # 📈 Taxa de Entrega no Prazo: (entregues no prazo / concluídos) * 100
+        # 📈 Taxa de Entrega no Prazo
         if concluidos > 0:
             entregas_no_prazo = 0
-            for contrato in contratos_concluidos:
-                # Verifica se data_entrega existe e se foi antes ou no prazo
+            for contrato in contratos_concluidos.select_related('trabalho'):
                 if contrato.data_entrega and contrato.trabalho.prazo:
                     if contrato.data_entrega <= contrato.trabalho.prazo:
                         entregas_no_prazo += 1
-            
             taxa_entrega_prazo = round((entregas_no_prazo / concluidos) * 100, 1)
         else:
             taxa_entrega_prazo = 0
 
-        # 📈 Taxa de Recontratação: (clientes que contrataram 2+ vezes / total clientes únicos) * 100
+        # 📈 Taxa de Recontratação
         if total > 0:
-            # Conta quantas vezes cada cliente contratou este freelancer
-            clientes_counts = contratos_total.values('cliente').annotate(
-                num_contratos=Count('id')
-            )
-            
+            clientes_counts = contratos_total.values('cliente').annotate(num_contratos=Count('id'))
             total_clientes_unicos = clientes_counts.count()
             clientes_recontrataram = sum(1 for c in clientes_counts if c['num_contratos'] >= 2)
-            
-            taxa_recontratacao = round((clientes_recontrataram / total_clientes_unicos) * 100, 1) if total_clientes_unicos > 0 else 0
+            taxa_recontratacao = round(
+                (clientes_recontrataram / total_clientes_unicos) * 100, 1
+            ) if total_clientes_unicos > 0 else 0
         else:
             taxa_recontratacao = 0
 
@@ -219,7 +226,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def excluir_conta(self, request, pk=None):
         """Permite que o usuário exclua a própria conta (solicitando senha)."""
         user = self.get_object()
-        senha = request.data.get("senha")
+        senha = self.request.data.get("senha")
         if not senha:
             return Response({"erro": "Senha obrigatória."}, status=400)
         if not user.check_password(senha):

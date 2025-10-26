@@ -43,13 +43,11 @@ export default function PerfilPublico() {
   const [usuario, setUsuario] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(null);
-  const [metricas, setMetricas] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [carregandoMetricas, setCarregandoMetricas] = useState(true);
   const [erro, setErro] = useState("");
   const [activeTab, setActiveTab] = useState("sobre");
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
-  
+
   const [paginaAtual, setPaginaAtual] = useState(1);
   const avaliacoesPorPagina = 4;
 
@@ -77,35 +75,9 @@ export default function PerfilPublico() {
         setCarregando(false);
       }
     }
-    
-    if (id) {
-      buscarDados();
-    }
+
+    if (id) buscarDados();
   }, [id]);
-
-  useEffect(() => {
-    async function buscarMetricas() {
-      if (!usuario || usuario.tipo !== "freelancer") {
-        setCarregandoMetricas(false);
-        return;
-      }
-
-      try {
-        setCarregandoMetricas(true);
-        const resp = await api.get(`/usuarios/${id}/metricas_performance/`);
-        setMetricas(resp.data);
-      } catch (err) {
-        console.error("Erro ao buscar métricas:", err);
-        setMetricas(null);
-      } finally {
-        setCarregandoMetricas(false);
-      }
-    }
-
-    if (usuario) {
-      buscarMetricas();
-    }
-  }, [usuario, id]);
 
   const handleCompartilhar = () => {
     if (navigator.share) {
@@ -126,15 +98,10 @@ export default function PerfilPublico() {
   const avaliacoesPaginadas = avaliacoes.slice(indiceInicial, indiceFinal);
 
   const proximaPagina = () => {
-    if (paginaAtual < totalPaginas) {
-      setPaginaAtual(paginaAtual + 1);
-    }
+    if (paginaAtual < totalPaginas) setPaginaAtual(paginaAtual + 1);
   };
-
   const paginaAnterior = () => {
-    if (paginaAtual > 1) {
-      setPaginaAtual(paginaAtual - 1);
-    }
+    if (paginaAtual > 1) setPaginaAtual(paginaAtual - 1);
   };
 
   if (carregando) {
@@ -175,9 +142,7 @@ export default function PerfilPublico() {
     );
   }
 
-  // ✅ Agora a API entrega URL absoluta (Cloudinary). Use direto.
   const fotoPerfil = usuario?.foto_perfil || "/icone-usuario.png";
-
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
   const isNewUser = new Date() - new Date(usuario.date_joined || usuario.created_at) < 30 * 24 * 60 * 60 * 1000;
 
@@ -190,7 +155,7 @@ export default function PerfilPublico() {
   return (
     <>
       <Navbar />
-      
+
       <div className="perfil-redesign-container">
         {mostrarAlerta && (
           <div className="toast-alert success">
@@ -208,7 +173,6 @@ export default function PerfilPublico() {
         )}
 
         <div className="page-container fade-in">
-          
           <div className="perfil-header-section">
             <h1 className="perfil-title">
               <div className="perfil-title-icon">
@@ -225,14 +189,14 @@ export default function PerfilPublico() {
             <div className="avatar-section">
               <div className="avatar-container">
                 <img src={fotoPerfil} alt={usuario.nome} className="perfil-avatar-img" />
-                
+
                 {isTopUser && (
                   <div className="badge-top-profile">
                     <i className="bi bi-award-fill"></i>
                     TOP
                   </div>
                 )}
-                
+
                 {isNewUser && (
                   <div className="badge-new-profile">
                     <i className="bi bi-star-fill"></i>
@@ -244,7 +208,7 @@ export default function PerfilPublico() {
 
             <div className="info-section">
               <h2 className="perfil-name">{usuario.nome}</h2>
-              
+
               <div className="perfil-user-type">
                 <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
                 {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
@@ -425,7 +389,7 @@ export default function PerfilPublico() {
                             </div>
                           </div>
                         )}
-                        
+
                         {usuario.tipo === "freelancer" && (
                           <div className="stat-detail-card">
                             <div className="stat-detail-icon success">
@@ -439,7 +403,7 @@ export default function PerfilPublico() {
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="stat-detail-card">
                           <div className="stat-detail-icon warning">
                             <i className="bi bi-star"></i>
@@ -451,7 +415,7 @@ export default function PerfilPublico() {
                             <span className="stat-detail-label">Total de Avaliações</span>
                           </div>
                         </div>
-                        
+
                         {notaMedia && (
                           <div className="stat-detail-card">
                             <div className="stat-detail-icon info">
@@ -484,7 +448,7 @@ export default function PerfilPublico() {
                                   {nota} <i className="bi bi-star-fill"></i>
                                 </div>
                                 <div className="distribution-bar-container">
-                                  <div 
+                                  <div
                                     className="distribution-bar-fill"
                                     style={{ width: `${percentual}%` }}
                                   ></div>
@@ -493,52 +457,6 @@ export default function PerfilPublico() {
                               </div>
                             );
                           })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {(isTopUser || avaliacoes.length >= 10 || usuario.trabalhos_concluidos >= 50) && (
-                    <div className="standard-card">
-                      <div className="card-header-std">
-                        <i className="bi bi-trophy-fill header-icon-std"></i>
-                        <h3>Conquistas</h3>
-                      </div>
-                      <div className="card-body-std">
-                        <div className="achievements-grid">
-                          {isTopUser && (
-                            <div className="achievement-item">
-                              <div className="achievement-icon gold">
-                                <i className="bi bi-award-fill"></i>
-                              </div>
-                              <div className="achievement-content">
-                                <div className="achievement-title">Profissional TOP</div>
-                                <div className="achievement-desc">Nota média superior a 4.5</div>
-                              </div>
-                            </div>
-                          )}
-                          {avaliacoes.length >= 10 && (
-                            <div className="achievement-item">
-                              <div className="achievement-icon blue">
-                                <i className="bi bi-chat-square-heart-fill"></i>
-                              </div>
-                              <div className="achievement-content">
-                                <div className="achievement-title">Bem Avaliado</div>
-                                <div className="achievement-desc">10+ avaliações recebidas</div>
-                              </div>
-                            </div>
-                          )}
-                          {usuario.trabalhos_concluidos >= 50 && (
-                            <div className="achievement-item">
-                              <div className="achievement-icon green">
-                                <i className="bi bi-check-circle-fill"></i>
-                              </div>
-                              <div className="achievement-content">
-                                <div className="achievement-title">Veterano</div>
-                                <div className="achievement-desc">50+ trabalhos concluídos</div>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -611,7 +529,7 @@ export default function PerfilPublico() {
                         <div className="info-content">
                           <div className="info-label">Reputação</div>
                           <div className="info-value">
-                            {notaMedia >= 4.5 ? "Excelente" : 
+                            {notaMedia >= 4.5 ? "Excelente" :
                              notaMedia >= 4.0 ? "Muito Boa" :
                              notaMedia >= 3.0 ? "Boa" : "Regular"}
                           </div>
@@ -632,51 +550,7 @@ export default function PerfilPublico() {
                 </div>
               </div>
 
-              {usuario.tipo === "freelancer" && (
-                <div className="standard-card">
-                  <div className="card-header-std">
-                    <i className="bi bi-speedometer2 header-icon-std"></i>
-                    <h3>Performance</h3>
-                  </div>
-                  <div className="card-body-std">
-                    {carregandoMetricas ? (
-                      <div className="loading-metrics">
-                        <div className="spinner-small"></div>
-                        <p>Carregando métricas...</p>
-                      </div>
-                    ) : metricas && metricas.total_contratos > 0 ? (
-                      <div className="performance-list">
-                        <div className="performance-item">
-                          <div className="performance-label">
-                            <i className="bi bi-check-circle"></i>
-                            Taxa de Conclusão
-                          </div>
-                          <div className="performance-value">{metricas.taxa_conclusao}%</div>
-                        </div>
-                        <div className="performance-item">
-                          <div className="performance-label">
-                            <i className="bi bi-clock-history"></i>
-                            Entrega no Prazo
-                          </div>
-                          <div className="performance-value">{metricas.taxa_entrega_prazo}%</div>
-                        </div>
-                        <div className="performance-item">
-                          <div className="performance-label">
-                            <i className="bi bi-arrow-repeat"></i>
-                            Recontratação
-                          </div>
-                          <div className="performance-value">{metricas.taxa_recontratacao}%</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="empty-state-small">
-                        <i className="bi bi-info-circle"></i>
-                        <p>Sem dados suficientes para calcular performance.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* 🔥 Card de Performance removido completamente */}
             </div>
           </div>
         </div>

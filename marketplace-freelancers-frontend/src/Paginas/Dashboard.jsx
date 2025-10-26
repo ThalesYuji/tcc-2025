@@ -32,8 +32,16 @@ export default function Dashboard() {
     }
   }, [usuarioLogado]);
 
-  // Configuração dos cards baseada no tipo de usuário
+  // helper para singular/plural
+  const tituloAvaliacoes = (n) => {
+    if (!n || n === 0) return "Sem Avaliações Recebidas";
+    return n === 1 ? "1 Avaliação" : `${n} Avaliações`;
+  };
+
+  // Configuração dos cards (apenas contagens reais)
   const getStatsConfig = () => {
+    const totalAvaliacoes = resumo?.totalAvaliacoes ?? 0;
+
     if (usuarioLogado?.tipo === "freelancer") {
       return [
         {
@@ -42,8 +50,6 @@ export default function Dashboard() {
           icon: "bi-send",
           color: "primary",
           value: resumo?.enviadas ?? 0,
-          trend: "+12%",
-          period: "este mês"
         },
         {
           key: "aceitas",
@@ -51,8 +57,6 @@ export default function Dashboard() {
           icon: "bi-check-circle",
           color: "success",
           value: resumo?.aceitas ?? 0,
-          trend: "+8%",
-          period: "este mês"
         },
         {
           key: "recusadas",
@@ -60,18 +64,14 @@ export default function Dashboard() {
           icon: "bi-x-circle",
           color: "danger",
           value: resumo?.recusadas ?? 0,
-          trend: "-5%",
-          period: "este mês"
         },
         {
           key: "avaliacao",
-          title: resumo?.totalAvaliacoes > 0 ? `${resumo.totalAvaliacoes} Avaliações` : "Sem Avaliações",
+          title: tituloAvaliacoes(totalAvaliacoes),
           icon: "bi-star",
           color: "secondary",
-          value: resumo?.totalAvaliacoes > 0 ? (resumo.mediaAvaliacao ?? 0).toFixed(1) : "—",
-          trend: resumo?.totalAvaliacoes > 0 ? "Avaliado" : "Aguardando",
-          period: "média geral"
-        }
+          value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+        },
       ];
     } else {
       return [
@@ -81,8 +81,6 @@ export default function Dashboard() {
           icon: "bi-inbox",
           color: "primary",
           value: resumo?.recebidas ?? 0,
-          trend: "+15%",
-          period: "este mês"
         },
         {
           key: "pendentes",
@@ -90,8 +88,6 @@ export default function Dashboard() {
           icon: "bi-clock",
           color: "warning",
           value: resumo?.pendentes ?? 0,
-          trend: "Aguardando",
-          period: "análise"
         },
         {
           key: "aceitas",
@@ -99,23 +95,18 @@ export default function Dashboard() {
           icon: "bi-check-circle",
           color: "success",
           value: resumo?.aceitas ?? 0,
-          trend: "+10%",
-          period: "este mês"
         },
         {
           key: "avaliacao",
-          title: resumo?.totalAvaliacoes > 0 ? `${resumo.totalAvaliacoes} Avaliações` : "Sem Avaliações",
+          title: tituloAvaliacoes(totalAvaliacoes),
           icon: "bi-star",
           color: "secondary",
-          value: resumo?.totalAvaliacoes > 0 ? (resumo.mediaAvaliacao ?? 0).toFixed(1) : "—",
-          trend: resumo?.totalAvaliacoes > 0 ? "Avaliado" : "Aguardando",
-          period: "média geral"
-        }
+          value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+        },
       ];
     }
   };
 
-  // Estados de loading e erro
   if (carregando) {
     return (
       <div className="dashboard-page page-container">
@@ -148,7 +139,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page page-container fade-in">
-      {/* Header do Dashboard */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">
           <div className="dashboard-title-icon">
@@ -161,13 +151,12 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Mensagem de Erro */}
       {erro && (
         <div className="dashboard-error">
           <div className="error-icon">❌</div>
           <h3 className="error-title">Erro ao Carregar Dados</h3>
           <p className="error-message">{erro}</p>
-          <button 
+          <button
             className="btn gradient-btn"
             onClick={() => window.location.reload()}
           >
@@ -177,9 +166,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Grid de Estatísticas */}
       <div className="stats-grid">
-        {statsConfig.map((stat, index) => (
+        {statsConfig.map((stat) => (
           <div key={stat.key} className={`stat-card ${stat.color}`}>
             <div className="stat-header">
               <div className="stat-icon">
@@ -190,23 +178,9 @@ export default function Dashboard() {
                 <p className="stat-label">{stat.title}</p>
               </div>
             </div>
-            <div className="stat-footer">
-              <span className={`stat-trend ${
-                stat.trend.includes('+') ? 'trend-positive' : 
-                stat.trend.includes('-') ? 'trend-negative' : 'trend-neutral'
-              }`}>
-                {stat.trend.includes('+') && <i className="bi bi-trend-up"></i>}
-                {stat.trend.includes('-') && <i className="bi bi-trend-down"></i>}
-                {!stat.trend.includes('+') && !stat.trend.includes('-') && <i className="bi bi-dash-circle"></i>}
-                {stat.trend}
-              </span>
-              <span className="stat-period">{stat.period}</span>
-            </div>
           </div>
         ))}
       </div>
-
-
     </div>
   );
 }

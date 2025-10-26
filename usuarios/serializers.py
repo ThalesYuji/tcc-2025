@@ -10,6 +10,7 @@ from .models import Usuario
 from notificacoes.models import Notificacao
 from avaliacoes.models import Avaliacao
 from trabalhos.models import Trabalho  # para contar trabalhos
+from contratos.models import Contrato  # ✅ usado para contar contratos concluídos
 
 # 🔹 Service real para CPF/CNPJ
 from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
@@ -252,10 +253,22 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
         return round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
 
     def get_trabalhos_publicados(self, obj):
-        return obj.trabalhos_publicados.count() if obj.tipo == "cliente" else None
+        # Se veio anotado no queryset (views.perfil_publico), usa ele; senão, faz o count normal
+        if obj.tipo != "cliente":
+            return None
+        if hasattr(obj, "trabalhos_publicados_count"):
+            return obj.trabalhos_publicados_count
+        return obj.trabalhos_publicados.count()
 
     def get_trabalhos_concluidos(self, obj):
-        return obj.trabalhos_direcionados.filter(status="concluido").count() if obj.tipo == "freelancer" else None
+        # ✅ Conta contratos concluídos do freelancer (reflete entregas reais)
+        if obj.tipo != "freelancer":
+            return None
+        # Se veio anotado no queryset (views.perfil_publico), usa ele
+        if hasattr(obj, "contratos_concluidos_count"):
+            return obj.contratos_concluidos_count
+        # Fallback: consulta direta
+        return Contrato.objects.filter(freelancer=obj, status="concluido").count()
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
