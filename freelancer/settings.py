@@ -84,6 +84,9 @@ INSTALLED_APPS = [
     'denuncias',
     'habilidades',
     'notificacoes',
+
+    # Storage fotos
+    'cloudinary', 'cloudinary_storage'
 ]
 
 # ------------------------
@@ -182,6 +185,8 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # ------------------------
 # USER CUSTOM

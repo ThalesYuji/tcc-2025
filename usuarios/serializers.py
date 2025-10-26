@@ -1,19 +1,29 @@
+# usuarios/serializers.py
 from rest_framework import serializers
 import re
-from .models import Usuario
-from notificacoes.models import Notificacao
-from avaliacoes.models import Avaliacao
-from trabalhos.models import Trabalho  # 🔹 para contar trabalhos
+from django.conf import settings
 from django.utils.encoding import force_str, force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 
-# 🔹 Importa o service da API
+from .models import Usuario
+from notificacoes.models import Notificacao
+from avaliacoes.models import Avaliacao
+from trabalhos.models import Trabalho  # para contar trabalhos
+
+# 🔹 Service real para CPF/CNPJ
 from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
-from django.conf import settings
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    """
+    Serializer principal do usuário (CRUD + /me).
+    - Normaliza CPF/CNPJ/telefone (remove não dígitos)
+    - Valida unicidade e formato
+    - Força senha forte
+    - Retorna foto_perfil com URL ABSOLUTA (Cloudinary já devolve absoluta;
+      se vier relativa tipo /media/..., converte usando request.build_absolute_uri)
+    """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
     cnpj = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -23,14 +33,29 @@ class UsuarioSerializer(serializers.ModelSerializer):
     foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
     notificacao_email = serializers.BooleanField(required=False)
 
-    # 🔹 Tipo obrigatório no cadastro
+    # Tipo explícito/obrigatório no cadastro
     tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
     class Meta:
         model = Usuario
         fields = '__all__'
 
-    # ===================== NORMALIZAÇÃO =====================
+    # --------------------- Representação (saída) ---------------------
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # 🔒 Garante URL absoluta da foto
+        request = self.context.get('request')
+        foto = data.get('foto_perfil')
+        if foto:
+            # Se Cloudinary já mandou absoluta (http/https), mantém
+            if not (foto.startswith('http://') or foto.startswith('https://')):
+                if request is not None:
+                    data['foto_perfil'] = request.build_absolute_uri(foto)
+
+        return data
+
+    # --------------------- Normalização (entrada) ---------------------
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
 
@@ -43,7 +68,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         return data
 
-    # ===================== VALIDATORS ÚNICOS =====================
+    # --------------------- Validadores únicos ---------------------
     def validate_email(self, value):
         qs = Usuario.objects.filter(email=value)
         if self.instance:
@@ -60,7 +85,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError("CPF já cadastrado.")
 
-        # 🔹 Consulta real na API (Pacote CPF D = 8)
+        # 🔹 Consulta real na API (pacote configurável)
         try:
             consultar_documento(cpf, settings.CPF_CNPJ_PACOTE_CPF_C)
         except CPF_CNPJValidationError as e:
@@ -72,13 +97,14 @@ class UsuarioSerializer(serializers.ModelSerializer):
         cnpj = re.sub(r'\D', '', value or '')
         if not cnpj:
             return cnpj
+
         qs = Usuario.objects.filter(cnpj=cnpj)
         if self.instance:
             qs = qs.exclude(id=self.instance.id)
         if qs.exists():
             raise serializers.ValidationError("CNPJ já cadastrado.")
 
-        # 🔹 Consulta real na API (Pacote CNPJ C = 10)
+        # 🔹 Consulta real na API (pacote configurável)
         try:
             consultar_documento(cnpj, settings.CPF_CNPJ_PACOTE_CNPJ_C)
         except CPF_CNPJValidationError as e:
@@ -95,24 +121,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Telefone já cadastrado.")
         return value
 
-    # ===================== PASSWORD =====================
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        validated_data.pop('groups', None)
-        validated_data.pop('user_permissions', None)
-        validated_data['is_active'] = True
-        user = Usuario(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
-
-    def update(self, instance, validated_data):
-        if 'password' in validated_data:
-            instance.set_password(validated_data.pop('password'))
-        return super().update(instance, validated_data)
-
+    # --------------------- Senha ---------------------
     def validate_password(self, password):
-        if len(password) < 8:
+        if len(password or '') < 8:
             raise serializers.ValidationError("A senha deve ter pelo menos 8 caracteres.")
         if not re.search(r"[A-Z]", password):
             raise serializers.ValidationError("A senha deve conter ao menos uma letra maiúscula.")
@@ -124,7 +135,33 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
         return password
 
-    # ===================== VALIDAÇÃO EXTRA POR TIPO =====================
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        validated_data.pop('groups', None)
+        validated_data.pop('user_permissions', None)
+        validated_data['is_active'] = True
+
+        user = Usuario(**validated_data)
+        if password:
+            self.validate_password(password)
+            user.set_password(password)
+        else:
+            # Se por algum motivo não vier senha, evita criar usuário sem senha
+            raise serializers.ValidationError({"password": "Senha é obrigatória."})
+
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        # Permite trocar senha via PATCH/PUT do próprio usuário (quando vier)
+        if 'password' in validated_data:
+            senha = validated_data.pop('password')
+            self.validate_password(senha)
+            instance.set_password(senha)
+
+        return super().update(instance, validated_data)
+
+    # --------------------- Regras por tipo ---------------------
     def validate(self, data):
         tipo = data.get('tipo') or (self.instance.tipo if self.instance else None)
         cpf = data.get('cpf') or (self.instance.cpf if self.instance else None)
@@ -147,7 +184,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return data
 
 
-# ===================== OUTROS SERIALIZERS =====================
+# --------------------- Outros Serializers ---------------------
 
 class TrocaSenhaSerializer(serializers.Serializer):
     senha_atual = serializers.CharField(write_only=True)
@@ -184,6 +221,10 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 
 
 class UsuarioPublicoSerializer(serializers.ModelSerializer):
+    """
+    Dados para perfil público.
+    Também garante URL absoluta da foto_perfil.
+    """
     nota_media = serializers.SerializerMethodField()
     trabalhos_publicados = serializers.SerializerMethodField()
     trabalhos_concluidos = serializers.SerializerMethodField()
@@ -194,6 +235,15 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
             "id", "nome", "tipo", "foto_perfil", "bio",
             "nota_media", "trabalhos_publicados", "trabalhos_concluidos"
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        foto = data.get('foto_perfil')
+        if foto and not (foto.startswith('http://') or foto.startswith('https://')):
+            if request is not None:
+                data['foto_perfil'] = request.build_absolute_uri(foto)
+        return data
 
     def get_nota_media(self, obj):
         avaliacoes = Avaliacao.objects.filter(avaliado=obj)
@@ -220,7 +270,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8, write_only=True)
 
     def validate_new_password(self, value):
-        # 🔹 Reaproveita as validações fortes já feitas no serializer de usuário
+        # Validações fortes reaproveitadas
         if len(value) < 8:
             raise serializers.ValidationError("A senha deve ter pelo menos 8 caracteres.")
         if not re.search(r"[A-Z]", value):

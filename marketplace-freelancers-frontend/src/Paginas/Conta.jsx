@@ -127,7 +127,8 @@ export default function Conta() {
 
   function getPreviewFoto(usuario) {
     const foto = usuario?.foto_perfil;
-    if (foto && foto !== "" && foto !== null) return foto;
+    // Agora a API devolve URL absoluta (Cloudinary). Se não houver, usa ícone local.
+    if (foto && typeof foto === "string" && foto.trim() !== "") return foto;
     return "/icone-usuario.png";
   }
 
@@ -151,7 +152,7 @@ export default function Conta() {
         nome: resp.data.nome,
         telefone: resp.data.telefone,
         bio: resp.data.bio,
-        foto_perfil: resp.data.foto_perfil,
+        foto_perfil: resp.data.foto_perfil, // já é absoluta
       }));
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
@@ -247,7 +248,6 @@ export default function Conta() {
   return (
     <div className="conta-page">
       <div className="conta-container">
-        
         {/* Header com avatar e info básica */}
         <div className="conta-header-profile">
           <div className="profile-banner">
@@ -324,10 +324,8 @@ export default function Conta() {
 
         {/* Layout em grid */}
         <div className="conta-grid">
-          
           {/* Coluna Esquerda - Informações principais */}
           <div className="conta-main-column">
-            
             {/* Card de Informações Pessoais */}
             <div className="card">
               <div className="card-header-simple">
@@ -504,7 +502,6 @@ export default function Conta() {
 
           {/* Coluna Direita - Configurações e ações */}
           <div className="conta-sidebar-column">
-            
             {/* Card de Segurança */}
             <div className="card">
               <div className="card-header-simple">

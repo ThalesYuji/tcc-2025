@@ -3,7 +3,7 @@ import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useParams, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
-import Navbar from "../Componentes/Navbar"; // 🆕 Importar Navbar
+import Navbar from "../Componentes/Navbar";
 import "../styles/PerfilPublico.css";
 
 function StarRating({ rating, className = "stars-container" }) {
@@ -52,8 +52,6 @@ export default function PerfilPublico() {
   
   const [paginaAtual, setPaginaAtual] = useState(1);
   const avaliacoesPorPagina = 4;
-
-  const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   useEffect(() => {
     async function buscarDados() {
@@ -142,7 +140,7 @@ export default function PerfilPublico() {
   if (carregando) {
     return (
       <>
-        <Navbar /> {/* 🆕 Navbar na tela de loading */}
+        <Navbar />
         <div className="perfil-redesign-container">
           <div className="page-container">
             <div className="loading-modern">
@@ -159,7 +157,7 @@ export default function PerfilPublico() {
   if (erro || !usuario) {
     return (
       <>
-        <Navbar /> {/* 🆕 Navbar na tela de erro */}
+        <Navbar />
         <div className="perfil-redesign-container">
           <div className="page-container">
             <div className="error-modern">
@@ -177,11 +175,8 @@ export default function PerfilPublico() {
     );
   }
 
-  const fotoPerfil = usuario.foto_perfil
-    ? usuario.foto_perfil.startsWith("http")
-      ? usuario.foto_perfil
-      : `${BASE_URL}${usuario.foto_perfil}`
-    : "/icone-usuario.png";
+  // ✅ Agora a API entrega URL absoluta (Cloudinary). Use direto.
+  const fotoPerfil = usuario?.foto_perfil || "/icone-usuario.png";
 
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
   const isNewUser = new Date() - new Date(usuario.date_joined || usuario.created_at) < 30 * 24 * 60 * 60 * 1000;
@@ -194,7 +189,7 @@ export default function PerfilPublico() {
 
   return (
     <>
-      <Navbar /> {/* 🆕 Navbar adicionada aqui */}
+      <Navbar />
       
       <div className="perfil-redesign-container">
         {mostrarAlerta && (
@@ -291,9 +286,7 @@ export default function PerfilPublico() {
           </div>
 
           <div className="main-content-layout">
-            
             <div className="content-left">
-              
               <div className="tabs-nav">
                 <button
                   className={`tab-button ${activeTab === 'sobre' ? 'active' : ''}`}
@@ -482,20 +475,24 @@ export default function PerfilPublico() {
                       </div>
                       <div className="card-body-std">
                         <div className="distribution-chart">
-                          {distribuicaoNotas.map(({ nota, count, percentual }) => (
-                            <div key={nota} className="distribution-row">
-                              <div className="distribution-label">
-                                {nota} <i className="bi bi-star-fill"></i>
+                          {[5,4,3,2,1].map(nota => {
+                            const count = avaliacoes.filter(av => Math.round(av.nota) === nota).length;
+                            const percentual = avaliacoes.length > 0 ? (count / avaliacoes.length) * 100 : 0;
+                            return (
+                              <div key={nota} className="distribution-row">
+                                <div className="distribution-label">
+                                  {nota} <i className="bi bi-star-fill"></i>
+                                </div>
+                                <div className="distribution-bar-container">
+                                  <div 
+                                    className="distribution-bar-fill"
+                                    style={{ width: `${percentual}%` }}
+                                  ></div>
+                                </div>
+                                <div className="distribution-count">{count}</div>
                               </div>
-                              <div className="distribution-bar-container">
-                                <div 
-                                  className="distribution-bar-fill"
-                                  style={{ width: `${percentual}%` }}
-                                ></div>
-                              </div>
-                              <div className="distribution-count">{count}</div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -551,7 +548,6 @@ export default function PerfilPublico() {
             </div>
 
             <div className="content-right">
-              
               {usuarioLogado && usuarioLogado.id !== usuario.id && (
                 <div className="standard-card">
                   <div className="card-header-std">

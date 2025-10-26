@@ -28,7 +28,10 @@ export default function Navbar() {
   const rotaAtiva = (rota) =>
     location.pathname === rota ? "nav-btn active" : "nav-btn";
 
-  const fotoPerfil = usuarioLogado?.foto_perfil || "";
+  // ✅ Agora a API devolve URL absoluta; usamos direto ou fallback com inicial.
+  const fotoPerfil = (usuarioLogado?.foto_perfil && usuarioLogado.foto_perfil.trim() !== "")
+    ? usuarioLogado.foto_perfil
+    : "";
 
   const navegarPara = (rota) => {
     navigate(rota);
@@ -148,7 +151,7 @@ export default function Navbar() {
             >
               {usuarioLogado?.nome
                 ? usuarioLogado.nome[0].toUpperCase()
-                : usuarioLogado.username[0].toUpperCase()}
+                : (usuarioLogado?.username || "?")[0].toUpperCase()}
             </div>
           )}
           
