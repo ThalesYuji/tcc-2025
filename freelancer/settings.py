@@ -41,13 +41,13 @@ def _origin(url: str | None) -> str | None:
         pass
     return None
 
-# URL pública do BACKEND (Railway) — use no .env em produção
-SITE_URL = os.getenv("SITE_URL", "").rstrip("/")  # ex: https://seu-backend.up.railway.app
-# URL pública do FRONT (onde o usuário navega)
+# URL pública do BACKEND (Railway)
+SITE_URL = os.getenv("SITE_URL", "").rstrip("/")
+# URL pública do FRONT
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-# URL para onde o Checkout Pro retorna (pode ser a mesma do FRONTEND_URL com rota /checkout/retorno)
+# URL para retorno do checkout
 FRONT_RETURN_URL = os.getenv("FRONT_RETURN_URL", f"{FRONTEND_URL}/checkout/retorno").rstrip("/")
-# Webhook público do Mercado Pago (opcional; se não informar, o código só envia quando for válido)
+# Webhook do Mercado Pago
 MP_WEBHOOK_URL = os.getenv("MP_WEBHOOK_URL", f"{SITE_URL}/mercadopago/webhook/").rstrip("/")
 
 _default_allowed = ['localhost', '127.0.0.1']
@@ -73,6 +73,10 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
+    # Storage (Cloudinary)
+    'cloudinary',
+    'cloudinary_storage',
+
     # Seus apps
     'usuarios.apps.UsuariosConfig',
     'trabalhos',
@@ -84,9 +88,6 @@ INSTALLED_APPS = [
     'denuncias',
     'habilidades',
     'notificacoes',
-
-    # Storage fotos
-    'cloudinary', 'cloudinary_storage'
 ]
 
 # ------------------------
@@ -177,22 +178,36 @@ USE_I18N = True
 USE_TZ = True
 
 # ------------------------
-# STATIC / MEDIA
+# STATIC / MEDIA (Django 5 com STORAGES)
 # ------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# Django 5: define storages de mídia e estáticos
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# Config Cloudinary (usa env se existir; senão, usa seus valores)
+CLOUDINARY_URL = os.getenv(
+    "CLOUDINARY_URL",
+    "cloudinary://182582265899342:xhNjam6wM6DeUCmzKKmcfUQEKEk@dtxz7xxrh"
+)
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dtxz7xxrh',
-    'API_KEY': '182582265899342',
-    'API_SECRET': 'xhNjam6wM6DeUCmzKKmcfUQEKEk',
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME", "dtxz7xxrh"),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY", "182582265899342"),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET", "xhNjam6wM6DeUCmzKKmcfUQEKEk"),
 }
+
 # ------------------------
 # USER CUSTOM
 # ------------------------
@@ -225,13 +240,11 @@ SIMPLE_JWT = {
 # ------------------------
 # CORS
 # ------------------------
-# Dev: liberado
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = ['*']
     CORS_ALLOW_METHODS = ['*']
-# Prod: restringe às origens conhecidas (front)
 else:
     _front_origin = _origin(FRONTEND_URL)
     CORS_ALLOWED_ORIGINS = [o for o in [_front_origin] if o]
@@ -280,17 +293,8 @@ MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET")
 MP_INCLUDE_PAYER = False
 
-
-# URLs usadas na integração (expostas nos services/views)
-# - SITE_URL: backend público
-# - FRONTEND_URL: app web
-# - FRONT_RETURN_URL: rota do front para onde o Checkout Pro retorna
-# - MP_WEBHOOK_URL: webhook público do Mercado Pago
-# (Os services só enviam notification_url se ela for pública e válida)
-# Já definidas no topo: SITE_URL, FRONTEND_URL, FRONT_RETURN_URL, MP_WEBHOOK_URL
-
 # ------------------------
-# Segurança HTTPS (apenas produção)
+# Segurança HTTPS (produção)
 # ------------------------
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

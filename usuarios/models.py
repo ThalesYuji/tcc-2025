@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-
+from cloudinary_storage.storage import MediaCloudinaryStorage  # <- garante Cloudinary no campo
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -34,11 +34,19 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     cpf = models.CharField(max_length=14, blank=True, null=True, unique=True)
     cnpj = models.CharField(max_length=18, blank=True, null=True, unique=True)
     telefone = models.CharField(max_length=15)
-    foto_perfil = models.ImageField(upload_to='fotos_perfil/', null=True, blank=True)
+
+    # Foto de perfil -> Cloudinary
+    foto_perfil = models.ImageField(
+        upload_to='fotos_perfil/',
+        storage=MediaCloudinaryStorage(),   # <- força Cloudinary
+        null=True,
+        blank=True
+    )
+
     nota_media = models.FloatField(null=True, blank=True)
     notificacao_email = models.BooleanField(default=True)
 
-    # 🔹 Novo campo para descrição do perfil público
+    # Descrição do perfil público
     bio = models.TextField(blank=True, null=True)
 
     # Flags de autenticação
