@@ -14,32 +14,34 @@ class HabilidadeSerializer(serializers.ModelSerializer):
 class TrabalhoSerializer(serializers.ModelSerializer):
     habilidades = serializers.CharField(required=False, allow_blank=True)
     habilidades_detalhes = HabilidadeSerializer(source='habilidades', many=True, read_only=True)
-    nome_cliente = serializers.SerializerMethodField(read_only=True)
-    cliente_id = serializers.SerializerMethodField(read_only=True)
+    nome_contratante = serializers.SerializerMethodField(read_only=True)
+    contratante_id = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Trabalho
         fields = '__all__'
         read_only_fields = [
-            'cliente', 'status', 'is_privado',
+            'contratante', 'status', 'is_privado',
             'criado_em', 'atualizado_em',
-            'habilidades_detalhes', 'nome_cliente', 'cliente_id'
+            'habilidades_detalhes', 'nome_contratante', 'contratante_id'
         ]
 
     # ===================== GETTERS =====================
 
-    def get_nome_cliente(self, obj):
-        if obj.cliente:
-            if hasattr(obj.cliente, 'nome') and obj.cliente.nome:
-                return obj.cliente.nome
-            elif hasattr(obj.cliente, 'username'):
-                return obj.cliente.username
-            elif hasattr(obj.cliente, 'email'):
-                return obj.cliente.email
+    def get_nome_contratante(self, obj):
+        """Retorna o nome legível do contratante do trabalho."""
+        if obj.contratante:
+            if hasattr(obj.contratante, 'nome') and obj.contratante.nome:
+                return obj.contratante.nome
+            elif hasattr(obj.contratante, 'username'):
+                return obj.contratante.username
+            elif hasattr(obj.contratante, 'email'):
+                return obj.contratante.email
         return ""
 
-    def get_cliente_id(self, obj):
-        return obj.cliente.id if obj.cliente else None
+    def get_contratante_id(self, obj):
+        """Retorna o ID do contratante vinculado."""
+        return obj.contratante.id if obj.contratante else None
 
     # ===================== VALIDATIONS =====================
 
@@ -65,15 +67,15 @@ class TrabalhoSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         usuario = self.context['request'].user
-        if usuario.tipo != 'cliente' and not usuario.is_superuser:
-            raise serializers.ValidationError("Apenas clientes ou administradores podem publicar trabalhos.")
+        if usuario.tipo != 'contratante' and not usuario.is_superuser:
+            raise serializers.ValidationError("Apenas contratantes ou administradores podem publicar trabalhos.")
         return data
 
     # ===================== CREATE =====================
 
     def create(self, validated_data):
         habilidades_texto = self._extrair_habilidades()
-        validated_data['cliente'] = self.context['request'].user
+        validated_data['contratante'] = self.context['request'].user
 
         # 🔹 Define se é privado ou público
         freelancer = validated_data.get('freelancer')
@@ -115,6 +117,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     # ===================== HABILIDADES =====================
 
     def _extrair_habilidades(self):
+        """Extrai a lista de habilidades do corpo da requisição."""
         request = self.context.get('request')
         habilidades = []
 
@@ -130,6 +133,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return habilidades
 
     def _processar_habilidades(self, trabalho, habilidades_texto):
+        """Processa e associa habilidades ao trabalho, com filtro de palavras proibidas."""
         PALAVRAS_PROIBIDAS = [
             "merda", "porra", "puta", "puto", "caralho", "buceta", "pinto", "piroca",
             "pau", "rola", "bosta", "arrombado", "vagabundo", "vagabunda", "corno",

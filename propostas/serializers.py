@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Proposta
 from datetime import date
 
+
 class PropostaSerializer(serializers.ModelSerializer):
     # 🔹 Campos extras só para leitura
     trabalho_titulo = serializers.CharField(source="trabalho.titulo", read_only=True)
@@ -11,6 +12,8 @@ class PropostaSerializer(serializers.ModelSerializer):
         model = Proposta
         fields = '__all__'
         read_only_fields = ['data_envio', 'status']
+
+    # ========================= VALIDAÇÕES =========================
 
     def validate_valor(self, value):
         if value <= 0:
@@ -32,13 +35,15 @@ class PropostaSerializer(serializers.ModelSerializer):
         if freelancer.tipo != 'freelancer':
             raise serializers.ValidationError("Somente usuários do tipo 'freelancer' podem enviar propostas.")
 
-        if trabalho.cliente == freelancer:
+        if trabalho.contratante == freelancer:
             raise serializers.ValidationError("Você não pode enviar proposta para seu próprio trabalho.")
 
         if Proposta.objects.filter(trabalho=trabalho, freelancer=freelancer).exists():
             raise serializers.ValidationError("Você já enviou uma proposta para este trabalho.")
 
         return data
+
+    # ========================= UPDATE =========================
 
     def update(self, instance, validated_data):
         request = self.context.get('request')
@@ -54,6 +59,9 @@ class PropostaSerializer(serializers.ModelSerializer):
 
 
 class AlterarStatusSerializer(serializers.Serializer):
+    """
+    Serializer simples para endpoint de alteração de status.
+    """
     status = serializers.ChoiceField(choices=['aceita', 'recusada'])
 
     def validate_status(self, value):

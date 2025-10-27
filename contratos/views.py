@@ -11,27 +11,35 @@ from notificacoes.utils import enviar_notificacao  # 🔹 Import para notificaç
 
 
 class ContratoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciamento de contratos.
+    - Admin vê todos os contratos.
+    - Usuários comuns veem apenas contratos onde são contratante ou freelancer.
+    - Criação é automática (via proposta/trabalho privado).
+    """
     serializer_class = ContratoSerializer
     permission_classes = [IsAuthenticated, PermissaoContrato]
 
     def get_queryset(self):
         """
-        Admin vê todos os contratos.
-        Usuário normal só vê contratos onde é cliente ou freelancer.
-        Os contratos são ordenados do mais recente para o mais antigo.
+        Retorna os contratos visíveis para o usuário autenticado.
+        - Superusuário vê todos.
+        - Contratante ou freelancer vê apenas os seus contratos.
         """
         user = self.request.user
         base_qs = Contrato.objects.all().order_by("-id")  # 🔹 mais novos primeiro
+
         if user.is_superuser:
             return base_qs
+
         return base_qs.filter(
-            models.Q(cliente=user) | models.Q(freelancer=user)
+            models.Q(contratante=user) | models.Q(freelancer=user)
         ).distinct()
 
     def create(self, request, *args, **kwargs):
         """
         🚫 Bloqueia criação manual de contratos.
-        Os contratos são criados automaticamente ao aceitar uma proposta/trabalho privado.
+        Os contratos são criados automaticamente ao aceitar uma proposta ou trabalho privado.
         """
         return Response(
             {"detail": "A criação de contratos é automática ao aceitar uma proposta."},
@@ -58,9 +66,10 @@ class ContratoViewSet(viewsets.ModelViewSet):
         # Se o status mudou, atualiza trabalho e notifica as partes
         if contrato_antigo.status != contrato_novo.status:
             trabalho = contrato_novo.trabalho
-            cliente = contrato_novo.cliente
+            contratante = contrato_novo.contratante
             freelancer = contrato_novo.freelancer
 
+            # ==================== CANCELAMENTO ====================
             if contrato_novo.status == "cancelado":
                 # 🔹 Se não houver contrato ativo para este trabalho, reabrir
                 if not Contrato.objects.filter(trabalho=trabalho, status="ativo").exists():
@@ -71,7 +80,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
 
                 # 🔹 Notifica as partes
                 enviar_notificacao(
-                    usuario=cliente,
+                    usuario=contratante,
                     mensagem=f"O contrato do trabalho '{trabalho.titulo}' foi cancelado.",
                     link=f"/contratos?id={contrato_novo.id}"
                 )
@@ -81,12 +90,13 @@ class ContratoViewSet(viewsets.ModelViewSet):
                     link=f"/contratos?id={contrato_novo.id}"
                 )
 
+            # ==================== REATIVAÇÃO ====================
             elif contrato_novo.status == "ativo":
                 trabalho.status = "em_andamento"
                 trabalho.save()
 
                 enviar_notificacao(
-                    usuario=cliente,
+                    usuario=contratante,
                     mensagem=f"O contrato do trabalho '{trabalho.titulo}' está ativo.",
                     link=f"/contratos?id={contrato_novo.id}"
                 )

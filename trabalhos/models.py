@@ -3,15 +3,14 @@ from django.conf import settings
 import unicodedata
 import os
 
-# Função para normalizar o nome do arquivo removendo acentos, espaços e caracteres especiais
+
+# 🔹 Função para normalizar o nome do arquivo (sem acentos, espaços ou caracteres especiais)
 def upload_to_anexos(instance, filename):
     nome, ext = os.path.splitext(filename)
-    # Remove acentos e caracteres especiais
     nome_normalizado = unicodedata.normalize('NFKD', nome).encode('ASCII', 'ignore').decode('ASCII')
-    # Substitui espaços por underline e mantém apenas caracteres seguros
     nome_normalizado = "".join([c if c.isalnum() or c == '_' else '_' for c in nome_normalizado.replace(" ", "_")])
-    # Garante unicidade básica (caso de arquivos duplicados)
     return f"anexos/{nome_normalizado}{ext}"
+
 
 class Trabalho(models.Model):
     STATUS_CHOICES = (
@@ -33,13 +32,14 @@ class Trabalho(models.Model):
         default='aberto'
     )
 
-    cliente = models.ForeignKey(
+    # 🔹 Agora vincula ao contratante (antigo cliente)
+    contratante = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='trabalhos_publicados'
     )
 
-    # 🔹 Caso seja um trabalho privado
+    # 🔹 Caso seja um trabalho privado (freelancer específico)
     freelancer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

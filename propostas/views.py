@@ -14,7 +14,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gerenciamento de propostas.
     - Freelancers só veem suas próprias propostas.
-    - Clientes só veem propostas de seus trabalhos.
+    - Contratantes só veem propostas de seus trabalhos.
     - Admin pode ver todas.
     """
     queryset = Proposta.objects.all()
@@ -30,19 +30,19 @@ class PropostaViewSet(viewsets.ModelViewSet):
         if user.tipo == 'freelancer':
             return Proposta.objects.filter(freelancer=user).order_by('-data_envio')
 
-        if user.tipo == 'cliente':
-            return Proposta.objects.filter(trabalho__cliente=user).order_by('-data_envio')
+        if user.tipo == 'contratante':
+            return Proposta.objects.filter(trabalho__contratante=user).order_by('-data_envio')
 
         return Proposta.objects.none()
 
     def perform_create(self, serializer):
         """
-        Ao criar proposta, vincula ao freelancer logado e notifica o cliente dono do trabalho.
+        Ao criar proposta, vincula ao freelancer logado e notifica o contratante dono do trabalho.
         """
         proposta = serializer.save(freelancer=self.request.user)
 
         enviar_notificacao(
-            usuario=proposta.trabalho.cliente,
+            usuario=proposta.trabalho.contratante,
             mensagem=f"Você recebeu uma nova proposta para o trabalho '{proposta.trabalho.titulo}'.",
             link=f"/propostas?id={proposta.id}"
         )
@@ -50,7 +50,6 @@ class PropostaViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """
         Bloqueia atualização direta do status por esse endpoint.
-        🔥 CORRIGIDO: Raise exception ao invés de return Response
         """
         if 'status' in self.request.data:
             raise ValidationError("O status deve ser alterado apenas via endpoint específico.")
@@ -73,7 +72,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='alterar-status')
     def alterar_status(self, request, pk=None):
         """
-        Permite que o cliente (ou admin) altere o status da proposta:
+        Permite que o contratante (ou admin) altere o status da proposta:
         - Aceitar: cria contrato e recusa outras propostas pendentes do mesmo trabalho.
         - Recusar: atualiza status e, se necessário, reabre o trabalho.
         """
@@ -85,9 +84,9 @@ class PropostaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if request.user != proposta.trabalho.cliente and not request.user.is_superuser:
+        if request.user != proposta.trabalho.contratante and not request.user.is_superuser:
             return Response(
-                {"erro": "Apenas o cliente do trabalho ou admin pode alterar o status."},
+                {"erro": "Apenas o contratante do trabalho ou admin pode alterar o status."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -123,9 +122,10 @@ class PropostaViewSet(viewsets.ModelViewSet):
             contrato = Contrato.objects.create(
                 proposta=proposta,
                 trabalho=trabalho,
-                cliente=trabalho.cliente,
+                contratante=trabalho.contratante,
                 freelancer=proposta.freelancer,
-                valor=proposta.valor  # ✅ Corrigido: salva o valor da proposta
+                valor=proposta.valor,
+                status="ativo"
             )
 
             # 🔹 Notifica freelancer

@@ -24,8 +24,8 @@ class TrabalhoAPIView(APIView):
         # 🔹 Filtra conforme usuário
         if usuario.is_superuser:
             trabalhos = Trabalho.objects.all()
-        elif usuario.tipo == 'cliente':
-            trabalhos = Trabalho.objects.filter(cliente=usuario)
+        elif usuario.tipo == 'contratante':
+            trabalhos = Trabalho.objects.filter(contratante=usuario)
         else:  # freelancer
             trabalhos = Trabalho.objects.filter(
                 Q(is_privado=False) | Q(freelancer=usuario)
@@ -108,7 +108,7 @@ class TrabalhoDetalheAPIView(APIView):
     def put(self, request, pk):
         trabalho = self.get_object(pk)
 
-        if request.user != trabalho.cliente and not request.user.is_superuser:
+        if request.user != trabalho.contratante and not request.user.is_superuser:
             return Response({'erro': 'Você não tem permissão para editar este trabalho.'},
                             status=status.HTTP_403_FORBIDDEN)
 
@@ -138,7 +138,7 @@ class TrabalhoDetalheAPIView(APIView):
     def delete(self, request, pk):
         trabalho = self.get_object(pk)
 
-        if request.user != trabalho.cliente and not request.user.is_superuser:
+        if request.user != trabalho.contratante and not request.user.is_superuser:
             return Response({'erro': 'Você não tem permissão para excluir este trabalho.'},
                             status=status.HTTP_403_FORBIDDEN)
 
@@ -151,7 +151,7 @@ class TrabalhoDetalheAPIView(APIView):
         if is_privado and freelancer_destino:
             enviar_notificacao(
                 usuario=freelancer_destino,
-                mensagem=f"O trabalho privado '{titulo}' foi removido pelo cliente.",
+                mensagem=f"O trabalho privado '{titulo}' foi removido pelo contratante.",
                 link="/trabalhos"
             )
         else:
@@ -159,7 +159,7 @@ class TrabalhoDetalheAPIView(APIView):
             for freelancer in freelancers:
                 enviar_notificacao(
                     usuario=freelancer,
-                    mensagem=f"O trabalho '{titulo}' foi removido pelo cliente.",
+                    mensagem=f"O trabalho '{titulo}' foi removido pelo contratante.",
                     link="/trabalhos"
                 )
 
@@ -191,7 +191,7 @@ class TrabalhoAceitarAPIView(APIView):
         contrato = Contrato.objects.create(
             proposta=proposta if proposta else None,
             trabalho=trabalho,
-            cliente=trabalho.cliente,
+            contratante=trabalho.contratante,
             freelancer=request.user,
             valor=proposta.valor if proposta else trabalho.orcamento,
             status="ativo"
@@ -199,7 +199,7 @@ class TrabalhoAceitarAPIView(APIView):
 
         # Notificações
         enviar_notificacao(
-            usuario=trabalho.cliente,
+            usuario=trabalho.contratante,
             mensagem=f"O freelancer aceitou o trabalho privado: '{trabalho.titulo}'. O contrato foi criado automaticamente.",
             link=f"/contratos/{contrato.id}"
         )
@@ -209,7 +209,6 @@ class TrabalhoAceitarAPIView(APIView):
             link=f"/contratos/{contrato.id}"
         )
 
-        # 🔹 Resposta JSON → frontend decide navegação
         return Response({
             "mensagem": "Trabalho aceito e contrato criado com sucesso!",
             "contrato_id": contrato.id
@@ -231,12 +230,11 @@ class TrabalhoRecusarAPIView(APIView):
         trabalho.save()
 
         enviar_notificacao(
-            usuario=trabalho.cliente,
+            usuario=trabalho.contratante,
             mensagem=f"O freelancer recusou o trabalho privado: '{trabalho.titulo}'.",
             link=f"/trabalhos/detalhes/{trabalho.id}"
         )
 
-        # 🔹 Resposta JSON → frontend decide navegação
         return Response({
             "mensagem": "Trabalho recusado com sucesso!"
         }, status=status.HTTP_200_OK)
