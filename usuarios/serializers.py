@@ -1,4 +1,3 @@
-# usuarios/serializers.py
 from rest_framework import serializers
 import re
 from django.conf import settings
@@ -49,24 +48,20 @@ class UsuarioSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         foto = data.get('foto_perfil')
         if foto:
-            # Se Cloudinary já mandou absoluta (http/https), mantém
             if not (foto.startswith('http://') or foto.startswith('https://')):
                 if request is not None:
                     data['foto_perfil'] = request.build_absolute_uri(foto)
-
         return data
 
     # --------------------- Normalização (entrada) ---------------------
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
-
         if 'cpf' in data and data['cpf']:
             data['cpf'] = re.sub(r'\D', '', data['cpf'])
         if 'cnpj' in data and data['cnpj']:
             data['cnpj'] = re.sub(r'\D', '', data['cnpj'])
         if 'telefone' in data and data['telefone']:
             data['telefone'] = re.sub(r'\D', '', data['telefone'])
-
         return data
 
     # --------------------- Validadores únicos ---------------------
@@ -85,32 +80,25 @@ class UsuarioSerializer(serializers.ModelSerializer):
             qs = qs.exclude(id=self.instance.id)
         if qs.exists():
             raise serializers.ValidationError("CPF já cadastrado.")
-
-        # 🔹 Consulta real na API (pacote configurável)
         try:
             consultar_documento(cpf, settings.CPF_CNPJ_PACOTE_CPF_C)
         except CPF_CNPJValidationError as e:
             raise serializers.ValidationError(str(e))
-
         return cpf
 
     def validate_cnpj(self, value):
         cnpj = re.sub(r'\D', '', value or '')
         if not cnpj:
             return cnpj
-
         qs = Usuario.objects.filter(cnpj=cnpj)
         if self.instance:
             qs = qs.exclude(id=self.instance.id)
         if qs.exists():
             raise serializers.ValidationError("CNPJ já cadastrado.")
-
-        # 🔹 Consulta real na API (pacote configurável)
         try:
             consultar_documento(cnpj, settings.CPF_CNPJ_PACOTE_CNPJ_C)
         except CPF_CNPJValidationError as e:
             raise serializers.ValidationError(str(e))
-
         return cnpj
 
     def validate_telefone(self, value):
@@ -138,8 +126,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        validated_data.pop('groups', None)
-        validated_data.pop('user_permissions', None)
+        validated_data.pop('groups', None, )
+        validated_data.pop('user_permissions', None, )
         validated_data['is_active'] = True
 
         user = Usuario(**validated_data)
@@ -147,19 +135,15 @@ class UsuarioSerializer(serializers.ModelSerializer):
             self.validate_password(password)
             user.set_password(password)
         else:
-            # Se por algum motivo não vier senha, evita criar usuário sem senha
             raise serializers.ValidationError({"password": "Senha é obrigatória."})
-
         user.save()
         return user
 
     def update(self, instance, validated_data):
-        # Permite trocar senha via PATCH/PUT do próprio usuário (quando vier)
         if 'password' in validated_data:
             senha = validated_data.pop('password')
             self.validate_password(senha)
             instance.set_password(senha)
-
         return super().update(instance, validated_data)
 
     # --------------------- Regras por tipo ---------------------
@@ -176,12 +160,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
             if not cpf:
                 raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF."})
 
-        elif tipo == 'cliente':
+        elif tipo == 'contratante':
             if not cpf:
-                raise serializers.ValidationError({"cpf": "CPF é obrigatório para clientes."})
+                raise serializers.ValidationError({"cpf": "CPF é obrigatório para contratantes."})
             if not cnpj:
-                raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para clientes."})
-
+                raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para contratantes."})
         return data
 
 
@@ -211,7 +194,6 @@ class TrocaSenhaSerializer(serializers.Serializer):
 
         if data['nova_senha'] != data['confirmar_nova_senha']:
             raise serializers.ValidationError({"confirmar_nova_senha": "As senhas não coincidem."})
-
         return data
 
 
@@ -253,21 +235,17 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
         return round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
 
     def get_trabalhos_publicados(self, obj):
-        # Se veio anotado no queryset (views.perfil_publico), usa ele; senão, faz o count normal
-        if obj.tipo != "cliente":
+        if obj.tipo != "contratante":
             return None
         if hasattr(obj, "trabalhos_publicados_count"):
             return obj.trabalhos_publicados_count
         return obj.trabalhos_publicados.count()
 
     def get_trabalhos_concluidos(self, obj):
-        # ✅ Conta contratos concluídos do freelancer (reflete entregas reais)
         if obj.tipo != "freelancer":
             return None
-        # Se veio anotado no queryset (views.perfil_publico), usa ele
         if hasattr(obj, "contratos_concluidos_count"):
             return obj.contratos_concluidos_count
-        # Fallback: consulta direta
         return Contrato.objects.filter(freelancer=obj, status="concluido").count()
 
 
@@ -283,7 +261,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8, write_only=True)
 
     def validate_new_password(self, value):
-        # Validações fortes reaproveitadas
         if len(value) < 8:
             raise serializers.ValidationError("A senha deve ter pelo menos 8 caracteres.")
         if not re.search(r"[A-Z]", value):

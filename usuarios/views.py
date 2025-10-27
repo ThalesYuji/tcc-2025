@@ -1,4 +1,3 @@
-# usuarios/views.py
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
@@ -11,13 +10,14 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.db.models import Q, Count
-from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 
 from .models import Usuario
 from .serializers import (
     UsuarioSerializer,
     TrocaSenhaSerializer,
-    UsuarioPublicoSerializer
+    UsuarioPublicoSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer
 )
 from .permissoes import PermissaoUsuario
 from notificacoes.utils import enviar_notificacao
@@ -36,7 +36,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - `retrieve`: qualquer usuário autenticado (restrito por regras)
     - `list`: 
         • superuser → vê todos (pode filtrar por ?tipo=)  
-        • cliente → vê apenas freelancers  
+        • contratante → vê apenas freelancers  
         • freelancer → vê apenas a si mesmo
     - `update` / `partial_update`: restrito ao próprio usuário ou admin
     - `alterar_senha` e `excluir_conta`: endpoints extras
@@ -52,7 +52,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return [AllowAny()]
         elif self.action in ["perfil_publico", "avaliacoes_publicas", "metricas_performance"]:
-            return [AllowAny()]  # 🔹 acessível mesmo sem login
+            return [AllowAny()]
         elif self.action in ["retrieve", "list"]:
             return [IsAuthenticated()]
         elif self.action in [
@@ -72,8 +72,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(tipo=tipo)
             return queryset
 
-        # 🔹 Cliente: só vê freelancers
-        if hasattr(user, "tipo") and user.tipo == "cliente":
+        # 🔹 Contratante: só vê freelancers
+        if hasattr(user, "tipo") and user.tipo == "contratante":
             return Usuario.objects.filter(tipo="freelancer")
 
         # 🔹 Freelancer: só vê a si mesmo
@@ -92,14 +92,13 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perfil_publico(self, request, pk=None):
         """Retorna dados públicos de qualquer usuário (ignora restrições do queryset)."""
         try:
-            # ✅ Anota contagens para performance e correção do "concluídos"
             usuario = (
                 Usuario.objects
                 .filter(pk=pk)
                 .annotate(
                     trabalhos_publicados_count=Count('trabalhos_publicados', distinct=True),
                     contratos_concluidos_count=Count(
-                        'contratos_freelancer',  # related_name em Contrato.freelancer
+                        'contratos_freelancer',
                         filter=Q(contratos_freelancer__status='concluido'),
                         distinct=True
                     )
@@ -158,7 +157,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 "mensagem": "Métricas disponíveis apenas para freelancers"
             })
 
-        # 🔹 Busca contratos do freelancer
         contratos_total = Contrato.objects.filter(freelancer=usuario)
         contratos_concluidos = contratos_total.filter(status='concluido')
         contratos_cancelados = contratos_total.filter(status='cancelado')
@@ -167,10 +165,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         concluidos = contratos_concluidos.count()
         cancelados = contratos_cancelados.count()
 
-        # 📈 Taxa de Conclusão: (concluídos / total) * 100
         taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0
 
-        # 📈 Taxa de Entrega no Prazo
         if concluidos > 0:
             entregas_no_prazo = 0
             for contrato in contratos_concluidos.select_related('trabalho'):
@@ -181,14 +177,13 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         else:
             taxa_entrega_prazo = 0
 
-        # 📈 Taxa de Recontratação
         if total > 0:
-            clientes_counts = contratos_total.values('cliente').annotate(num_contratos=Count('id'))
-            total_clientes_unicos = clientes_counts.count()
-            clientes_recontrataram = sum(1 for c in clientes_counts if c['num_contratos'] >= 2)
+            contratantes_counts = contratos_total.values('contratante').annotate(num_contratos=Count('id'))
+            total_contratantes_unicos = contratantes_counts.count()
+            contratantes_recontrataram = sum(1 for c in contratantes_counts if c['num_contratos'] >= 2)
             taxa_recontratacao = round(
-                (clientes_recontrataram / total_clientes_unicos) * 100, 1
-            ) if total_clientes_unicos > 0 else 0
+                (contratantes_recontrataram / total_contratantes_unicos) * 100, 1
+            ) if total_contratantes_unicos > 0 else 0
         else:
             taxa_recontratacao = 0
 
@@ -205,9 +200,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def alterar_senha(self, request, pk=None):
         """Permite que o usuário altere a própria senha."""
         user = self.get_object()
-        serializer = TrocaSenhaSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = TrocaSenhaSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -219,7 +212,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             mensagem="Sua senha foi alterada com sucesso.",
             link="/minha-conta",
         )
-
         return Response({"mensagem": "Senha alterada com sucesso!"}, status=200)
 
     @action(detail=True, methods=["post"], url_path="excluir_conta")
@@ -247,28 +239,24 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         user = request.user
         resumo = {}
 
-        # 🔹 Freelancer
         if user.tipo == "freelancer":
             propostas = Proposta.objects.filter(freelancer=user)
             resumo["enviadas"] = propostas.count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
             resumo["recusadas"] = propostas.filter(status="recusada").count()
 
-        # 🔹 Cliente
-        elif user.tipo == "cliente":
-            propostas = Proposta.objects.filter(trabalho__cliente=user)
+        elif user.tipo == "contratante":
+            propostas = Proposta.objects.filter(trabalho__contratante=user)
             resumo["recebidas"] = propostas.count()
             resumo["pendentes"] = propostas.filter(status="pendente").count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
 
-        # 🔹 Avaliações recebidas
         avaliacoes = Avaliacao.objects.filter(avaliado=user)
         resumo["totalAvaliacoes"] = avaliacoes.count()
         resumo["mediaAvaliacao"] = (
             round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
             if avaliacoes.exists() else None
         )
-
         return Response(resumo)
 
 
@@ -307,12 +295,9 @@ class PasswordResetRequestView(APIView):
         except Usuario.DoesNotExist:
             user = None
 
-        # 🔹 Sempre retorna sucesso, para não revelar se email existe
         if user:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
-
-            # 🔹 URL do frontend (defina FRONTEND_URL no settings.py)
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
             reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
 

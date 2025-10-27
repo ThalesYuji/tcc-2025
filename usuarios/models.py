@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from cloudinary_storage.storage import MediaCloudinaryStorage  # <- garante Cloudinary no campo
+from cloudinary_storage.storage import MediaCloudinaryStorage
+
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -23,9 +24,13 @@ class UsuarioManager(BaseUserManager):
 
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
+    """
+    Modelo de usuário unificado do sistema.
+    Tipos possíveis: freelancer, contratante, admin.
+    """
     TIPO_USUARIO = (
         ('freelancer', 'Freelancer'),
-        ('cliente', 'Cliente'),
+        ('contratante', 'Contratante'),
     )
 
     email = models.EmailField(unique=True)
@@ -35,21 +40,17 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     cnpj = models.CharField(max_length=18, blank=True, null=True, unique=True)
     telefone = models.CharField(max_length=15)
 
-    # Foto de perfil -> Cloudinary
     foto_perfil = models.ImageField(
         upload_to='fotos_perfil/',
-        storage=MediaCloudinaryStorage(),   # <- força Cloudinary
+        storage=MediaCloudinaryStorage(),
         null=True,
         blank=True
     )
 
     nota_media = models.FloatField(null=True, blank=True)
     notificacao_email = models.BooleanField(default=True)
-
-    # Descrição do perfil público
     bio = models.TextField(blank=True, null=True)
 
-    # Flags de autenticação
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -59,7 +60,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['nome', 'tipo', 'cpf', 'telefone']
 
     def __str__(self):
-        return self.email
+        return f"{self.nome} ({self.tipo})"
 
     def get_full_name(self):
         return self.nome
