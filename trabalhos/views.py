@@ -17,15 +17,11 @@ class TrabalhoAPIView(APIView):
     def get(self, request):
         """
         Lista trabalhos com filtros e paginação.
-        Inclui:
-        - Busca textual
-        - Filtro por habilidade
-        - Paginação manual
-        - Ordenação garantida (corrige erro 500)
+        ✅ CORRIGIDO: Ordenação garantida para evitar erro 500
         """
         usuario = request.user
-        busca = request.query_params.get("busca", "").lower()
-        habilidade_param = request.query_params.get("habilidade")
+        busca = request.query_params.get("busca", "").strip().lower()
+        habilidade_param = request.query_params.get("habilidade", "").strip()
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 6))
 
@@ -50,8 +46,9 @@ class TrabalhoAPIView(APIView):
         # 🔹 Filtro por habilidade
         if habilidade_param:
             try:
-                habilidade_obj = Habilidade.objects.get(id=habilidade_param)
-            except (ValueError, Habilidade.DoesNotExist):
+                habilidade_id = int(habilidade_param)
+                habilidade_obj = Habilidade.objects.filter(id=habilidade_id).first()
+            except (ValueError, TypeError):
                 habilidade_obj = Habilidade.objects.filter(
                     nome__iexact=habilidade_param
                 ).first()
@@ -61,7 +58,7 @@ class TrabalhoAPIView(APIView):
             else:
                 trabalhos = trabalhos.none()
 
-        # ✅ Ordenação obrigatória (evita erro 500)
+        # ✅ CRÍTICO: Ordenação obrigatória (evita erro 500)
         trabalhos = trabalhos.order_by("-criado_em", "-id")
 
         # 🔹 Paginação manual
@@ -70,21 +67,20 @@ class TrabalhoAPIView(APIView):
         end = start + page_size
         trabalhos_paginados = trabalhos[start:end]
 
-        serializer = TrabalhoSerializer(trabalhos_paginados, many=True)
+        serializer = TrabalhoSerializer(trabalhos_paginados, many=True, context={"request": request})
+        
         return Response(
             {
                 "results": serializer.data,
                 "total": total,
                 "page": page,
                 "page_size": page_size,
-                "num_pages": (total + page_size - 1) // page_size,
+                "num_pages": (total + page_size - 1) // page_size if page_size > 0 else 1,
             }
         )
 
     def post(self, request):
-        """
-        Cria um novo trabalho e dispara notificações.
-        """
+        """Cria um novo trabalho e dispara notificações."""
         serializer = TrabalhoSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             trabalho = serializer.save()
@@ -118,7 +114,7 @@ class TrabalhoDetalheAPIView(APIView):
 
     def get(self, request, pk):
         trabalho = self.get_object(pk)
-        serializer = TrabalhoSerializer(trabalho)
+        serializer = TrabalhoSerializer(trabalho, context={"request": request})
         return Response(serializer.data)
 
     def put(self, request, pk):
@@ -137,7 +133,6 @@ class TrabalhoDetalheAPIView(APIView):
             trabalho_atualizado = serializer.save()
             from usuarios.models import Usuario
 
-            # 🔹 Notificações de atualização
             if trabalho_atualizado.is_privado and trabalho_atualizado.freelancer:
                 enviar_notificacao(
                     usuario=trabalho_atualizado.freelancer,
@@ -192,7 +187,6 @@ class TrabalhoDetalheAPIView(APIView):
         )
 
 
-# 🔹 Aceitar trabalho privado → cria contrato automaticamente
 class TrabalhoAceitarAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -208,7 +202,6 @@ class TrabalhoAceitarAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Atualiza status
         trabalho.status = "em_andamento"
         trabalho.save()
 
@@ -225,7 +218,6 @@ class TrabalhoAceitarAPIView(APIView):
             status="ativo",
         )
 
-        # Notificações
         enviar_notificacao(
             usuario=trabalho.contratante,
             mensagem=f"O freelancer aceitou o trabalho privado: '{trabalho.titulo}'. O contrato foi criado automaticamente.",
@@ -243,7 +235,6 @@ class TrabalhoAceitarAPIView(APIView):
         )
 
 
-# 🔹 Recusar trabalho privado
 class TrabalhoRecusarAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
