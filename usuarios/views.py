@@ -17,12 +17,12 @@ from .serializers import (
     TrocaSenhaSerializer,
     UsuarioPublicoSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
 )
 from .permissoes import PermissaoUsuario
 from notificacoes.utils import enviar_notificacao
 
-# Importações para avaliações e propostas
+# Importações adicionais
 from avaliacoes.models import Avaliacao
 from avaliacoes.serializers import AvaliacaoSerializer
 from propostas.models import Proposta
@@ -31,22 +31,16 @@ from contratos.models import Contrato
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     """
-    CRUD de usuários.
-    - `create`: público (cadastro)
-    - `retrieve`: qualquer usuário autenticado (restrito por regras)
-    - `list`: 
-        • superuser → vê todos (pode filtrar por ?tipo=)  
-        • contratante → vê apenas freelancers  
-        • freelancer → vê apenas a si mesmo
-    - `update` / `partial_update`: restrito ao próprio usuário ou admin
-    - `alterar_senha` e `excluir_conta`: endpoints extras
-    - `perfil_publico`: retorna dados de qualquer usuário (sem restrição)
-    - `avaliacoes_publicas`: retorna avaliações recebidas por um usuário (sem restrição)
-    - `resumo`: retorna resumo para o Dashboard do usuário logado
-    - `metricas_performance`: retorna métricas reais de performance
+    CRUD de usuários + endpoints adicionais.
+    Inclui:
+    - /usuarios/ → listagem com regras por tipo
+    - /usuarios/{id}/perfil_publico/
+    - /usuarios/{id}/avaliacoes_publicas/
+    - /usuarios/{id}/metricas_performance/
+    - /usuarios/me/resumo/
     """
     serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.all()
+    queryset = Usuario.objects.all().order_by("-id")  # ✅ ordenação global adicionada
 
     def get_permissions(self):
         if self.action == "create":
@@ -62,26 +56,30 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
+        """
+        Regras de visibilidade de usuários conforme tipo:
+        - superuser: todos (com filtro opcional ?tipo=)
+        - contratante: vê apenas freelancers
+        - freelancer: vê apenas a si mesmo
+        """
         user = self.request.user
         tipo = self.request.query_params.get("tipo")
 
-        # 🔹 Superusuário: vê todos e pode filtrar
         if user.is_superuser:
-            queryset = Usuario.objects.all()
+            queryset = Usuario.objects.all().order_by("-id")  # ✅ garante ordenação
             if tipo:
                 queryset = queryset.filter(tipo=tipo)
             return queryset
 
-        # 🔹 Contratante: só vê freelancers
         if hasattr(user, "tipo") and user.tipo == "contratante":
-            return Usuario.objects.filter(tipo="freelancer")
+            return Usuario.objects.filter(tipo="freelancer").order_by("-id")  # ✅ ordenado
 
-        # 🔹 Freelancer: só vê a si mesmo
         if hasattr(user, "tipo") and user.tipo == "freelancer":
-            return Usuario.objects.filter(id=user.id)
+            return Usuario.objects.filter(id=user.id).order_by("-id")  # ✅ ordenado
 
         return Usuario.objects.none()
 
+    # ------------------ PERFIL PÚBLICO ------------------
     @action(
         detail=True,
         methods=["get"],
@@ -90,18 +88,18 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
     )
     def perfil_publico(self, request, pk=None):
-        """Retorna dados públicos de qualquer usuário (ignora restrições do queryset)."""
+        """Retorna dados públicos de qualquer usuário (sem restrição)."""
         try:
             usuario = (
                 Usuario.objects
                 .filter(pk=pk)
                 .annotate(
-                    trabalhos_publicados_count=Count('trabalhos_publicados', distinct=True),
+                    trabalhos_publicados_count=Count("trabalhos_publicados", distinct=True),
                     contratos_concluidos_count=Count(
-                        'contratos_freelancer',
-                        filter=Q(contratos_freelancer__status='concluido'),
-                        distinct=True
-                    )
+                        "contratos_freelancer",
+                        filter=Q(contratos_freelancer__status="concluido"),
+                        distinct=True,
+                    ),
                 )
                 .get()
             )
@@ -111,6 +109,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = UsuarioPublicoSerializer(usuario, context={"request": request})
         return Response(serializer.data)
 
+    # ------------------ AVALIAÇÕES PÚBLICAS ------------------
     @action(
         detail=True,
         methods=["get"],
@@ -119,16 +118,17 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
     )
     def avaliacoes_publicas(self, request, pk=None):
-        """Retorna avaliações públicas recebidas por um usuário."""
+        """Retorna avaliações recebidas por um usuário."""
         try:
             usuario = Usuario.objects.get(pk=pk)
         except Usuario.DoesNotExist:
             return Response({"detail": "Usuário não encontrado."}, status=404)
 
-        avaliacoes = Avaliacao.objects.filter(avaliado=usuario).select_related("avaliador")
+        avaliacoes = Avaliacao.objects.filter(avaliado=usuario).select_related("avaliador").order_by("-id")
         serializer = AvaliacaoSerializer(avaliacoes, many=True, context={"request": request})
         return Response(serializer.data)
 
+    # ------------------ MÉTRICAS DE PERFORMANCE ------------------
     @action(
         detail=True,
         methods=["get"],
@@ -137,15 +137,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
     )
     def metricas_performance(self, request, pk=None):
-        """
-        Retorna métricas reais de performance do usuário (para freelancers).
-        """
+        """Retorna métricas de performance para freelancers."""
         try:
             usuario = Usuario.objects.get(pk=pk)
         except Usuario.DoesNotExist:
             return Response({"detail": "Usuário não encontrado."}, status=404)
 
-        # 📊 Métricas apenas para freelancers
         if usuario.tipo != "freelancer":
             return Response({
                 "taxa_conclusao": None,
@@ -158,34 +155,31 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             })
 
         contratos_total = Contrato.objects.filter(freelancer=usuario)
-        contratos_concluidos = contratos_total.filter(status='concluido')
-        contratos_cancelados = contratos_total.filter(status='cancelado')
-        
+        contratos_concluidos = contratos_total.filter(status="concluido")
+        contratos_cancelados = contratos_total.filter(status="cancelado")
+
         total = contratos_total.count()
         concluidos = contratos_concluidos.count()
         cancelados = contratos_cancelados.count()
 
         taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0
 
-        if concluidos > 0:
-            entregas_no_prazo = 0
-            for contrato in contratos_concluidos.select_related('trabalho'):
-                if contrato.data_entrega and contrato.trabalho.prazo:
-                    if contrato.data_entrega <= contrato.trabalho.prazo:
-                        entregas_no_prazo += 1
-            taxa_entrega_prazo = round((entregas_no_prazo / concluidos) * 100, 1)
-        else:
-            taxa_entrega_prazo = 0
+        entregas_no_prazo = 0
+        for contrato in contratos_concluidos.select_related("trabalho"):
+            if contrato.data_entrega and contrato.trabalho.prazo:
+                if contrato.data_entrega <= contrato.trabalho.prazo:
+                    entregas_no_prazo += 1
+        taxa_entrega_prazo = (
+            round((entregas_no_prazo / concluidos) * 100, 1) if concluidos > 0 else 0
+        )
 
-        if total > 0:
-            contratantes_counts = contratos_total.values('contratante').annotate(num_contratos=Count('id'))
-            total_contratantes_unicos = contratantes_counts.count()
-            contratantes_recontrataram = sum(1 for c in contratantes_counts if c['num_contratos'] >= 2)
-            taxa_recontratacao = round(
-                (contratantes_recontrataram / total_contratantes_unicos) * 100, 1
-            ) if total_contratantes_unicos > 0 else 0
-        else:
-            taxa_recontratacao = 0
+        contratantes_counts = contratos_total.values("contratante").annotate(num_contratos=Count("id"))
+        total_contratantes_unicos = contratantes_counts.count()
+        contratantes_recontrataram = sum(1 for c in contratantes_counts if c["num_contratos"] >= 2)
+        taxa_recontratacao = (
+            round((contratantes_recontrataram / total_contratantes_unicos) * 100, 1)
+            if total_contratantes_unicos > 0 else 0
+        )
 
         return Response({
             "taxa_conclusao": taxa_conclusao,
@@ -196,6 +190,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             "contratos_cancelados": cancelados,
         })
 
+    # ------------------ ALTERAR SENHA ------------------
     @action(detail=True, methods=["post"], url_path="alterar_senha")
     def alterar_senha(self, request, pk=None):
         """Permite que o usuário altere a própria senha."""
@@ -214,28 +209,25 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         )
         return Response({"mensagem": "Senha alterada com sucesso!"}, status=200)
 
+    # ------------------ EXCLUIR CONTA ------------------
     @action(detail=True, methods=["post"], url_path="excluir_conta")
     def excluir_conta(self, request, pk=None):
-        """Permite que o usuário exclua a própria conta (solicitando senha)."""
+        """Permite que o usuário exclua a própria conta."""
         user = self.get_object()
-        senha = self.request.data.get("senha")
+        senha = request.data.get("senha")
         if not senha:
             return Response({"erro": "Senha obrigatória."}, status=400)
         if not user.check_password(senha):
             return Response({"erro": "Senha incorreta."}, status=400)
 
-        enviar_notificacao(
-            usuario=user,
-            mensagem="Sua conta foi excluída com sucesso.",
-            link="/",
-        )
-
+        enviar_notificacao(usuario=user, mensagem="Sua conta foi excluída com sucesso.", link="/")
         user.delete()
         return Response({"mensagem": "Conta excluída com sucesso!"}, status=200)
 
+    # ------------------ RESUMO ------------------
     @action(detail=False, methods=["get"], url_path="me/resumo")
     def resumo(self, request):
-        """Resumo de atividades do usuário logado (para o Dashboard)."""
+        """Resumo de atividades do usuário logado (Dashboard)."""
         user = request.user
         resumo = {}
 
@@ -260,8 +252,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return Response(resumo)
 
 
+# ------------------ USUÁRIO LOGADO ------------------
 class UsuarioMeAPIView(APIView):
-    """Endpoint para obter e atualizar dados do próprio usuário autenticado."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -270,10 +262,7 @@ class UsuarioMeAPIView(APIView):
 
     def patch(self, request):
         serializer = UsuarioSerializer(
-            request.user,
-            data=request.data,
-            partial=True,
-            context={"request": request}
+            request.user, data=request.data, partial=True, context={"request": request}
         )
         if serializer.is_valid():
             serializer.save()
@@ -281,8 +270,8 @@ class UsuarioMeAPIView(APIView):
         return Response(serializer.errors, status=400)
 
 
+# ------------------ RECUPERAÇÃO DE SENHA ------------------
 class PasswordResetRequestView(APIView):
-    """Recebe um e-mail e envia o link de redefinição se o usuário existir."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -317,12 +306,11 @@ class PasswordResetRequestView(APIView):
 
         return Response(
             {"detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 
 class PasswordResetConfirmView(APIView):
-    """Valida UID + Token e altera a senha do usuário."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -343,5 +331,4 @@ class PasswordResetConfirmView(APIView):
 
         user.set_password(new_password)
         user.save()
-
         return Response({"detail": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)
