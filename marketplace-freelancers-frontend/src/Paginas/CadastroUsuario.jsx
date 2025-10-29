@@ -92,7 +92,7 @@ export default function CadastroUsuario() {
     if (!/[A-Z]/.test(senha)) errosSenha.push("letra maiúscula");
     if (!/[a-z]/.test(senha)) errosSenha.push("letra minúscula");
     if (!/[0-9]/.test(senha)) errosSenha.push("número");
-    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(senha)) errosSenha.push("símbolo especial");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha)) errosSenha.push("símbolo especial");
     return errosSenha;
   }
 
