@@ -16,50 +16,98 @@ export default function HomeInicial() {
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        let res = null;
+      // ✅ Proteção: não executa sem usuário logado
+      if (!usuarioLogado) {
+        setCarregando(false);
+        return;
+      }
 
-        // 🔹 Carrega trabalhos ou freelancers conforme tipo
-        if (usuarioLogado?.tipo === "freelancer") {
-          res = await api.get(`/trabalhos/?page=${pagina}&page_size=6`);
-        } else if (usuarioLogado?.tipo === "contratante") {
-          res = await api.get(`/usuarios/?tipo=freelancer&page=${pagina}&page_size=6`);
+      try {
+        setCarregando(true);
+        setErro("");
+
+        let endpoint = "";
+        
+        // 🔹 Define endpoint baseado no tipo de usuário
+        if (usuarioLogado.tipo === "freelancer") {
+          endpoint = `/trabalhos/?page=${pagina}&page_size=6`;
+        } else if (usuarioLogado.tipo === "contratante") {
+          endpoint = `/usuarios/?tipo=freelancer&page=${pagina}&page_size=6`;
         } else {
-          console.warn("Tipo de usuário não reconhecido:", usuarioLogado?.tipo);
+          console.warn("Tipo de usuário não reconhecido:", usuarioLogado.tipo);
           setErro("Tipo de usuário não reconhecido. Verifique seu cadastro.");
           setCarregando(false);
           return;
         }
 
-        // 🔹 Proteção contra resposta vazia
+        console.log("🔍 Buscando:", endpoint);
+
+        // ✅ Faz requisição
+        const res = await api.get(endpoint);
+
+        console.log("✅ Resposta recebida:", res.data);
+
+        // ✅ Valida resposta
         if (!res || !res.data) {
-          console.error("Resposta inválida da API:", res);
-          setErro("Erro ao carregar oportunidades. Resposta inválida do servidor.");
-          setCarregando(false);
-          return;
+          throw new Error("Resposta inválida da API");
         }
 
-        // 🔹 Trata resultados paginados ou diretos
-        if (res.data.results) {
-          setOportunidades(res.data.results);
+        // 🔹 Trata paginação do DRF (rest_framework)
+        if (res.data.results !== undefined) {
+          // Formato DRF: { count, next, previous, results }
+          setOportunidades(res.data.results || []);
           setTemMais(!!res.data.next);
-          setTotalPaginas(Math.ceil(res.data.count / 6));
-        } else {
+          
+          const pageSize = 6;
+          const totalItens = res.data.count || 0;
+          setTotalPaginas(Math.ceil(totalItens / pageSize));
+        } 
+        // 🔹 Resposta customizada do backend
+        else if (res.data.total !== undefined) {
+          // Formato: { results, total, page, page_size, num_pages }
+          setOportunidades(res.data.results || []);
+          setTotalPaginas(res.data.num_pages || 1);
+          setTemMais(res.data.page < res.data.num_pages);
+        }
+        // 🔹 Array direto
+        else if (Array.isArray(res.data)) {
           setOportunidades(res.data);
           setTemMais(false);
           setTotalPaginas(1);
         }
+        // ❌ Formato desconhecido
+        else {
+          console.error("Formato de resposta desconhecido:", res.data);
+          setOportunidades([]);
+          setTemMais(false);
+          setTotalPaginas(1);
+        }
 
-        setErro("");
       } catch (err) {
-        console.error("Erro ao carregar oportunidades:", err);
-        setErro("Erro ao carregar oportunidades. Tente novamente mais tarde.");
+        console.error("❌ Erro ao carregar oportunidades:", err);
+        
+        // Mensagens de erro mais específicas
+        if (err.response) {
+          setErro(
+            `Erro ${err.response.status}: ${
+              err.response.data?.detail || 
+              err.response.data?.message || 
+              "Erro ao carregar dados do servidor"
+            }`
+          );
+        } else if (err.request) {
+          setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+        } else {
+          setErro(err.message || "Erro desconhecido ao carregar oportunidades.");
+        }
+        
+        setOportunidades([]);
       } finally {
         setCarregando(false);
       }
     }
 
-    if (usuarioLogado) fetchData();
+    fetchData();
   }, [usuarioLogado, pagina]);
 
   // 🔹 Estado de carregamento
@@ -81,7 +129,10 @@ export default function HomeInicial() {
         <div className="error-container">
           <div className="empty-icon">⚠️</div>
           <h3 className="empty-title">Acesso Negado</h3>
-          <p className="empty-description">Usuário não autenticado!</p>
+          <p className="empty-description">Você precisa estar logado para acessar esta página.</p>
+          <Link to="/login" className="btn gradient-btn">
+            <i className="bi bi-box-arrow-in-right"></i> Fazer Login
+          </Link>
         </div>
       </div>
     );
@@ -118,7 +169,7 @@ export default function HomeInicial() {
         </div>
 
         <h1 className="user-greeting">
-          Olá, {usuarioLogado.nome || usuarioLogado.username}!
+          Olá, {usuarioLogado.nome || usuarioLogado.username || "Usuário"}!
         </h1>
 
         <p className="hero-description">
@@ -167,6 +218,12 @@ export default function HomeInicial() {
             <div className="empty-icon">❌</div>
             <h3 className="empty-title">Ops! Algo deu errado</h3>
             <p className="empty-description">{erro}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="btn gradient-btn"
+            >
+              <i className="bi bi-arrow-clockwise"></i> Tentar Novamente
+            </button>
           </div>
         )}
 
@@ -198,9 +255,9 @@ export default function HomeInicial() {
                 ? oportunidades.map((trabalho) => (
                     <div key={trabalho.id} className="job-card modern-card">
                       <div className="job-card-body">
-                        <h3 className="job-title">{trabalho.titulo}</h3>
+                        <h3 className="job-title">{trabalho.titulo || "Sem título"}</h3>
                         <p className="job-description">
-                          {trabalho.descricao?.length > 150
+                          {trabalho.descricao && trabalho.descricao.length > 150
                             ? trabalho.descricao.slice(0, 150) + "..."
                             : trabalho.descricao || "Sem descrição disponível."}
                         </p>
@@ -220,37 +277,41 @@ export default function HomeInicial() {
                             src={
                               freelancer.foto_perfil.startsWith("http")
                                 ? freelancer.foto_perfil
-                                : `http://localhost:8000${freelancer.foto_perfil}`
+                                : `${import.meta.env.VITE_API_URL || "http://localhost:8000"}${freelancer.foto_perfil}`
                             }
-                            alt={freelancer.nome}
+                            alt={freelancer.nome || "Avatar"}
                             className="freelancer-avatar"
-                          />
-                        ) : (
-                          <div
-                            className="freelancer-avatar"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: "var(--superficie-hover)",
-                              color: "var(--cor-texto-light)",
-                              fontSize: "2rem"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
                             }}
-                          >
-                            <i className="bi bi-person-circle"></i>
-                          </div>
-                        )}
+                          />
+                        ) : null}
+                        
+                        <div
+                          className="freelancer-avatar"
+                          style={{
+                            display: freelancer.foto_perfil ? "none" : "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "var(--superficie-hover)",
+                            color: "var(--cor-texto-light)",
+                            fontSize: "2rem"
+                          }}
+                        >
+                          <i className="bi bi-person-circle"></i>
+                        </div>
 
                         <h3 className="freelancer-name">
-                          {freelancer.nome || freelancer.username}
+                          {freelancer.nome || freelancer.username || "Freelancer"}
                         </h3>
 
                         <div className="skills-container">
-                          {freelancer.habilidades?.length > 0 ? (
+                          {freelancer.habilidades && freelancer.habilidades.length > 0 ? (
                             <>
                               {freelancer.habilidades.slice(0, 3).map((habilidade, idx) => (
                                 <span key={idx} className="skill-badge">
-                                  {habilidade.nome}
+                                  {habilidade.nome || habilidade}
                                 </span>
                               ))}
                               {freelancer.habilidades.length > 3 && (
@@ -270,7 +331,7 @@ export default function HomeInicial() {
                         {freelancer.nota_media ? (
                           <div className="rating-display">
                             <span className="rating-stars">⭐</span>
-                            <span>{freelancer.nota_media.toFixed(1)}</span>
+                            <span>{Number(freelancer.nota_media).toFixed(1)}</span>
                             <span className="rating-text">• Avaliado</span>
                           </div>
                         ) : (
@@ -288,6 +349,31 @@ export default function HomeInicial() {
                     </div>
                   ))}
             </div>
+
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="pagination-container">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                  disabled={pagina === 1}
+                >
+                  <i className="bi bi-chevron-left"></i> Anterior
+                </button>
+                
+                <span className="pagination-info">
+                  Página {pagina} de {totalPaginas}
+                </span>
+                
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={pagina === totalPaginas}
+                >
+                  Próxima <i className="bi bi-chevron-right"></i>
+                </button>
+              </div>
+            )}
           </>
         )}
       </section>
