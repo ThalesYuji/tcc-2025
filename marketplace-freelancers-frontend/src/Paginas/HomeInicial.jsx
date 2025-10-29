@@ -17,15 +17,29 @@ export default function HomeInicial() {
   useEffect(() => {
     async function fetchData() {
       try {
-        let res;
+        let res = null;
+
+        // 🔹 Carrega trabalhos ou freelancers conforme tipo
         if (usuarioLogado?.tipo === "freelancer") {
           res = await api.get(`/trabalhos/?page=${pagina}&page_size=6`);
         } else if (usuarioLogado?.tipo === "contratante") {
-          res = await api.get(
-            `/usuarios/?tipo=freelancer&page=${pagina}&page_size=6`
-          );
+          res = await api.get(`/usuarios/?tipo=freelancer&page=${pagina}&page_size=6`);
+        } else {
+          console.warn("Tipo de usuário não reconhecido:", usuarioLogado?.tipo);
+          setErro("Tipo de usuário não reconhecido. Verifique seu cadastro.");
+          setCarregando(false);
+          return;
         }
 
+        // 🔹 Proteção contra resposta vazia
+        if (!res || !res.data) {
+          console.error("Resposta inválida da API:", res);
+          setErro("Erro ao carregar oportunidades. Resposta inválida do servidor.");
+          setCarregando(false);
+          return;
+        }
+
+        // 🔹 Trata resultados paginados ou diretos
         if (res.data.results) {
           setOportunidades(res.data.results);
           setTemMais(!!res.data.next);
@@ -35,17 +49,20 @@ export default function HomeInicial() {
           setTemMais(false);
           setTotalPaginas(1);
         }
+
+        setErro("");
       } catch (err) {
-        console.error("Erro ao carregar:", err);
-        setErro("Erro ao carregar oportunidades.");
+        console.error("Erro ao carregar oportunidades:", err);
+        setErro("Erro ao carregar oportunidades. Tente novamente mais tarde.");
       } finally {
         setCarregando(false);
       }
     }
+
     if (usuarioLogado) fetchData();
   }, [usuarioLogado, pagina]);
 
-  // Estados de loading e erro
+  // 🔹 Estado de carregamento
   if (carregando) {
     return (
       <div className="page-container">
@@ -57,6 +74,7 @@ export default function HomeInicial() {
     );
   }
 
+  // 🔹 Usuário não logado
   if (!usuarioLogado) {
     return (
       <div className="page-container">
@@ -69,97 +87,63 @@ export default function HomeInicial() {
     );
   }
 
-  // Configuração dos atalhos baseada no tipo de usuário
+  // 🔹 Atalhos rápidos do painel
   const getShortcuts = () => {
     const baseShortcuts = [
-      {
-        path: "/propostas",
-        icon: "bi-file-earmark-text",
-        label: "Propostas",
-        color: "bg-primary"
-      },
-      {
-        path: "/contratos",
-        icon: "bi-file-earmark-check",
-        label: "Contratos",
-        color: "bg-success"
-      },
-      {
-        path: "/notificacoes",
-        icon: "bi-bell",
-        label: "Notificações",
-        color: "bg-warning"
-      }
+      { path: "/propostas", icon: "bi-file-earmark-text", label: "Propostas", color: "bg-primary" },
+      { path: "/contratos", icon: "bi-file-earmark-check", label: "Contratos", color: "bg-success" },
+      { path: "/notificacoes", icon: "bi-bell", label: "Notificações", color: "bg-warning" }
     ];
 
     if (usuarioLogado.tipo === "contratante") {
       return [
         ...baseShortcuts,
-        {
-          path: "/trabalhos/novo",
-          icon: "bi-megaphone",
-          label: "Publicar",
-          color: "bg-danger"
-        }
+        { path: "/trabalhos/novo", icon: "bi-megaphone", label: "Publicar", color: "bg-danger" }
       ];
     } else {
       return [
         ...baseShortcuts,
-        {
-          path: "/trabalhos",
-          icon: "bi-search",
-          label: "Trabalhos",
-          color: "bg-secondary"
-        }
+        { path: "/trabalhos", icon: "bi-search", label: "Trabalhos", color: "bg-secondary" }
       ];
     }
   };
 
   return (
     <div className="home-wrapper page-container fade-in">
-      {/* Hero Section */}
+      {/* 🏠 Hero Section */}
       <section className="hero-section">
         <div className="welcome-text">
           <span className="wave-emoji">👋</span>
           <span>Bem-vindo de volta!</span>
         </div>
-        
+
         <h1 className="user-greeting">
           Olá, {usuarioLogado.nome || usuarioLogado.username}!
         </h1>
-        
+
         <p className="hero-description">
           {usuarioLogado.tipo === "freelancer"
             ? "Descubra projetos incríveis e impulsione sua carreira para o próximo nível 🚀"
             : "Conecte-se com talentos extraordinários e transforme suas ideias em realidade 💡"}
         </p>
-        
+
         {usuarioLogado.tipo === "contratante" ? (
           <Link to="/trabalhos/novo" className="hero-cta">
-            <i className="bi bi-plus-circle"></i>
-            Publicar Novo Trabalho
+            <i className="bi bi-plus-circle"></i> Publicar Novo Trabalho
           </Link>
         ) : (
           <Link to="/trabalhos" className="hero-cta">
-            <i className="bi bi-search"></i>
-            Explorar Oportunidades
+            <i className="bi bi-search"></i> Explorar Oportunidades
           </Link>
         )}
       </section>
 
-      {/* Seção de Atalhos */}
+      {/* ⚡ Atalhos Rápidos */}
       <section className="shortcuts-section section-spacing">
-        <h2 className="section-title">
-          Atalhos Rápidos
-        </h2>
-        
+        <h2 className="section-title">Atalhos Rápidos</h2>
         <div className="shortcuts-grid">
-          {getShortcuts().map((shortcut, index) => (
-            <Link 
-              key={shortcut.path} 
-              to={shortcut.path} 
-              className="shortcut-card stagger-item"
-            >
+          {getShortcuts().map((shortcut) => (
+            <Link key={shortcut.path} to={shortcut.path} className="shortcut-card stagger-item">
               <div className={`shortcut-icon ${shortcut.color}`}>
                 <i className={`bi ${shortcut.icon}`}></i>
               </div>
@@ -169,16 +153,15 @@ export default function HomeInicial() {
         </div>
       </section>
 
-      {/* Seção de Oportunidades */}
+      {/* 💼 Oportunidades */}
       <section className="opportunities-section section-spacing">
         <div className="opportunities-header">
           <h2 className="section-title">
-            {usuarioLogado.tipo === "freelancer"
-              ? "Trabalhos em Destaque"
-              : "Talentos Recomendados"}
+            {usuarioLogado.tipo === "freelancer" ? "Trabalhos em Destaque" : "Talentos Recomendados"}
           </h2>
         </div>
 
+        {/* Mensagem de erro */}
         {erro && (
           <div className="error-container">
             <div className="empty-icon">❌</div>
@@ -187,6 +170,7 @@ export default function HomeInicial() {
           </div>
         )}
 
+        {/* Nenhum resultado */}
         {!erro && oportunidades.length === 0 && (
           <div className="empty-opportunities">
             <div className="empty-icon">
@@ -200,13 +184,13 @@ export default function HomeInicial() {
             </p>
             {usuarioLogado.tipo === "contratante" && (
               <Link to="/trabalhos/novo" className="btn gradient-btn">
-                <i className="bi bi-plus-circle"></i>
-                Publicar Trabalho
+                <i className="bi bi-plus-circle"></i> Publicar Trabalho
               </Link>
             )}
           </div>
         )}
 
+        {/* Listagem */}
         {!erro && oportunidades.length > 0 && (
           <>
             <div className="opportunities-grid">
@@ -215,20 +199,14 @@ export default function HomeInicial() {
                     <div key={trabalho.id} className="job-card modern-card">
                       <div className="job-card-body">
                         <h3 className="job-title">{trabalho.titulo}</h3>
-                        
                         <p className="job-description">
                           {trabalho.descricao?.length > 150
                             ? trabalho.descricao.slice(0, 150) + "..."
                             : trabalho.descricao || "Sem descrição disponível."}
                         </p>
-                        
                         <div className="job-actions">
-                          <Link
-                            to={`/trabalhos/detalhes/${trabalho.id}`}
-                            className="btn gradient-btn"
-                          >
-                            <i className="bi bi-eye"></i>
-                            Ver Detalhes
+                          <Link to={`/trabalhos/detalhes/${trabalho.id}`} className="btn gradient-btn">
+                            <i className="bi bi-eye"></i> Ver Detalhes
                           </Link>
                         </div>
                       </div>
@@ -248,22 +226,25 @@ export default function HomeInicial() {
                             className="freelancer-avatar"
                           />
                         ) : (
-                          <div className="freelancer-avatar" style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: 'var(--superficie-hover)',
-                            color: 'var(--cor-texto-light)',
-                            fontSize: '2rem'
-                          }}>
+                          <div
+                            className="freelancer-avatar"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "var(--superficie-hover)",
+                              color: "var(--cor-texto-light)",
+                              fontSize: "2rem"
+                            }}
+                          >
                             <i className="bi bi-person-circle"></i>
                           </div>
                         )}
-                        
+
                         <h3 className="freelancer-name">
                           {freelancer.nome || freelancer.username}
                         </h3>
-                        
+
                         <div className="skills-container">
                           {freelancer.habilidades?.length > 0 ? (
                             <>
@@ -273,31 +254,19 @@ export default function HomeInicial() {
                                 </span>
                               ))}
                               {freelancer.habilidades.length > 3 && (
-                                <span className="skill-badge" style={{
-                                  background: 'var(--cor-neutro)'
-                                }}>
+                                <span className="skill-badge" style={{ background: "var(--cor-neutro)" }}>
                                   +{freelancer.habilidades.length - 3}
                                 </span>
                               )}
                             </>
                           ) : (
                             <div className="no-skills-message">
-                              <i className="bi bi-tools" style={{ 
-                                color: 'var(--cor-texto-light)',
-                                fontSize: '1.2rem',
-                                marginBottom: 'var(--space-xs)'
-                              }}></i>
-                              <span style={{ 
-                                color: 'var(--cor-texto-light)',
-                                fontSize: '0.8rem',
-                                fontStyle: 'italic'
-                              }}>
-                                Habilidades em desenvolvimento
-                              </span>
+                              <i className="bi bi-tools"></i>
+                              <span>Habilidades em desenvolvimento</span>
                             </div>
                           )}
                         </div>
-                        
+
                         {freelancer.nota_media ? (
                           <div className="rating-display">
                             <span className="rating-stars">⭐</span>
@@ -309,54 +278,21 @@ export default function HomeInicial() {
                             <span>🆕 Novo talento</span>
                           </div>
                         )}
-                        
+
                         <div className="freelancer-actions">
-                          <Link
-                            to={`/perfil/${freelancer.id}`}
-                            className="btn gradient-btn"
-                          >
-                            <i className="bi bi-person"></i>
-                            Ver Perfil
+                          <Link to={`/perfil/${freelancer.id}`} className="btn gradient-btn">
+                            <i className="bi bi-person"></i> Ver Perfil
                           </Link>
                         </div>
                       </div>
                     </div>
                   ))}
             </div>
-
-            {/* Paginação */}
-            {totalPaginas > 1 && (
-              <div className="pagination-container">
-                <div className="pagination-controls">
-                  <button
-                    className="pagination-btn"
-                    disabled={pagina === 1}
-                    onClick={() => setPagina(pagina - 1)}
-                  >
-                    <i className="bi bi-chevron-left"></i>
-                    Anterior
-                  </button>
-                  
-                  <div className="pagination-info">
-                    Página <strong>{pagina}</strong> de <strong>{totalPaginas}</strong>
-                  </div>
-                  
-                  <button
-                    className="pagination-btn"
-                    disabled={!temMais}
-                    onClick={() => setPagina(pagina + 1)}
-                  >
-                    Próximo
-                    <i className="bi bi-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
       </section>
 
-      {/* Footer */}
+      {/* ⚙️ Rodapé */}
       <footer className="home-footer">
         <div className="footer-content">
           <i className="bi bi-rocket-takeoff"></i>
