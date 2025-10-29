@@ -255,7 +255,7 @@ export default function Contratos() {
           <div className="contratos-grid">
             {contratos.map((contrato, index) => {
               const userId = parseInt(localStorage.getItem("userId"));
-              const souCliente = contrato.cliente.id === userId;
+              const souContratante = contrato.contratante.id === userId;
               const souFreelancer = contrato.freelancer.id === userId;
               const jaAvaliei = contrato.avaliacoes?.some((a) => a.avaliador === userId);
 
@@ -295,8 +295,8 @@ export default function Contratos() {
                       <div className="participante">
                         <i className="bi bi-person-fill"></i>
                         <div className="participante-info">
-                          <span className="participante-label">Cliente</span>
-                          <span className="participante-nome">{contrato.cliente.nome}</span>
+                          <span className="participante-label">Contratante</span>
+                          <span className="participante-nome">{contrato.contratante.nome}</span>
                         </div>
                       </div>
                       <div className="participante">
@@ -378,7 +378,7 @@ export default function Contratos() {
                         Chat
                       </Link>
 
-                      {contrato.status === "ativo" && souCliente && !contrato.pagamento && (
+                      {contrato.status === "ativo" && souContratante && !contrato.pagamento && (
                         <button
                           onClick={() => {
                             setSucesso("Redirecionando para pagamento...");
@@ -392,7 +392,7 @@ export default function Contratos() {
                       )}
 
                       {contrato.status === "concluido" && 
-                       (souCliente || souFreelancer) && 
+                       (souContratante || souFreelancer) && 
                        !jaAvaliei && (
                         <button
                           onClick={() => {
@@ -410,11 +410,11 @@ export default function Contratos() {
                     {contrato.status === "ativo" && souFreelancer && !contrato.pagamento && (
                       <div className="contrato-info">
                         <i className="bi bi-info-circle"></i>
-                        <span>Aguardando pagamento do cliente</span>
+                        <span>Aguardando pagamento do contratante</span>
                       </div>
                     )}
 
-                    {contrato.status === "ativo" && !souCliente && !souFreelancer && (
+                    {contrato.status === "ativo" && !souContratante && !souFreelancer && (
                       <div className="contrato-info">
                         <i className="bi bi-info-circle"></i>
                         <span>Você não é participante deste contrato</span>

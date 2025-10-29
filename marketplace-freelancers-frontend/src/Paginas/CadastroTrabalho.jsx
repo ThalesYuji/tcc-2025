@@ -18,8 +18,7 @@ import {
   FaStar,
   FaTag,
   FaPaperclip,
-  FaInfoCircle,
-  FaExclamationCircle
+  FaExclamationCircle,
 } from "react-icons/fa";
 import "../styles/CadastroTrabalho.css";
 
@@ -46,7 +45,6 @@ export default function CadastroTrabalho() {
   const [sucesso, setSucesso] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sugestões de habilidades populares
   const habilidadesPopulares = [
     "React", "JavaScript", "Python", "Node.js", "Design Gráfico", 
     "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
@@ -171,9 +169,10 @@ export default function CadastroTrabalho() {
     }
   };
 
+  // 🔒 Permissão de acesso
   if (
     !usuarioLogado ||
-    (usuarioLogado.tipo !== "cliente" && !usuarioLogado.is_superuser)
+    (usuarioLogado.tipo !== "contratante" && !usuarioLogado.is_superuser)
   ) {
     return (
       <div className="cadastro-trabalho-page">
@@ -181,7 +180,7 @@ export default function CadastroTrabalho() {
           <div className="access-denied-container">
             <FaExclamationCircle className="access-denied-icon" />
             <h3>Acesso Negado</h3>
-            <p>Apenas clientes e administradores podem cadastrar trabalhos.</p>
+            <p>Apenas contratantes e administradores podem cadastrar trabalhos.</p>
           </div>
         </div>
       </div>
@@ -190,7 +189,7 @@ export default function CadastroTrabalho() {
 
   return (
     <div className="cadastro-trabalho-page">
-      {/* Header Padronizado */}
+      {/* Header */}
       <div className="cadastro-trabalho-header">
         <div className="cadastro-trabalho-title">
           <div className="cadastro-trabalho-title-icon">
@@ -199,10 +198,9 @@ export default function CadastroTrabalho() {
           {freelancerId ? "Trabalho Privado" : "Novo Projeto"}
         </div>
         <div className="cadastro-trabalho-subtitle">
-          {freelancerId 
+          {freelancerId
             ? `Criar trabalho direcionado para ${freelancerNome}`
-            : "Publique seu projeto e encontre o freelancer perfeito"
-          }
+            : "Publique seu projeto e encontre o freelancer ideal"}
         </div>
         {freelancerId && (
           <div className="private-work-badge">
@@ -213,14 +211,13 @@ export default function CadastroTrabalho() {
       </div>
 
       <div className="page-container">
-        {/* Alertas Globais */}
+        {/* Alertas */}
         {erroGeral && (
           <div className="alert-error">
             <FaExclamationCircle />
             <span>{erroGeral}</span>
           </div>
         )}
-
         {sucesso && (
           <div className="alert-success">
             <FaCheckCircle />
@@ -228,14 +225,12 @@ export default function CadastroTrabalho() {
           </div>
         )}
 
-        {/* Layout Grid */}
+        {/* Layout */}
         <div className="cadastro-trabalho-grid">
-          
-          {/* Formulário Principal */}
+          {/* Form principal */}
           <div className="form-main-column">
             <form onSubmit={handleSubmit} className="trabalho-form">
-
-              {/* Card: Informações Básicas */}
+              {/* Informações Básicas */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
@@ -243,16 +238,15 @@ export default function CadastroTrabalho() {
                     Informações Básicas
                   </h2>
                 </div>
-                
+
                 <div className="card-body">
                   <div className="form-field">
                     <label className="input-label">
-                      Título do Projeto
-                      <span className="required">*</span>
+                      Título do Projeto <span className="required">*</span>
                     </label>
                     <input
                       type="text"
-                      className={`form-control ${erros.titulo ? 'error' : ''}`}
+                      className={`form-control ${erros.titulo ? "error" : ""}`}
                       placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
@@ -266,11 +260,10 @@ export default function CadastroTrabalho() {
 
                   <div className="form-field">
                     <label className="input-label">
-                      Descrição Detalhada
-                      <span className="required">*</span>
+                      Descrição Detalhada <span className="required">*</span>
                     </label>
                     <textarea
-                      className={`form-control textarea-field ${erros.descricao ? 'error' : ''}`}
+                      className={`form-control textarea-field ${erros.descricao ? "error" : ""}`}
                       placeholder="Descreva em detalhes o que precisa ser desenvolvido, objetivos, requisitos específicos..."
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
@@ -285,7 +278,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Card: Prazo e Orçamento */}
+              {/* Prazo e Orçamento */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
@@ -293,21 +286,20 @@ export default function CadastroTrabalho() {
                     Prazo e Orçamento
                   </h2>
                 </div>
-                
+
                 <div className="card-body">
                   <div className="form-row">
                     <div className="form-field">
                       <label className="input-label">
                         <FaCalendarAlt />
-                        Prazo de Entrega
-                        <span className="required">*</span>
+                        Prazo de Entrega <span className="required">*</span>
                       </label>
                       <input
                         type="date"
-                        className={`form-control ${erros.prazo ? 'error' : ''}`}
+                        className={`form-control ${erros.prazo ? "error" : ""}`}
                         value={prazo}
                         onChange={(e) => setPrazo(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                       />
                       {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
                     </div>
@@ -315,12 +307,11 @@ export default function CadastroTrabalho() {
                     <div className="form-field">
                       <label className="input-label">
                         <FaMoneyBillWave />
-                        Orçamento (R$)
-                        <span className="required">*</span>
+                        Orçamento (R$) <span className="required">*</span>
                       </label>
                       <input
                         type="number"
-                        className={`form-control ${erros.orcamento ? 'error' : ''}`}
+                        className={`form-control ${erros.orcamento ? "error" : ""}`}
                         placeholder="1500.00"
                         value={orcamento}
                         onChange={(e) => setOrcamento(e.target.value)}
@@ -333,7 +324,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Card: Habilidades */}
+              {/* Habilidades */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
@@ -341,7 +332,7 @@ export default function CadastroTrabalho() {
                     Habilidades Necessárias
                   </h2>
                 </div>
-                
+
                 <div className="card-body">
                   <div className="skills-container">
                     <div className="skills-input-wrapper">
@@ -361,8 +352,8 @@ export default function CadastroTrabalho() {
                         {habilidades.map((hab, index) => (
                           <div key={index} className="skill-badge">
                             <span>{hab}</span>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => removeHabilidade(hab)}
                               className="skill-remove"
                             >
@@ -401,7 +392,7 @@ export default function CadastroTrabalho() {
                       </div>
                       <div className="popular-skills-list">
                         {habilidadesPopulares
-                          .filter(skill => !habilidades.includes(skill))
+                          .filter((skill) => !habilidades.includes(skill))
                           .slice(0, 10)
                           .map((skill, index) => (
                             <button
@@ -412,15 +403,14 @@ export default function CadastroTrabalho() {
                             >
                               {skill}
                             </button>
-                          ))
-                        }
+                          ))}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card: Arquivo Anexo */}
+              {/* Arquivo Anexo */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
@@ -429,7 +419,7 @@ export default function CadastroTrabalho() {
                   </h2>
                   <span className="optional-badge">Opcional</span>
                 </div>
-                
+
                 <div className="card-body">
                   <div className="file-upload-area">
                     <input
@@ -449,8 +439,8 @@ export default function CadastroTrabalho() {
                               {(anexo.size / 1024 / 1024).toFixed(2)} MB
                             </span>
                           </div>
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             className="file-remove"
                             onClick={(e) => {
                               e.preventDefault();
@@ -477,11 +467,11 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Botão de Submit */}
+              {/* Botão */}
               <div className="form-actions">
-                <button 
-                  type="submit" 
-                  className={`btn gradient-btn btn-large ${isLoading ? 'loading' : ''}`}
+                <button
+                  type="submit"
+                  className={`btn gradient-btn btn-large ${isLoading ? "loading" : ""}`}
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -499,14 +489,11 @@ export default function CadastroTrabalho() {
                   )}
                 </button>
               </div>
-
             </form>
           </div>
 
           {/* Sidebar */}
           <div className="form-sidebar-column">
-            
-            {/* Card de Prévia */}
             <div className="modern-card preview-card">
               <div className="card-header">
                 <h2 className="card-title">
@@ -514,20 +501,25 @@ export default function CadastroTrabalho() {
                   Prévia do Projeto
                 </h2>
               </div>
-              
+
               <div className="card-body">
                 <div className="preview-content">
                   <div className="preview-title">
                     {titulo || "Título do seu projeto..."}
                   </div>
                   <div className="preview-description">
-                    {descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "") || 
-                     "Descrição do seu projeto aparecerá aqui..."}
+                    {descricao.substring(0, 150) +
+                      (descricao.length > 150 ? "..." : "") ||
+                      "Descrição do seu projeto aparecerá aqui..."}
                   </div>
                   <div className="preview-details">
                     <div className="preview-detail">
                       <FaCalendarAlt />
-                      <span>{prazo ? new Date(prazo).toLocaleDateString() : "Prazo"}</span>
+                      <span>
+                        {prazo
+                          ? new Date(prazo).toLocaleDateString()
+                          : "Prazo"}
+                      </span>
                     </div>
                     <div className="preview-detail">
                       <FaMoneyBillWave />
@@ -535,14 +527,16 @@ export default function CadastroTrabalho() {
                     </div>
                     <div className="preview-detail">
                       <FaTools />
-                      <span>{habilidades.length} habilidade{habilidades.length !== 1 ? 's' : ''}</span>
+                      <span>
+                        {habilidades.length} habilidade
+                        {habilidades.length !== 1 ? "s" : ""}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Card de Dicas */}
             <div className="modern-card tips-card">
               <div className="card-header">
                 <h2 className="card-title">
@@ -550,7 +544,7 @@ export default function CadastroTrabalho() {
                   Dicas para um Bom Projeto
                 </h2>
               </div>
-              
+
               <div className="card-body">
                 <ul className="tips-list">
                   <li>Seja específico no título e descrição</li>
@@ -561,7 +555,6 @@ export default function CadastroTrabalho() {
                 </ul>
               </div>
             </div>
-
           </div>
         </div>
       </div>

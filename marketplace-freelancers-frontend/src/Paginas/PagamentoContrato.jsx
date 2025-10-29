@@ -214,8 +214,8 @@ export default function PagamentoContrato() {
                 <span className="detalhe-valor">{contrato.trabalho.titulo}</span>
               </div>
               <div className="detalhe-item">
-                <span className="detalhe-label">Cliente</span>
-                <span className="detalhe-valor">{contrato.cliente?.nome}</span>
+                <span className="detalhe-label">Contratante</span>
+                <span className="detalhe-valor">{contrato.contratante?.nome}</span>
               </div>
               <div className="detalhe-item">
                 <span className="detalhe-label">Freelancer</span>

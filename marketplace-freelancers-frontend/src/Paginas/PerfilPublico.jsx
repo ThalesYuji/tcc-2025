@@ -211,7 +211,7 @@ export default function PerfilPublico() {
 
               <div className="perfil-user-type">
                 <i className={`bi ${usuario.tipo === 'freelancer' ? 'bi-person-workspace' : 'bi-building'}`}></i>
-                {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                {usuario.tipo === "freelancer" ? "Freelancer" : "Contratante"}
               </div>
 
               {notaMedia && (
@@ -229,7 +229,7 @@ export default function PerfilPublico() {
                     <span className="stat-mini-label">Concluídos</span>
                   </div>
                 )}
-                {usuario.tipo === "cliente" && (
+                {usuario.tipo === "contratante" && (
                   <div className="stat-mini-item">
                     <span className="stat-mini-value">{formatarNumero(usuario.trabalhos_publicados ?? 0)}</span>
                     <span className="stat-mini-label">Publicados</span>
@@ -376,7 +376,7 @@ export default function PerfilPublico() {
                     </div>
                     <div className="card-body-std">
                       <div className="stats-detailed-grid">
-                        {usuario.tipo === "cliente" && (
+                        {usuario.tipo === "contratante" && (
                           <div className="stat-detail-card">
                             <div className="stat-detail-icon primary">
                               <i className="bi bi-briefcase"></i>
@@ -474,7 +474,7 @@ export default function PerfilPublico() {
                   </div>
                   <div className="card-body-std">
                     <div className="actions-list">
-                      {usuario.tipo === "freelancer" && usuarioLogado.tipo === "cliente" && (
+                      {usuario.tipo === "freelancer" && usuarioLogado.tipo === "contratante" && (
                         <button
                           className="action-btn primary"
                           onClick={() => navigate(`/trabalhos/novo?freelancer=${usuario.id}`)}
@@ -517,7 +517,7 @@ export default function PerfilPublico() {
                         <div className="info-label">Tipo</div>
                         <div className="info-value">
                           <span className={`badge-type ${usuario.tipo}`}>
-                            {usuario.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                            {usuario.tipo === "freelancer" ? "Freelancer" : "Contratante"}
                           </span>
                         </div>
                       </div>

@@ -2,7 +2,15 @@ import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { FiLogOut, FiUser, FiSettings } from "react-icons/fi";
-import { FaShieldAlt, FaExclamationTriangle, FaHome, FaBriefcase, FaFileAlt, FaHandshake, FaStar } from "react-icons/fa";
+import {
+  FaShieldAlt,
+  FaExclamationTriangle,
+  FaHome,
+  FaBriefcase,
+  FaFileAlt,
+  FaHandshake,
+  FaStar,
+} from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
 import "../styles/Navbar.css";
 
@@ -28,16 +36,18 @@ export default function Navbar() {
   const rotaAtiva = (rota) =>
     location.pathname === rota ? "nav-btn active" : "nav-btn";
 
-  // ✅ Agora a API devolve URL absoluta; usamos direto ou fallback com inicial.
-  const fotoPerfil = (usuarioLogado?.foto_perfil && usuarioLogado.foto_perfil.trim() !== "")
-    ? usuarioLogado.foto_perfil
-    : "";
+  // ✅ Foto de perfil (com fallback)
+  const fotoPerfil =
+    usuarioLogado?.foto_perfil && usuarioLogado.foto_perfil.trim() !== ""
+      ? usuarioLogado.foto_perfil
+      : "";
 
   const navegarPara = (rota) => {
     navigate(rota);
     setMenuAberto(false);
   };
 
+  // ===================== JSX =====================
   return (
     <nav className="navbar">
       {/* Logo */}
@@ -46,7 +56,7 @@ export default function Navbar() {
         role="button"
         onClick={() => navegarPara("/home")}
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && navegarPara("/home")}
+        onKeyDown={(e) => e.key === "Enter" && navegarPara("/home")}
       >
         <img
           src="/profreelabr.png"
@@ -55,7 +65,7 @@ export default function Navbar() {
         />
       </div>
 
-      {/* Links de Navegação - CENTRALIZADOS */}
+      {/* LINKS DE NAVEGAÇÃO */}
       <div className="nav-links">
         <div className="nav-links-main">
           <button
@@ -67,18 +77,26 @@ export default function Navbar() {
             <span>Trabalhos</span>
           </button>
 
-          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+          {/* Propostas */}
+          {(usuarioLogado.tipo === "freelancer" ||
+            usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/propostas")}
               className={rotaAtiva("/propostas")}
-              title={usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
+              title={
+                usuarioLogado.tipo === "freelancer"
+                  ? "Minhas Propostas"
+                  : "Propostas Recebidas"
+              }
             >
               <FaFileAlt />
               <span>Propostas</span>
             </button>
           )}
 
-          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+          {/* Contratos */}
+          {(usuarioLogado.tipo === "freelancer" ||
+            usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/contratos")}
               className={rotaAtiva("/contratos")}
@@ -89,7 +107,9 @@ export default function Navbar() {
             </button>
           )}
 
-          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "cliente") && (
+          {/* Avaliações */}
+          {(usuarioLogado.tipo === "freelancer" ||
+            usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/avaliacoes")}
               className={rotaAtiva("/avaliacoes")}
@@ -123,12 +143,12 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Área Direita - Notificações e Menu Usuário */}
+      {/* AÇÕES À DIREITA */}
       <div className="nav-actions">
         {/* Notificações */}
         <NotificacoesDropdown />
 
-        {/* Menu do usuário */}
+        {/* Menu do Usuário */}
         <div className="menu-usuario" ref={menuRef}>
           {fotoPerfil ? (
             <img
@@ -138,7 +158,9 @@ export default function Navbar() {
               role="button"
               tabIndex={0}
               onClick={() => setMenuAberto(!menuAberto)}
-              onKeyDown={(e) => e.key === 'Enter' && setMenuAberto(!menuAberto)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && setMenuAberto(!menuAberto)
+              }
             />
           ) : (
             <div
@@ -146,7 +168,9 @@ export default function Navbar() {
               role="button"
               tabIndex={0}
               onClick={() => setMenuAberto(!menuAberto)}
-              onKeyDown={(e) => e.key === 'Enter' && setMenuAberto(!menuAberto)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && setMenuAberto(!menuAberto)
+              }
               title={usuarioLogado?.nome || usuarioLogado?.username}
             >
               {usuarioLogado?.nome
@@ -154,15 +178,25 @@ export default function Navbar() {
                 : (usuarioLogado?.username || "?")[0].toUpperCase()}
             </div>
           )}
-          
+
           {menuAberto && (
             <div className="menu-dropdown">
               <div className="usuario-nome">
                 {usuarioLogado?.nome || usuarioLogado?.username}
-                <div style={{ fontSize: '0.8rem', opacity: '0.7', fontWeight: '400' }}>
-                  {usuarioLogado?.tipo === 'freelancer' ? 'Freelancer' : 
-                   usuarioLogado?.tipo === 'cliente' ? 'Cliente' : 
-                   usuarioLogado?.is_superuser ? 'Administrador' : 'Usuário'}
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    opacity: "0.7",
+                    fontWeight: "400",
+                  }}
+                >
+                  {usuarioLogado?.tipo === "freelancer"
+                    ? "Freelancer"
+                    : usuarioLogado?.tipo === "contratante"
+                    ? "Contratante"
+                    : usuarioLogado?.is_superuser
+                    ? "Administrador"
+                    : "Usuário"}
                 </div>
               </div>
 

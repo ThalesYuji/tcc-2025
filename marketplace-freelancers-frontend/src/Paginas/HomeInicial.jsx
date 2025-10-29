@@ -20,7 +20,7 @@ export default function HomeInicial() {
         let res;
         if (usuarioLogado?.tipo === "freelancer") {
           res = await api.get(`/trabalhos/?page=${pagina}&page_size=6`);
-        } else if (usuarioLogado?.tipo === "cliente") {
+        } else if (usuarioLogado?.tipo === "contratante") {
           res = await api.get(
             `/usuarios/?tipo=freelancer&page=${pagina}&page_size=6`
           );
@@ -92,7 +92,7 @@ export default function HomeInicial() {
       }
     ];
 
-    if (usuarioLogado.tipo === "cliente") {
+    if (usuarioLogado.tipo === "contratante") {
       return [
         ...baseShortcuts,
         {
@@ -134,7 +134,7 @@ export default function HomeInicial() {
             : "Conecte-se com talentos extraordinários e transforme suas ideias em realidade 💡"}
         </p>
         
-        {usuarioLogado.tipo === "cliente" ? (
+        {usuarioLogado.tipo === "contratante" ? (
           <Link to="/trabalhos/novo" className="hero-cta">
             <i className="bi bi-plus-circle"></i>
             Publicar Novo Trabalho
@@ -198,7 +198,7 @@ export default function HomeInicial() {
                 ? "Não há trabalhos disponíveis no momento. Volte em breve!"
                 : "Não há freelancers disponíveis no momento. Que tal publicar um trabalho?"}
             </p>
-            {usuarioLogado.tipo === "cliente" && (
+            {usuarioLogado.tipo === "contratante" && (
               <Link to="/trabalhos/novo" className="btn gradient-btn">
                 <i className="bi bi-plus-circle"></i>
                 Publicar Trabalho

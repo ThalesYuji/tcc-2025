@@ -1,4 +1,3 @@
-# pagamentos/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Pagamento
@@ -9,7 +8,7 @@ class PagamentoAdmin(admin.ModelAdmin):
     list_display = [
         'id',
         'contrato',
-        'cliente',
+        'contratante',
         'valor_formatado',
         'metodo_badge',
         'status_badge',
@@ -21,12 +20,12 @@ class PagamentoAdmin(admin.ModelAdmin):
         'mercadopago_payment_id',
         'payment_intent_id',
         'codigo_transacao',
-        'cliente__nome',
-        'cliente__email',
+        'contratante__nome',
+        'contratante__email',
         'contrato__trabalho__titulo'
     ]
     readonly_fields = [
-        'data_criacao', 
+        'data_criacao',
         'mercadopago_payment_id',
         'payment_intent_id',
         'qr_code_preview'
@@ -34,7 +33,6 @@ class PagamentoAdmin(admin.ModelAdmin):
     list_per_page = 20
     date_hierarchy = 'data_criacao'
     
-    # Actions customizadas
     actions = [
         'aprovar_pagamento',
         'rejeitar_pagamento',
@@ -43,7 +41,7 @@ class PagamentoAdmin(admin.ModelAdmin):
    
     fieldsets = (
         ('📋 Informações Principais', {
-            'fields': ('contrato', 'cliente', 'valor', 'metodo', 'status')
+            'fields': ('contrato', 'contratante', 'valor', 'metodo', 'status')
         }),
         ('💳 Mercado Pago', {
             'fields': ('mercadopago_payment_id', 'codigo_transacao', 'qr_code_preview'),
@@ -64,6 +62,7 @@ class PagamentoAdmin(admin.ModelAdmin):
         }),
     )
     
+    # ========== FORMATOS E BADGES ==========
     def valor_formatado(self, obj):
         """Exibe o valor formatado em reais"""
         return f"R$ {obj.valor:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
@@ -72,14 +71,10 @@ class PagamentoAdmin(admin.ModelAdmin):
     def metodo_badge(self, obj):
         """Exibe badge colorido para o método de pagamento"""
         cores = {
-            'pix': '#00b894',
-            'boleto': '#fdcb6e',
-            'card': '#6c5ce7'
+            'checkout_pro': '#6c5ce7',
         }
         icones = {
-            'pix': '⚡',
-            'boleto': '📄',
-            'card': '💳'
+            'checkout_pro': '💳',
         }
         cor = cores.get(obj.metodo, '#95a5a6')
         icone = icones.get(obj.metodo, '💰')
@@ -147,17 +142,14 @@ class PagamentoAdmin(admin.ModelAdmin):
         count = 0
         for pagamento in queryset:
             if pagamento.status in ['pendente', 'em_processamento']:
-                # Atualiza o pagamento
                 pagamento.status = 'aprovado'
                 pagamento.save()
                 
-                # Conclui o contrato
                 contrato = pagamento.contrato
                 if contrato.status != 'concluido':
                     contrato.status = 'concluido'
                     contrato.save()
                     
-                    # Conclui o trabalho
                     if contrato.trabalho.status != 'concluido':
                         contrato.trabalho.status = 'concluido'
                         contrato.trabalho.save()
@@ -198,4 +190,4 @@ class PagamentoAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Otimiza consultas com select_related"""
         qs = super().get_queryset(request)
-        return qs.select_related('contrato', 'cliente', 'contrato__trabalho')
+        return qs.select_related('contrato', 'contratante', 'contrato__trabalho')

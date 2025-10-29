@@ -5,15 +5,21 @@ from .models import Mensagem
 from contratos.models import Contrato
 import os
 
+# 🔹 Configurações de upload
 ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".pdf"}
 MAX_FILE_MB = 5
 
 
 class MensagemSerializer(serializers.ModelSerializer):
+    """
+    Serializador das mensagens trocadas entre contratante e freelancer.
+    Inclui validações de remetente, destinatário, contrato e anexos.
+    """
+
     remetente = serializers.PrimaryKeyRelatedField(read_only=True)
     data_envio = serializers.DateTimeField(read_only=True)
     editada_em = serializers.DateTimeField(read_only=True)
-    excluida = serializers.BooleanField(read_only=True)  # 🔹 Campo de exclusão lógica
+    excluida = serializers.BooleanField(read_only=True)
 
     remetente_nome = serializers.SerializerMethodField()
     destinatario_nome = serializers.SerializerMethodField()
@@ -54,6 +60,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         return getattr(obj.destinatario, "nome", None)
 
     def get_anexo_url(self, obj):
+        """Gera URL absoluta para o anexo (se existir)"""
         if not obj.anexo or not hasattr(obj.anexo, "url"):
             return None
         request = self.context.get("request")
@@ -77,9 +84,9 @@ class MensagemSerializer(serializers.ModelSerializer):
         """
         Validações gerais:
         - remetente = usuário autenticado
-        - contrato deve ser válido e envolver remetente/destinatário
-        - destinatário não pode ser igual ao remetente
-        - valida anexo (extensão e tamanho)
+        - contrato deve envolver o remetente e o destinatário
+        - destinatário não pode ser o mesmo do remetente
+        - validações de anexo
         """
         request = self.context["request"]
         user = request.user
@@ -99,16 +106,19 @@ class MensagemSerializer(serializers.ModelSerializer):
 
         try:
             contrato_obj = contrato if isinstance(contrato, Contrato) else Contrato.objects.select_related(
-                "cliente", "freelancer"
+                "contratante", "freelancer"
             ).get(id=contrato)
         except Contrato.DoesNotExist:
             raise serializers.ValidationError({"contrato": "Contrato inválido."})
 
-        participantes = {contrato_obj.cliente_id, contrato_obj.freelancer_id}
+        # 🔹 Garante que remetente e destinatário fazem parte do contrato
+        participantes = {contrato_obj.contratante_id, contrato_obj.freelancer_id}
         if user.id not in participantes or dest_id not in participantes:
-            raise serializers.ValidationError({"contrato": "Remetente/Destinatário não pertencem a este contrato."})
+            raise serializers.ValidationError({
+                "contrato": "Remetente ou destinatário não pertencem a este contrato."
+            })
 
-        # Validação de anexos
+        # 🔹 Validação de anexo
         anexo = attrs.get("anexo")
         if anexo:
             ext = os.path.splitext(anexo.name)[1].lower()
@@ -128,17 +138,16 @@ class MensagemSerializer(serializers.ModelSerializer):
     # -------------------------
     def update(self, instance, validated_data):
         """
-        Regras de edição:
-        - Só o remetente pode editar (checado na view)
-        - Só pode editar até 5 minutos após o envio
-        - Não pode editar mensagens já excluídas
+        - Apenas o remetente pode editar (checado na view)
+        - Só é permitido editar até 5 minutos após o envio
+        - Não é possível editar mensagens excluídas
         """
         if (timezone.now() - instance.data_envio).total_seconds() > 300:
             raise ValidationError("Prazo para editar mensagem expirou.")
         if instance.excluida:
             raise ValidationError("Não é possível editar uma mensagem excluída.")
 
-        # Protege campos que não devem mudar
+        # Protege campos que não devem ser alterados
         validated_data.pop("remetente", None)
         validated_data.pop("contrato", None)
         validated_data.pop("destinatario", None)

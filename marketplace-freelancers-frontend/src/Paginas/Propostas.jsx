@@ -206,12 +206,12 @@ export default function Propostas() {
             <div className="propostas-title-icon">
               <i className="bi bi-file-earmark-text"></i>
             </div>
-            {usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
+            {usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas (Contratante)"}
           </h1>
           <p className="propostas-subtitle">
             {usuarioLogado.tipo === "freelancer" 
               ? "Acompanhe o status das suas propostas enviadas"
-              : "Gerencie as propostas recebidas em seus trabalhos"
+              : "Gerencie as propostas recebidas em seus trabalhos como contratante"
             }
           </p>
         </div>
@@ -239,7 +239,7 @@ export default function Propostas() {
             <p>
               {usuarioLogado.tipo === "freelancer"
                 ? "Você ainda não enviou nenhuma proposta."
-                : "Você ainda não recebeu nenhuma proposta."
+                : "Você ainda não recebeu nenhuma proposta como contratante."
               }
             </p>
           </div>
@@ -297,7 +297,7 @@ export default function Propostas() {
 
                 {/* Body do card */}
                 <div className="proposta-body">
-                  {usuarioLogado.tipo === "cliente" && (
+                  {usuarioLogado.tipo === "contratante" && (
                     <div className="proposta-freelancer">
                       <button
                         onClick={() => navigate(`/perfil/${proposta.freelancer}`)}
@@ -332,7 +332,7 @@ export default function Propostas() {
                     {formatarData(proposta.data_envio)}
                   </div>
 
-                  {usuarioLogado.tipo === "cliente" && proposta.status === "pendente" && (
+                  {usuarioLogado.tipo === "contratante" && proposta.status === "pendente" && (
                     <div className="proposta-acoes">
                       <button
                         className="btn btn-success"

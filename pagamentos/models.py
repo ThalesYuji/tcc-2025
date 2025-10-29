@@ -4,7 +4,10 @@ from usuarios.models import Usuario
 
 
 class Pagamento(models.Model):
-    # único método permitido
+    """
+    Representa o pagamento de um contrato entre um contratante e um freelancer.
+    Integrado com o Mercado Pago (Checkout Pro).
+    """
     METODOS = [
         ('checkout_pro', 'Checkout Pro'),
     ]
@@ -17,6 +20,7 @@ class Pagamento(models.Model):
         ('reembolsado', 'Reembolsado'),
     ]
 
+    # 🔹 Cada contrato tem um único pagamento
     contrato = models.OneToOneField(
         Contrato,
         on_delete=models.CASCADE,
@@ -24,10 +28,12 @@ class Pagamento(models.Model):
         error_messages={'unique': 'Já existe um pagamento registrado para este contrato.'}
     )
 
-    cliente = models.ForeignKey(
+    # 🔹 Novo campo: contratante (substitui cliente)
+    contratante = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
-        related_name='pagamentos_cliente'
+        related_name='pagamentos_contratante',
+        help_text="Usuário que contratou e efetuará o pagamento."
     )
 
     valor = models.DecimalField(
@@ -37,10 +43,8 @@ class Pagamento(models.Model):
     )
 
     data_criacao = models.DateTimeField(auto_now_add=True)
-
     status = models.CharField(max_length=20, choices=STATUS, default='pendente')
 
-    # travado em Checkout Pro
     metodo = models.CharField(
         max_length=20,
         choices=METODOS,
@@ -48,7 +52,7 @@ class Pagamento(models.Model):
         help_text="Pagamento via Mercado Pago (Checkout Pro)."
     )
 
-    # Mercado Pago
+    # 🔹 Mercado Pago
     mercadopago_payment_id = models.CharField(
         max_length=255,
         blank=True,
@@ -56,7 +60,7 @@ class Pagamento(models.Model):
         help_text="ID do pagamento gerado pelo Mercado Pago."
     )
 
-    # LEGACY (mantidos por compatibilidade; pode remover depois)
+    # 🔹 Legados (mantidos para histórico/admin)
     payment_intent_id = models.CharField(
         max_length=255,
         blank=True,
@@ -64,7 +68,6 @@ class Pagamento(models.Model):
         help_text="[DEPRECATED] ID do PaymentIntent do Stripe."
     )
 
-    # LEGACY: usado no passado para PIX/BOLETO; pode ser limpo depois
     codigo_transacao = models.CharField(
         max_length=255,
         blank=True,
@@ -76,11 +79,15 @@ class Pagamento(models.Model):
 
     class Meta:
         ordering = ['-data_criacao']
+        verbose_name = "Pagamento"
+        verbose_name_plural = "Pagamentos"
 
     def __str__(self):
-        # fallback caso existam registros antigos antes desta migração
+        """Exibe o pagamento de forma legível no admin."""
         try:
             metodo = self.get_metodo_display()
         except Exception:
             metodo = self.metodo or 'checkout_pro'
-        return f"Pagamento R$ {self.valor} via {metodo} | Status: {self.status}"
+
+        contratante_nome = getattr(self.contratante, "nome", "Desconhecido") if self.contratante else "—"
+        return f"Pagamento R$ {self.valor} ({metodo}) | {contratante_nome} | Status: {self.status}"

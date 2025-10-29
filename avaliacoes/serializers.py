@@ -4,14 +4,19 @@ from .models import Avaliacao
 from usuarios.models import Usuario
 import re
 
+# 🔹 Palavras proibidas em comentários
 PALAVRAS_PROIBIDAS = ['ofensa', 'palavrão', 'xingar', 'idiota', 'burro']
 
+
 class UsuarioBasicoSerializer(serializers.ModelSerializer):
+    """Serializer simplificado para exibir dados básicos do usuário"""
     class Meta:
         model = Usuario
         fields = ['id', 'nome']
 
+
 class AvaliacaoSerializer(serializers.ModelSerializer):
+    """Serializer principal das avaliações"""
     avaliador = UsuarioBasicoSerializer(read_only=True)
     avaliado = UsuarioBasicoSerializer(read_only=True)
 
@@ -23,6 +28,9 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['avaliador', 'avaliado']
 
+    # ----------------------------
+    # CAMPOS EXTRAS
+    # ----------------------------
     def get_titulo_trabalho(self, obj):
         if obj.contrato and obj.contrato.trabalho:
             return obj.contrato.trabalho.titulo
@@ -33,6 +41,9 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
             return obj.contrato.trabalho.id
         return None
 
+    # ----------------------------
+    # VALIDAÇÕES
+    # ----------------------------
     def validate_nota(self, value):
         if not 1 <= value <= 5:
             raise serializers.ValidationError("A nota deve estar entre 1 e 5.")
@@ -48,6 +59,13 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
+        """
+        Validações principais:
+        - Só contratante ou freelancer do contrato podem avaliar.
+        - Avaliação só é permitida após o contrato estar concluído.
+        - Bloqueia avaliação duplicada.
+        - Define avaliador e avaliado automaticamente.
+        """
         request = self.context.get('request')
         contrato = data.get('contrato')
 
@@ -56,28 +74,31 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
 
         avaliador = request.user
 
-        # 🔹 Define o avaliado corretamente
-        if avaliador == contrato.cliente:
+        # 🔹 Define quem está sendo avaliado
+        if avaliador == contrato.contratante:
             avaliado = contrato.freelancer
         elif avaliador == contrato.freelancer:
-            avaliado = contrato.cliente
+            avaliado = contrato.contratante
         else:
             raise serializers.ValidationError("Você não faz parte deste contrato.")
 
-        # 🔹 Garante que só é possível avaliar após conclusão
+        # 🔹 Só permite avaliação após conclusão
         if contrato.status != 'concluido':
             raise serializers.ValidationError("A avaliação só pode ser feita após a conclusão do contrato.")
 
-        # 🔹 Bloqueia avaliação duplicada
+        # 🔹 Bloqueia avaliações duplicadas
         if Avaliacao.objects.filter(contrato=contrato, avaliador=avaliador).exists():
             raise serializers.ValidationError("Você já avaliou esse contrato.")
 
-        # Injeta avaliador e avaliado automaticamente
+        # Injeta automaticamente avaliador e avaliado
         data['avaliador'] = avaliador
         data['avaliado'] = avaliado
 
         return data
 
+    # ----------------------------
+    # CREATE / UPDATE
+    # ----------------------------
     def create(self, validated_data):
         avaliacao = super().create(validated_data)
         self.atualizar_nota_media(avaliacao.avaliado)
@@ -88,7 +109,14 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         self.atualizar_nota_media(avaliacao.avaliado)
         return avaliacao
 
+    # ----------------------------
+    # MÉTODO AUXILIAR
+    # ----------------------------
     def atualizar_nota_media(self, usuario):
+        """
+        Atualiza a nota média do usuário avaliado
+        com base em todas as avaliações recebidas.
+        """
         avaliacoes = Avaliacao.objects.filter(avaliado=usuario)
         if avaliacoes.exists():
             media = avaliacoes.aggregate(models.Avg('nota'))['nota__avg']

@@ -120,8 +120,8 @@ export default function Trabalhos() {
     // Admin vê tudo
     if (usuarioLogado.is_superuser) return true;
     
-    // Cliente que criou
-    if (trabalho.cliente_id === usuarioLogado.id) return true;
+    // Contratante que criou
+    if (trabalho.contratante_id === usuarioLogado.id) return true;
     
     // Freelancer designado
     if (trabalho.freelancer === usuarioLogado.id) return true;
@@ -259,7 +259,7 @@ export default function Trabalhos() {
               Limpar
             </button>
 
-            {(usuarioLogado.tipo === "cliente" || usuarioLogado.is_superuser) && (
+            {(usuarioLogado.tipo === "contratante" || usuarioLogado.is_superuser) && (
               <button
                 type="button"
                 className="btn-novo-trabalho"
@@ -351,12 +351,12 @@ export default function Trabalhos() {
 
                 <div className="trabalho-info-item">
                   <i className="bi bi-person trabalho-info-icon"></i>
-                  <span>Cliente: </span>
+                  <span>Contratante: </span>
                   <span 
                     className="trabalho-info-value trabalho-cliente"
-                    onClick={() => navigate(`/perfil/${trabalho.cliente_id}`)}
+                    onClick={() => navigate(`/perfil/${trabalho.contratante_id}`)}
                   >
-                    {trabalho.nome_cliente}
+                    {trabalho.nome_contratante}
                   </span>
                 </div>
                   {/* 🆕 Badge de Trabalho Privado */}

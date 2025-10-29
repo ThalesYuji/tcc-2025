@@ -10,7 +10,7 @@ class Contrato(models.Model):
     Pode estar vinculado a uma proposta (trabalho público) ou ser criado
     a partir de um trabalho privado.
     """
-    # 🔹 Proposta é opcional (para contratos de trabalhos privados)
+
     proposta = models.ForeignKey(
         Proposta,
         on_delete=models.CASCADE,
@@ -28,13 +28,15 @@ class Contrato(models.Model):
     contratante = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
-        related_name='contratos_contratante'
+        related_name='contratos_contratante',
+        help_text="Usuário contratante (quem publicou o trabalho)."
     )
 
     freelancer = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
-        related_name='contratos_freelancer'
+        related_name='contratos_freelancer',
+        help_text="Usuário freelancer (quem realiza o trabalho)."
     )
 
     valor = models.DecimalField(
@@ -45,8 +47,6 @@ class Contrato(models.Model):
 
     data_inicio = models.DateField(auto_now_add=True)
     data_fim = models.DateField(blank=True, null=True)
-
-    # 🆕 Data real de entrega do trabalho
     data_entrega = models.DateField(blank=True, null=True)
 
     status = models.CharField(
@@ -65,4 +65,5 @@ class Contrato(models.Model):
         verbose_name_plural = 'Contratos'
 
     def __str__(self):
-        return f"Contrato: {self.contratante.nome} ⇄ {self.freelancer.nome} | {self.trabalho.titulo}"
+        contratante_nome = self.contratante.nome if self.contratante else "Desconhecido"
+        return f"Contrato: {contratante_nome} ⇄ {self.freelancer.nome} | {self.trabalho.titulo}"

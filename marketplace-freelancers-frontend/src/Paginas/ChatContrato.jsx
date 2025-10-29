@@ -26,7 +26,8 @@ export default function ChatContrato() {
   const userId = parseInt(localStorage.getItem("userId"));
 
   const scrollToBottom = () => {
-    if (mensagensEndRef.current) mensagensEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (mensagensEndRef.current)
+      mensagensEndRef.current.scrollIntoView({ behavior: "smooth" });
   };
 
   const carregarContrato = useCallback(async () => {
@@ -37,8 +38,16 @@ export default function ChatContrato() {
       const contrato = resp.data;
       setStatusContrato(contrato.status);
 
-      const outroId = userId === contrato.cliente?.id ? contrato.freelancer?.id : contrato.cliente?.id;
-      const outroNome = userId === contrato.cliente?.id ? contrato.freelancer?.nome : contrato.cliente?.nome;
+      // 🔹 Ajuste de cliente → contratante
+      const outroId =
+        userId === contrato.contratante?.id
+          ? contrato.freelancer?.id
+          : contrato.contratante?.id;
+
+      const outroNome =
+        userId === contrato.contratante?.id
+          ? contrato.freelancer?.nome
+          : contrato.contratante?.nome;
 
       setDestinatarioId(outroId);
       setDestinatarioNome(outroNome || "Usuário");
@@ -74,16 +83,14 @@ export default function ChatContrato() {
     scrollToBottom();
   }, [mensagens]);
 
-  // Foca no campo quando entra na tela
+  // 🔹 Foca no campo ao abrir a tela
   useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
   }, []);
 
-  // 🔥 Sempre que a mensagem for limpa, volta o foco
+  // 🔹 Quando mensagem é enviada e limpa, foca de novo
   useEffect(() => {
-    if (novaMensagem === "" && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (novaMensagem === "" && inputRef.current) inputRef.current.focus();
   }, [novaMensagem]);
 
   const handleInputChange = (e) => {
@@ -107,18 +114,20 @@ export default function ChatContrato() {
 
     try {
       const resp = await api.post("/mensagens/", formData, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
       setMensagens(resp.data.mensagens || resp.data || []);
-      setNovaMensagem(""); // 🔥 Aqui o useEffect acima vai garantir o foco
+      setNovaMensagem("");
       setAnexo(null);
 
-      if (inputRef.current) {
-        inputRef.current.style.height = "auto";
-      }
+      if (inputRef.current) inputRef.current.style.height = "auto";
 
       const fileInput = document.querySelector('input[type="file"]');
       if (fileInput) fileInput.value = "";
+
       scrollToBottom();
     } catch (err) {
       alert(err.response?.data?.erro || "Erro ao enviar mensagem.");
@@ -135,14 +144,18 @@ export default function ChatContrato() {
   const handleAnexoChange = (e) => setAnexo(e.target.files[0]);
   const removeAnexo = () => setAnexo(null);
 
-  const abrirModalEdicao = (msg) => setModalEdicao({ aberto: true, mensagem: msg, texto: msg.texto });
-  const fecharModalEdicao = () => setModalEdicao({ aberto: false, mensagem: null, texto: "" });
+  const abrirModalEdicao = (msg) =>
+    setModalEdicao({ aberto: true, mensagem: msg, texto: msg.texto });
+  const fecharModalEdicao = () =>
+    setModalEdicao({ aberto: false, mensagem: null, texto: "" });
 
   const salvarEdicao = async () => {
     try {
-      const resp = await api.patch(`/mensagens/${modalEdicao.mensagem.id}/`, { texto: modalEdicao.texto }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resp = await api.patch(
+        `/mensagens/${modalEdicao.mensagem.id}/`,
+        { texto: modalEdicao.texto },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setMensagens(resp.data.mensagens || resp.data || []);
       fecharModalEdicao();
       scrollToBottom();
@@ -151,8 +164,10 @@ export default function ChatContrato() {
     }
   };
 
-  const abrirModalExclusao = (msg) => setModalExclusao({ aberto: true, mensagem: msg });
-  const fecharModalExclusao = () => setModalExclusao({ aberto: false, mensagem: null });
+  const abrirModalExclusao = (msg) =>
+    setModalExclusao({ aberto: true, mensagem: msg });
+  const fecharModalExclusao = () =>
+    setModalExclusao({ aberto: false, mensagem: null });
 
   const confirmarExclusao = async () => {
     try {
@@ -170,7 +185,9 @@ export default function ChatContrato() {
   const toggleMenu = (id) => {
     setMensagens((prev) =>
       prev.map((msg) =>
-        msg.id === id ? { ...msg, menuAberto: !msg.menuAberto } : { ...msg, menuAberto: false }
+        msg.id === id
+          ? { ...msg, menuAberto: !msg.menuAberto }
+          : { ...msg, menuAberto: false }
       )
     );
   };
@@ -178,7 +195,6 @@ export default function ChatContrato() {
   return (
     <div className="chat-page">
       <div className="page-container fade-in">
-        
         {/* Header */}
         <div className="chat-page-header">
           <h1 className="chat-page-title">
@@ -192,8 +208,8 @@ export default function ChatContrato() {
           </p>
         </div>
 
-        {/* Navegação - Botão de Voltar */}
-        <div style={{ marginBottom: 'var(--space-xl)' }}>
+        {/* Botão de Voltar */}
+        <div style={{ marginBottom: "var(--space-xl)" }}>
           <button onClick={() => navigate("/contratos")} className="btn btn-primary">
             <i className="bi bi-arrow-left"></i>
             Voltar aos Contratos
@@ -202,16 +218,15 @@ export default function ChatContrato() {
 
         {/* Container do Chat */}
         <div className="chat-container">
-          
-          {/* Status do Contrato */}
           {statusContrato === "concluido" && (
             <div className="chat-status-alert">
               <i className="bi bi-info-circle"></i>
-              <span>Este contrato foi concluído. O chat está disponível apenas para consulta.</span>
+              <span>
+                Este contrato foi concluído. O chat está disponível apenas para consulta.
+              </span>
             </div>
           )}
 
-          {/* Preview do Anexo */}
           {anexo && (
             <div className="anexo-preview">
               <div className="anexo-info">
@@ -224,7 +239,6 @@ export default function ChatContrato() {
             </div>
           )}
 
-          {/* Lista de Mensagens */}
           <div className="mensagens-container">
             {carregando ? (
               <div className="loading-state">
@@ -245,29 +259,31 @@ export default function ChatContrato() {
                   const podeExcluir = new Date() - new Date(m.data_envio) <= 7 * 60 * 1000;
 
                   return (
-                    <div key={m.id} className={`mensagem ${m.remetente === userId ? "enviada" : "recebida"}`}>
-                      
-                      {/* Anexo */}
+                    <div
+                      key={m.id}
+                      className={`mensagem ${m.remetente === userId ? "enviada" : "recebida"}`}
+                    >
                       {m.anexo_url && !m.excluida && (
                         <div className="mensagem-anexo">
-                          <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="anexo-link">
+                          <a
+                            href={m.anexo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="anexo-link"
+                          >
                             <i className="bi bi-paperclip"></i>
                             <span>Anexo</span>
                           </a>
                         </div>
                       )}
-                      
-                      {/* Texto da Mensagem */}
+
                       <div className="mensagem-content">
                         <p className={`mensagem-texto ${m.excluida ? "mensagem-excluida" : ""}`}>
                           {m.texto}
                         </p>
-                        <span className="mensagem-info">
-                          {formatarData(m.data_envio)}
-                        </span>
+                        <span className="mensagem-info">{formatarData(m.data_envio)}</span>
                       </div>
 
-                      {/* Menu de Ações */}
                       {m.remetente === userId && !m.excluida && (podeEditar || podeExcluir) && (
                         <div className="mensagem-menu-wrapper">
                           <button className="menu-toggle" onClick={() => toggleMenu(m.id)}>
@@ -313,28 +329,36 @@ export default function ChatContrato() {
                       enviarMensagem();
                     }
                   }}
-                  placeholder={statusContrato === "concluido" ? "Envio desabilitado - contrato concluído" : "Digite sua mensagem..."}
+                  placeholder={
+                    statusContrato === "concluido"
+                      ? "Envio desabilitado - contrato concluído"
+                      : "Digite sua mensagem..."
+                  }
                   className="chat-input"
                   disabled={enviando || statusContrato === "concluido"}
                   maxLength={2000}
                   rows={1}
                 />
-                
+
                 <div className="form-actions">
                   <label className="chat-btn-anexo" title="Anexar arquivo">
                     <i className="bi bi-paperclip"></i>
-                    <input 
-                      type="file" 
-                      accept=".jpg,.jpeg,.png,.pdf" 
-                      onChange={handleAnexoChange} 
-                      disabled={enviando || statusContrato === "concluido"} 
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={handleAnexoChange}
+                      disabled={enviando || statusContrato === "concluido"}
                     />
                   </label>
 
-                  <button 
-                    type="submit" 
-                    className="chat-btn-enviar" 
-                    disabled={enviando || statusContrato === "concluido" || (!novaMensagem.trim() && !anexo)} 
+                  <button
+                    type="submit"
+                    className="chat-btn-enviar"
+                    disabled={
+                      enviando ||
+                      statusContrato === "concluido" ||
+                      (!novaMensagem.trim() && !anexo)
+                    }
                     title="Enviar mensagem"
                   >
                     {enviando ? (
@@ -357,10 +381,12 @@ export default function ChatContrato() {
                 <h3>Editar mensagem</h3>
               </div>
               <div className="modal-body">
-                <textarea 
-                  value={modalEdicao.texto} 
-                  onChange={(e) => setModalEdicao({ ...modalEdicao, texto: e.target.value })} 
-                  rows={4} 
+                <textarea
+                  value={modalEdicao.texto}
+                  onChange={(e) =>
+                    setModalEdicao({ ...modalEdicao, texto: e.target.value })
+                  }
+                  rows={4}
                   className="modal-textarea"
                   placeholder="Digite sua mensagem..."
                 />
@@ -389,7 +415,10 @@ export default function ChatContrato() {
                 </h3>
               </div>
               <div className="modal-body">
-                <p>Tem certeza que deseja excluir esta mensagem? Esta ação não poderá ser desfeita.</p>
+                <p>
+                  Tem certeza que deseja excluir esta mensagem? Esta ação não poderá ser
+                  desfeita.
+                </p>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-ghost" onClick={fecharModalExclusao}>

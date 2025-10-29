@@ -9,7 +9,7 @@ export default function CadastrarDenuncia() {
   const { usuarioLogado } = useContext(UsuarioContext);
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Estados do formulário
   const [motivo, setMotivo] = useState("");
   const [provas, setProvas] = useState([]);
@@ -18,7 +18,7 @@ export default function CadastrarDenuncia() {
   const [denunciado, setDenunciado] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
-  
+
   const fileInputRef = useRef(null);
   const token = localStorage.getItem("token");
 
@@ -30,7 +30,7 @@ export default function CadastrarDenuncia() {
       setCarregando(false);
       return;
     }
-    
+
     async function buscarUsuario() {
       try {
         const res = await api.get(`/usuarios/${idDenunciado}/`);
@@ -41,38 +41,38 @@ export default function CadastrarDenuncia() {
         setCarregando(false);
       }
     }
-    
+
     buscarUsuario();
   }, [location.state]);
 
   // Manipular arquivos selecionados
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    
-    // Validar tipo e tamanho dos arquivos
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/');
-      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+
+    const validFiles = files.filter((file) => {
+      const isValidType = file.type.startsWith("image/");
+      const isValidSize = file.size <= 10 * 1024 * 1024;
       return isValidType && isValidSize;
     });
-    
+
     if (validFiles.length !== files.length) {
-      setErro("Alguns arquivos foram ignorados. Apenas imagens até 10MB são aceitas.");
+      setErro(
+        "Alguns arquivos foram ignorados. Apenas imagens até 10MB são aceitas."
+      );
       setTimeout(() => setErro(""), 5000);
     }
-    
-    setProvas(prev => [...prev, ...validFiles]);
+
+    setProvas((prev) => [...prev, ...validFiles]);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
-  // Remover arquivo específico
+  // Remover arquivo
   const removerArquivo = (index) => {
-    setProvas(prev => prev.filter((_, i) => i !== index));
+    setProvas((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Limpar mensagens de erro/sucesso
   const limparMensagens = () => {
     setErro("");
     setSucesso("");
@@ -82,18 +82,17 @@ export default function CadastrarDenuncia() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     limparMensagens();
-    
-    // Validações
+
     if (!motivo.trim()) {
       setErro("Por favor, descreva o motivo da denúncia.");
       return;
     }
-    
+
     if (motivo.trim().length < 20) {
       setErro("O motivo da denúncia deve ter pelo menos 20 caracteres.");
       return;
     }
-    
+
     if (provas.length === 0) {
       setErro("Você deve anexar pelo menos uma prova (imagem).");
       return;
@@ -113,18 +112,24 @@ export default function CadastrarDenuncia() {
           "Content-Type": "multipart/form-data",
         },
       });
-      
-      setSucesso("Denúncia enviada com sucesso! Você será redirecionado em instantes.");
+
+      setSucesso(
+        "Denúncia enviada com sucesso! Você será redirecionado em instantes."
+      );
       setMotivo("");
       setProvas([]);
-      
+
       setTimeout(() => navigate("/dashboard"), 3000);
     } catch (err) {
       if (err.response?.data?.detail) {
         setErro(err.response.data.detail);
       } else if (err.response?.data) {
         const mensagem = Object.values(err.response.data)[0];
-        setErro(typeof mensagem === "string" ? mensagem : "Erro ao enviar a denúncia.");
+        setErro(
+          typeof mensagem === "string"
+            ? mensagem
+            : "Erro ao enviar a denúncia."
+        );
       } else {
         setErro("Erro inesperado. Tente novamente.");
       }
@@ -133,38 +138,37 @@ export default function CadastrarDenuncia() {
     }
   };
 
-  // Cancelar e voltar
-  const handleCancelar = () => {
-    navigate(-1);
-  };
+  const handleCancelar = () => navigate(-1);
 
-  // Drag and drop handlers
+  // Drag and Drop
   const handleDragOver = (e) => {
     e.preventDefault();
-    e.currentTarget.classList.add('dragover');
+    e.currentTarget.classList.add("dragover");
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
-    e.currentTarget.classList.remove('dragover');
+    e.currentTarget.classList.remove("dragover");
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    e.currentTarget.classList.remove('dragover');
-    
+    e.currentTarget.classList.remove("dragover");
+
     const files = Array.from(e.dataTransfer.files);
-    const validFiles = files.filter(file => file.type.startsWith('image/'));
-    
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+
     if (validFiles.length !== files.length) {
       setErro("Alguns arquivos foram ignorados. Apenas imagens são aceitas.");
       setTimeout(() => setErro(""), 5000);
     }
-    
-    setProvas(prev => [...prev, ...validFiles]);
+
+    setProvas((prev) => [...prev, ...validFiles]);
   };
 
-  // Loading state
+  // =====================
+  // Estados de carregamento e erro
+  // =====================
   if (carregando) {
     return (
       <div className="denuncia-page">
@@ -179,7 +183,6 @@ export default function CadastrarDenuncia() {
     );
   }
 
-  // Verificações de segurança
   if (!usuarioLogado) {
     return (
       <div className="denuncia-page">
@@ -222,11 +225,13 @@ export default function CadastrarDenuncia() {
     );
   }
 
+  // =====================
+  // Página principal
+  // =====================
   return (
     <div className="denuncia-page">
       <div className="denuncia-container">
-        
-        {/* Header - Seguindo padrão dos trabalhos */}
+        {/* Header */}
         <div className="denuncia-header">
           <h1 className="denuncia-title">
             <div className="denuncia-title-icon">
@@ -239,7 +244,7 @@ export default function CadastrarDenuncia() {
           </p>
         </div>
 
-        {/* Card do Usuário Denunciado - Seguindo padrão dos cards */}
+        {/* Card do Usuário Denunciado */}
         <div className="usuario-denunciado">
           <div className="usuario-header">
             <div className="section-header">
@@ -248,11 +253,13 @@ export default function CadastrarDenuncia() {
               </div>
               <div className="section-info">
                 <h3 className="section-title">Usuário que será denunciado</h3>
-                <p className="section-subtitle">Informações do usuário reportado</p>
+                <p className="section-subtitle">
+                  Informações do usuário reportado
+                </p>
               </div>
             </div>
           </div>
-          
+
           <div className="usuario-body">
             <div className="usuario-info">
               <div className="info-item">
@@ -262,7 +269,9 @@ export default function CadastrarDenuncia() {
               <div className="info-item">
                 <span className="info-label">Tipo de Conta</span>
                 <span className="info-value">
-                  {denunciado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                  {denunciado.tipo === "freelancer"
+                    ? "Freelancer"
+                    : "Contratante"}
                 </span>
               </div>
               {denunciado.email && (
@@ -275,19 +284,20 @@ export default function CadastrarDenuncia() {
           </div>
         </div>
 
-        {/* Alerta Informativo - Seguindo padrão das propostas */}
+        {/* Alerta informativo */}
         <div className="info-alert">
           <i className="bi bi-info-circle"></i>
           <div className="info-alert-content">
             <h4>Use este recurso com responsabilidade</h4>
-            <p>Forneça descrição detalhada, provas claras e contexto suficiente para análise. Denúncias falsas podem resultar em penalidades.</p>
+            <p>
+              Forneça descrição detalhada, provas claras e contexto suficiente
+              para análise. Denúncias falsas podem resultar em penalidades.
+            </p>
           </div>
         </div>
 
-        {/* Formulário Principal - Seguindo padrão dos cards */}
+        {/* Formulário */}
         <div className="denuncia-form-card">
-          
-          {/* Header do formulário */}
           <div className="form-header">
             <div className="form-header-info">
               <div className="form-header-icon">
@@ -300,7 +310,7 @@ export default function CadastrarDenuncia() {
             </div>
           </div>
 
-          {/* Mensagens - Seguindo padrão das propostas */}
+          {/* Mensagens */}
           {(erro || sucesso) && (
             <div className="denuncia-messages">
               {erro && (
@@ -319,8 +329,7 @@ export default function CadastrarDenuncia() {
           )}
 
           <form onSubmit={handleSubmit} className="denuncia-form">
-            
-            {/* Campo de Motivo */}
+            {/* Motivo */}
             <div className="form-group">
               <label htmlFor="motivo" className="form-label">
                 <i className="bi bi-chat-text"></i>
@@ -332,7 +341,7 @@ export default function CadastrarDenuncia() {
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
                 className="denuncia-textarea"
-                placeholder="Descreva detalhadamente o que aconteceu. Seja específico sobre datas, situações e comportamentos inadequados. Quanto mais detalhes, melhor será nossa análise."
+                placeholder="Descreva detalhadamente o que aconteceu. Seja específico sobre datas, situações e comportamentos inadequados."
                 disabled={enviando}
                 maxLength={2000}
               />
@@ -341,15 +350,15 @@ export default function CadastrarDenuncia() {
               </div>
             </div>
 
-            {/* Upload de Provas */}
+            {/* Upload */}
             <div className="form-group">
               <label className="form-label">
                 <i className="bi bi-camera"></i>
                 Provas (imagens)
                 <span className="required">*</span>
               </label>
-              
-              <div 
+
+              <div
                 className="file-upload-area"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -362,7 +371,7 @@ export default function CadastrarDenuncia() {
                   </div>
                   <div className="upload-text">
                     <h4>Clique ou arraste imagens aqui</h4>
-                    <p>Formatos aceitos: JPG, PNG • Máximo: 10MB por arquivo</p>
+                    <p>Formatos aceitos: JPG, PNG • Máximo: 10MB</p>
                   </div>
                 </div>
                 <input
@@ -376,12 +385,14 @@ export default function CadastrarDenuncia() {
                 />
               </div>
 
-              {/* Preview dos Arquivos */}
+              {/* Preview */}
               {provas.length > 0 && (
                 <div className="preview-provas">
                   <h4>
                     <i className="bi bi-check-circle"></i>
-                    {provas.length} arquivo{provas.length > 1 ? 's' : ''} selecionado{provas.length > 1 ? 's' : ''}
+                    {provas.length} arquivo
+                    {provas.length > 1 ? "s" : ""} selecionado
+                    {provas.length > 1 ? "s" : ""}
                   </h4>
                   <div className="files-grid">
                     {provas.map((file, index) => (
@@ -389,7 +400,9 @@ export default function CadastrarDenuncia() {
                         <img
                           src={URL.createObjectURL(file)}
                           alt={`Prova ${index + 1}`}
-                          onLoad={(e) => URL.revokeObjectURL(e.target.src)}
+                          onLoad={(e) =>
+                            URL.revokeObjectURL(e.target.src)
+                          }
                         />
                         <div className="file-name">{file.name}</div>
                         <button
@@ -411,7 +424,7 @@ export default function CadastrarDenuncia() {
             </div>
           </form>
 
-          {/* Footer do formulário */}
+          {/* Footer */}
           <div className="form-footer">
             <div className="form-actions">
               <button
@@ -423,12 +436,17 @@ export default function CadastrarDenuncia() {
                 <i className="bi bi-arrow-left"></i>
                 Cancelar
               </button>
-              
+
               <button
                 type="submit"
                 className="btn-denuncia"
                 onClick={handleSubmit}
-                disabled={enviando || !motivo.trim() || motivo.trim().length < 20 || provas.length === 0}
+                disabled={
+                  enviando ||
+                  !motivo.trim() ||
+                  motivo.trim().length < 20 ||
+                  provas.length === 0
+                }
               >
                 {enviando ? (
                   <>

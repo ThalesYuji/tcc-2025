@@ -6,11 +6,12 @@ from contratos.models import Contrato
 
 
 class PagamentoSerializer(serializers.ModelSerializer):
-    cliente = serializers.PrimaryKeyRelatedField(queryset=Usuario.objects.all())
+    # 🔹 Campos principais
+    contratante = serializers.PrimaryKeyRelatedField(queryset=Usuario.objects.all())
     contrato = serializers.PrimaryKeyRelatedField(queryset=Contrato.objects.all())
-    cliente_detalhe = UsuarioSerializer(source="cliente", read_only=True)
+    contratante_detalhe = UsuarioSerializer(source="contratante", read_only=True)
 
-    # legados (somente leitura; mantidos por histórico/admin)
+    # 🔹 Campos legados (somente leitura; mantidos por histórico/admin)
     qr_code = serializers.CharField(read_only=True, required=False)
     qr_code_base64 = serializers.CharField(read_only=True, required=False)
     boleto_url = serializers.CharField(read_only=True, required=False)
@@ -19,7 +20,6 @@ class PagamentoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pagamento
         fields = "__all__"
-        # metodo é fixo (checkout_pro) e não deve ser enviado pelo cliente
         read_only_fields = [
             "status",
             "mercadopago_payment_id",
@@ -28,12 +28,14 @@ class PagamentoSerializer(serializers.ModelSerializer):
             "metodo",
         ]
 
+    # ==================== VALIDAÇÕES ====================
     def validate(self, data):
         contrato = data.get("contrato") or (self.instance and self.instance.contrato)
         valor = data.get("valor") or (self.instance and self.instance.valor)
-        cliente = data.get("cliente") or (self.instance and self.instance.cliente)
+        contratante = data.get("contratante") or (self.instance and self.instance.contratante)
         request = self.context.get("request")
 
+        # 🔸 Validações básicas
         if valor is None or float(valor) <= 0:
             raise serializers.ValidationError({"valor": "O valor do pagamento deve ser maior que zero."})
 
@@ -51,16 +53,22 @@ class PagamentoSerializer(serializers.ModelSerializer):
         if contrato.status in ["concluido", "cancelado"]:
             raise serializers.ValidationError("Não é possível registrar pagamento em contratos concluídos ou cancelados.")
 
-        if request and not (request.user.is_superuser or request.user == contrato.cliente):
-            raise serializers.ValidationError("Apenas o cliente do contrato pode registrar pagamentos.")
+        # 🔸 Permissões e consistência
+        if request and not (request.user.is_superuser or request.user == contrato.contratante):
+            raise serializers.ValidationError("Apenas o contratante do contrato pode registrar pagamentos.")
 
-        if cliente and cliente != contrato.cliente:
-            raise serializers.ValidationError("O cliente do pagamento deve ser o mesmo do contrato.")
+        if contratante and contratante != contrato.contratante:
+            raise serializers.ValidationError("O contratante do pagamento deve ser o mesmo do contrato.")
 
         return data
 
+    # ==================== CRIAÇÃO ====================
     def create(self, validated_data):
-        # força o padrão do fluxo
+        """
+        Força o padrão do fluxo de pagamento:
+        - Status inicial: pendente
+        - Método: checkout_pro (único suportado)
+        """
         validated_data["status"] = "pendente"
         validated_data["metodo"] = "checkout_pro"
         return super().create(validated_data)

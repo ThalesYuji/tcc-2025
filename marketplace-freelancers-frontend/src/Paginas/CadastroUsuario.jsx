@@ -278,7 +278,7 @@ export default function CadastroUsuario() {
                   className={`select-input ${erros.tipo ? "input-erro" : ""}`}
                 >
                   <option value="freelancer">Freelancer</option>
-                  <option value="cliente">Cliente</option>
+                  <option value="contratante">Contratante</option>
                 </select>
               </div>
               {erros.tipo && <div className="error-msg">{erros.tipo}</div>}
@@ -314,7 +314,7 @@ export default function CadastroUsuario() {
                     className={erros.cpf ? "input-erro" : ""}
                   />
                 </div>
-                {form.tipo === "cliente" && (
+                {form.tipo === "contratante" && (
                   <div className="input-group">
                     <FaBuilding className="input-icon" />
                     <input

@@ -12,33 +12,40 @@ from notificacoes.utils import enviar_notificacao
 
 
 class MensagemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet responsável por gerenciar o sistema de mensagens entre
+    contratantes e freelancers dentro de um contrato.
+    """
     serializer_class = MensagemSerializer
     permission_classes = [permissions.IsAuthenticated, PermissaoMensagem]
-    # 🔹 Aceita JSON e multipart
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         user = self.request.user
         base = Mensagem.objects.select_related("contrato", "remetente", "destinatario")
 
+        # 🔹 Admin vê todas as mensagens
         if user.is_superuser:
             return base.order_by("data_envio")
 
+        # 🔹 Contratante ou freelancer veem apenas mensagens dos contratos em que participam
         return (
-            base.filter(Q(contrato__cliente=user) | Q(contrato__freelancer=user))
+            base.filter(
+                Q(contrato__contratante=user) | Q(contrato__freelancer=user)
+            )
             .order_by("data_envio")
             .distinct()
         )
 
     def _conversa_response(self, contrato_id, status_code=status.HTTP_200_OK):
-        """Retorna a lista atualizada da conversa"""
+        """Retorna a lista atualizada de mensagens da conversa"""
         qs = (
             Mensagem.objects.filter(contrato_id=contrato_id)
             .select_related("remetente", "destinatario")
             .order_by("data_envio")
         )
-        ser = MensagemSerializer(qs, many=True, context={"request": self.request})
-        return Response({"mensagens": ser.data}, status=status_code)
+        serializer = MensagemSerializer(qs, many=True, context={"request": self.request})
+        return Response({"mensagens": serializer.data}, status=status_code)
 
     # -------------------------
     # CREATE
@@ -57,7 +64,7 @@ class MensagemViewSet(viewsets.ModelViewSet):
                 link=f"/mensagens/conversa?contrato={mensagem.contrato.id}",
             )
 
-        # salva ID do contrato para o create retornar a conversa
+        # Guarda o ID do contrato para o retorno pós-criação
         self._last_contrato = mensagem.contrato.id
 
     def create(self, request, *args, **kwargs):
@@ -80,10 +87,11 @@ class MensagemViewSet(viewsets.ModelViewSet):
     # -------------------------
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+
         if instance.remetente != request.user:
             return Response({"detail": "Você não pode excluir esta mensagem."}, status=403)
 
-        # 🔹 limite de 7 minutos
+        # 🔹 Limite de exclusão: 7 minutos
         if (timezone.now() - instance.data_envio).total_seconds() > 420:
             return Response(
                 {"detail": "Prazo para excluir mensagem expirou."},
@@ -109,6 +117,6 @@ class MensagemViewSet(viewsets.ModelViewSet):
         if not contrato_id:
             return Response(
                 {"detail": "Informe ?contrato=<id>."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         return self._conversa_response(contrato_id, status.HTTP_200_OK)

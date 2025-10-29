@@ -96,7 +96,7 @@ export default function DetalhesTrabalho() {
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
-    (usuarioLogado.id === trabalho.cliente_id || usuarioLogado.is_superuser);
+    (usuarioLogado.id === trabalho.contratante_id || usuarioLogado.is_superuser);
 
   const podeEnviarProposta =
     usuarioLogado &&
@@ -154,7 +154,7 @@ export default function DetalhesTrabalho() {
       
       setFormSucesso("✅ Proposta enviada com sucesso!");
       setShowForm(false);
-      mostrarAlerta("sucesso", "Proposta enviada com sucesso! O cliente será notificado.");
+      mostrarAlerta("sucesso", "Proposta enviada com sucesso! O contratante será notificado.");
       setTimeout(() => setFormSucesso(""), 3000);
     } catch (err) {
       const mensagem =
@@ -274,7 +274,7 @@ export default function DetalhesTrabalho() {
               <div className="form-group">
                 <label>
                   <i className="bi bi-chat-text"></i>
-                  Mensagem para o Cliente
+                  Mensagem para o Contratante
                 </label>
                 <textarea
                   placeholder="Descreva sua proposta, experiência relevante e por que você é a melhor escolha para este projeto..."
@@ -376,7 +376,7 @@ export default function DetalhesTrabalho() {
             </div>
           </div>
           <p className="detalhes-subtitle">
-            Publicado por {trabalho.nome_cliente} em {formatarDataHora(trabalho.criado_em)}
+            Publicado por {trabalho.nome_contratante} em {formatarDataHora(trabalho.criado_em)}
           </p>
         </div>
       </div>
@@ -436,12 +436,12 @@ export default function DetalhesTrabalho() {
                   <i className="bi bi-person"></i>
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Cliente</span>
+                  <span className="info-label">Contratante</span>
                   <span 
                     className="info-value cliente-link"
-                    onClick={() => navigate(`/perfil/${trabalho.cliente_id}`)}
+                    onClick={() => navigate(`/perfil/${trabalho.contratante_id}`)}
                   >
-                    {trabalho.nome_cliente}
+                    {trabalho.nome_contratante}
                   </span>
                 </div>
               </div>

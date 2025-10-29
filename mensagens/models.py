@@ -24,7 +24,7 @@ def mensagem_upload_to(instance: "Mensagem", filename: str) -> str:
 # =========================
 class Mensagem(models.Model):
     """
-    Mensagem trocada entre cliente e freelancer dentro de um contrato.
+    Mensagem trocada entre contratante e freelancer dentro de um contrato.
     """
 
     contrato = models.ForeignKey(

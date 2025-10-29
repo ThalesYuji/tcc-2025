@@ -310,7 +310,7 @@ export default function Conta() {
               <div className="profile-meta">
                 <span className={`user-badge ${usuarioLogado.tipo}`}>
                   <i className={`bi ${usuarioLogado.tipo === 'freelancer' ? 'bi-briefcase' : 'bi-person'}`}></i>
-                  {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Cliente"}
+                  {usuarioLogado.tipo === "freelancer" ? "Freelancer" : "Contratante"}
                 </span>
                 {typeof notaMedia !== "undefined" && notaMedia !== null && (
                   <span className="rating-badge">
