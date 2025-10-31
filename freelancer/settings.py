@@ -20,9 +20,12 @@ load_dotenv(BASE_DIR / ".env")
 # ------------------------
 # Segurança
 # ------------------------
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)ava3u%8_xl%&kcf-l2xwo*tr!mbv(_irqp8d&az55#0c)5t*r')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-123')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
+# ------------------------
+# Funções auxiliares
+# ------------------------
 def _host_from_url(url: str | None) -> str | None:
     if not url:
         return None
@@ -31,6 +34,7 @@ def _host_from_url(url: str | None) -> str | None:
         return p.netloc or None
     except Exception:
         return None
+
 
 def _origin(url: str | None) -> str | None:
     if not url:
@@ -74,11 +78,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
-    # Storage (Cloudinary)
+    # Cloudinary (storage)
     'cloudinary',
     'cloudinary_storage',
 
-    # Seus apps
+    # Apps do projeto
     'usuarios.apps.UsuariosConfig',
     'trabalhos',
     'propostas',
@@ -134,17 +138,17 @@ WSGI_APPLICATION = 'freelancer.wsgi.application'
 # ------------------------
 # BANCO DE DADOS
 # ------------------------
-if os.getenv('DATABASE_URL'):
-    # ✅ Produção: MySQL (Railway)
+# 🚀 Ajuste automático: usa MySQL interno do Railway em produção e MySQL local no dev
+if os.getenv('RAILWAY_ENVIRONMENT', None):
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv('DATABASE_URL'),
+            engine='django.db.backends.mysql',
             conn_max_age=600,
             conn_health_checks=True,
         )
     }
 else:
-    # ✅ Desenvolvimento: MySQL local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -179,7 +183,7 @@ USE_I18N = True
 USE_TZ = True
 
 # ------------------------
-# STATIC / MEDIA (Django 5 com STORAGES)
+# STATIC / MEDIA
 # ------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -188,22 +192,14 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+    "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
 # ------------------------
 # CLOUDINARY
 # ------------------------
-CLOUDINARY_URL = os.getenv(
-    "CLOUDINARY_URL",
-    "cloudinary://182582265899342:xhNjam6wM6DeUCmzKKmcfUQEKEk@dtxz7xxrh"
-)
-
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME", "dtxz7xxrh"),
     "API_KEY": os.getenv("CLOUDINARY_API_KEY", "182582265899342"),
@@ -236,7 +232,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
 }
 
 # ------------------------
@@ -281,14 +276,14 @@ SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 # ------------------------
 # API CPF/CNPJ
 # ------------------------
-CPF_CNPJ_API_BASE = os.getenv("CPF_CNPJ_API_BASE", "https://api.cpfcnpj.com.br")
+CPF_CNPJ_API_BASE = os.getenv("CPF_CNPJ_API_BASE")
 CPF_CNPJ_TOKEN = os.getenv("CPF_CNPJ_TOKEN")
 CPF_CNPJ_PACOTE_CPF_C = int(os.getenv("CPF_CNPJ_PACOTE_CPF_C", 2))
 CPF_CNPJ_PACOTE_CNPJ_C = int(os.getenv("CPF_CNPJ_PACOTE_CNPJ_C", 10))
 CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
 
 # ------------------------
-# MERCADO PAGO CONFIG
+# MERCADO PAGO
 # ------------------------
 MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
@@ -296,7 +291,7 @@ MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET")
 MP_INCLUDE_PAYER = False
 
 # ------------------------
-# Segurança HTTPS (produção)
+# HTTPS / SEGURANÇA
 # ------------------------
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
