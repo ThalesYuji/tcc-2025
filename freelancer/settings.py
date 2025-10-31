@@ -135,34 +135,16 @@ TEMPLATES = [
 # ------------------------
 WSGI_APPLICATION = 'freelancer.wsgi.application'
 
-# ------------------------
 # BANCO DE DADOS
 # ------------------------
-# 🚀 Ajuste automático: usa MySQL interno do Railway em produção e MySQL local no dev
-if os.getenv('RAILWAY_ENVIRONMENT', None):
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'),
-            engine='django.db.backends.mysql',
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'freelancerdb',
-            'USER': 'root',
-            'PASSWORD': 'root',
-            'HOST': 'localhost',
-            'PORT': '3306',
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES', NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
-            },
-        }
-    }
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        engine='django.db.backends.mysql',
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
 # ------------------------
 # VALIDAÇÃO DE SENHA
