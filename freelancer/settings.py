@@ -4,6 +4,8 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+import pymysql  # ✅ Driver MySQL
+pymysql.install_as_MySQLdb()  # ✅ Faz Django usar o PyMySQL
 
 # ------------------------
 # Caminho base do projeto
@@ -41,13 +43,12 @@ def _origin(url: str | None) -> str | None:
         pass
     return None
 
-# URL pública do BACKEND (Railway)
+# ------------------------
+# URLs e Hosts
+# ------------------------
 SITE_URL = os.getenv("SITE_URL", "").rstrip("/")
-# URL pública do FRONT
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-# URL para retorno do checkout
 FRONT_RETURN_URL = os.getenv("FRONT_RETURN_URL", f"{FRONTEND_URL}/checkout/retorno").rstrip("/")
-# Webhook do Mercado Pago
 MP_WEBHOOK_URL = os.getenv("MP_WEBHOOK_URL", f"{SITE_URL}/mercadopago/webhook/").rstrip("/")
 
 _default_allowed = ['localhost', '127.0.0.1']
@@ -134,7 +135,7 @@ WSGI_APPLICATION = 'freelancer.wsgi.application'
 # BANCO DE DADOS
 # ------------------------
 if os.getenv('DATABASE_URL'):
-    # Produção: PostgreSQL (Railway)
+    # ✅ Produção: MySQL (Railway)
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv('DATABASE_URL'),
@@ -143,7 +144,7 @@ if os.getenv('DATABASE_URL'):
         )
     }
 else:
-    # Desenvolvimento: MySQL
+    # ✅ Desenvolvimento: MySQL local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -186,7 +187,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Django 5: define storages de mídia e estáticos
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
@@ -196,7 +196,9 @@ STORAGES = {
     },
 }
 
-# Config Cloudinary (usa env se existir; senão, usa seus valores)
+# ------------------------
+# CLOUDINARY
+# ------------------------
 CLOUDINARY_URL = os.getenv(
     "CLOUDINARY_URL",
     "cloudinary://182582265899342:xhNjam6wM6DeUCmzKKmcfUQEKEk@dtxz7xxrh"
