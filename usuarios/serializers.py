@@ -8,8 +8,8 @@ from django.contrib.auth.tokens import default_token_generator
 from .models import Usuario
 from notificacoes.models import Notificacao
 from avaliacoes.models import Avaliacao
-from trabalhos.models import Trabalho  # para contar trabalhos
-from contratos.models import Contrato  # ✅ usado para contar contratos concluídos
+from trabalhos.models import Trabalho
+from contratos.models import Contrato
 
 # 🔹 Service real para CPF/CNPJ
 from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
@@ -21,19 +21,18 @@ class UsuarioSerializer(serializers.ModelSerializer):
     - Normaliza CPF/CNPJ/telefone (remove não dígitos)
     - Valida unicidade e formato
     - Força senha forte
-    - Retorna foto_perfil com URL ABSOLUTA (Cloudinary já devolve absoluta;
-      se vier relativa tipo /media/..., converte usando request.build_absolute_uri)
+    - Retorna foto_perfil com URL absoluta
     """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
     cnpj = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     telefone = serializers.CharField(required=True)
+    sou_empresa = serializers.BooleanField(required=False, default=False)  # ✅ Novo campo
 
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
     foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
     notificacao_email = serializers.BooleanField(required=False)
 
-    # Tipo explícito/obrigatório no cadastro
     tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
     class Meta:
@@ -43,14 +42,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
     # --------------------- Representação (saída) ---------------------
     def to_representation(self, instance):
         data = super().to_representation(instance)
-
-        # 🔒 Garante URL absoluta da foto
         request = self.context.get('request')
         foto = data.get('foto_perfil')
-        if foto:
-            if not (foto.startswith('http://') or foto.startswith('https://')):
-                if request is not None:
-                    data['foto_perfil'] = request.build_absolute_uri(foto)
+        if foto and not (foto.startswith('http://') or foto.startswith('https://')):
+            if request is not None:
+                data['foto_perfil'] = request.build_absolute_uri(foto)
         return data
 
     # --------------------- Normalização (entrada) ---------------------
@@ -75,6 +71,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     def validate_cpf(self, value):
         cpf = re.sub(r'\D', '', value or '')
+        if not cpf:
+            return cpf
         qs = Usuario.objects.filter(cpf=cpf)
         if self.instance:
             qs = qs.exclude(id=self.instance.id)
@@ -124,6 +122,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
         return password
 
+    # --------------------- Criação / Atualização ---------------------
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         validated_data.pop('groups', None, )
@@ -151,20 +150,24 @@ class UsuarioSerializer(serializers.ModelSerializer):
         tipo = data.get('tipo') or (self.instance.tipo if self.instance else None)
         cpf = data.get('cpf') or (self.instance.cpf if self.instance else None)
         cnpj = data.get('cnpj') or (self.instance.cnpj if self.instance else None)
+        sou_empresa = data.get('sou_empresa') or (self.instance.sou_empresa if self.instance else False)
         senha = data.get('password')
 
         if senha:
             self.validate_password(senha)
 
+        # --- Freelancers: CPF obrigatório ---
         if tipo == 'freelancer':
             if not cpf:
-                raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF."})
+                raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF válido."})
 
+        # --- Contratantes: CPF obrigatório, CNPJ só se for empresa ---
         elif tipo == 'contratante':
             if not cpf:
                 raise serializers.ValidationError({"cpf": "CPF é obrigatório para contratantes."})
-            if not cnpj:
-                raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para contratantes."})
+            if sou_empresa and not cnpj:
+                raise serializers.ValidationError({"cnpj": "CNPJ é obrigatório para empresas contratantes."})
+
         return data
 
 

@@ -24,6 +24,7 @@ export default function CadastroUsuario() {
     tipo: "freelancer",
     cpf: "",
     cnpj: "",
+    sou_empresa: false, // ✅ Novo campo
     telefone: "",
     foto_perfil: null,
   });
@@ -72,8 +73,12 @@ export default function CadastroUsuario() {
   }
 
   function handleChange(e) {
-    const { name, value, files } = e.target;
-    if (name === "foto_perfil") {
+    const { name, value, type, checked, files } = e.target;
+
+    if (name === "sou_empresa") {
+      // ✅ Se desmarcar "sou empresa", apaga CNPJ
+      setForm({ ...form, sou_empresa: checked, cnpj: checked ? form.cnpj : "" });
+    } else if (name === "foto_perfil") {
       setForm({ ...form, [name]: files[0] });
     } else if (name === "telefone") {
       setForm({ ...form, [name]: formatarTelefone(value) });
@@ -92,7 +97,8 @@ export default function CadastroUsuario() {
     if (!/[A-Z]/.test(senha)) errosSenha.push("letra maiúscula");
     if (!/[a-z]/.test(senha)) errosSenha.push("letra minúscula");
     if (!/[0-9]/.test(senha)) errosSenha.push("número");
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha)) errosSenha.push("símbolo especial");
+    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(senha))
+      errosSenha.push("símbolo especial");
     return errosSenha;
   }
 
@@ -162,7 +168,11 @@ export default function CadastroUsuario() {
       <div className="login-content">
         {/* Lado esquerdo */}
         <div className="login-left">
-          <img src="/profreelabr.png" alt="Logo ProFreelaBR" className="login-logo" />
+          <img
+            src="/profreelabr.png"
+            alt="Logo ProFreelaBR"
+            className="login-logo"
+          />
           <h1 className="login-title">Crie sua conta no ProFreelaBR</h1>
           <h2 className="login-subtitle">
             Faça parte da maior comunidade de freelancers do Brasil
@@ -179,8 +189,12 @@ export default function CadastroUsuario() {
             <h3>Cadastrar</h3>
 
             {/* Alertas globais */}
-            {erros.cpf && <div className="error-msg destaque">⚠️ {erros.cpf}</div>}
-            {erros.cnpj && <div className="error-msg destaque">⚠️ {erros.cnpj}</div>}
+            {erros.cpf && (
+              <div className="error-msg destaque">⚠️ {erros.cpf}</div>
+            )}
+            {erros.cnpj && (
+              <div className="error-msg destaque">⚠️ {erros.cnpj}</div>
+            )}
             {erroGeral && <div className="error-msg">{erroGeral}</div>}
             {sucesso && <div className="success-msg">{sucesso}</div>}
 
@@ -235,7 +249,9 @@ export default function CadastroUsuario() {
                   <button
                     type="button"
                     className="toggle-visibility"
-                    onClick={() => setVisivel(v => ({ ...v, senha: !v.senha }))}
+                    onClick={() =>
+                      setVisivel((v) => ({ ...v, senha: !v.senha }))
+                    }
                     aria-label={visivel.senha ? "Ocultar senha" : "Mostrar senha"}
                     title={visivel.senha ? "Ocultar senha" : "Mostrar senha"}
                   >
@@ -256,16 +272,26 @@ export default function CadastroUsuario() {
                   <button
                     type="button"
                     className="toggle-visibility"
-                    onClick={() => setVisivel(v => ({ ...v, confirmar: !v.confirmar }))}
-                    aria-label={visivel.confirmar ? "Ocultar senha" : "Mostrar senha"}
-                    title={visivel.confirmar ? "Ocultar senha" : "Mostrar senha"}
+                    onClick={() =>
+                      setVisivel((v) => ({ ...v, confirmar: !v.confirmar }))
+                    }
+                    aria-label={
+                      visivel.confirmar ? "Ocultar senha" : "Mostrar senha"
+                    }
+                    title={
+                      visivel.confirmar ? "Ocultar senha" : "Mostrar senha"
+                    }
                   >
                     {visivel.confirmar ? <FaEyeSlash /> : <FaEye />}
                   </button>
                 </div>
               </div>
-              {erros.password && <div className="error-msg">{erros.password}</div>}
-              {erros.confirmarSenha && <div className="error-msg">{erros.confirmarSenha}</div>}
+              {erros.password && (
+                <div className="error-msg">{erros.password}</div>
+              )}
+              {erros.confirmarSenha && (
+                <div className="error-msg">{erros.confirmarSenha}</div>
+              )}
 
               {/* BLOCO 2 */}
               <h4>Perfil e Documentos</h4>
@@ -283,6 +309,24 @@ export default function CadastroUsuario() {
               </div>
               {erros.tipo && <div className="error-msg">{erros.tipo}</div>}
 
+              {/* ✅ Checkbox Sou Empresa */}
+              {form.tipo === "contratante" && (
+                <div className="form-check mb-3">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="sou_empresa"
+                    name="sou_empresa"
+                    checked={form.sou_empresa}
+                    onChange={handleChange}
+                  />
+                  <label className="form-check-label" htmlFor="sou_empresa">
+                    Sou uma empresa
+                  </label>
+                </div>
+              )}
+
+              {/* Telefone */}
               <div className="form-row">
                 <div className="input-group">
                   <FaPhone className="input-icon" />
@@ -298,8 +342,11 @@ export default function CadastroUsuario() {
                   />
                 </div>
               </div>
-              {erros.telefone && <div className="error-msg">{erros.telefone}</div>}
+              {erros.telefone && (
+                <div className="error-msg">{erros.telefone}</div>
+              )}
 
+              {/* CPF + CNPJ Condicional */}
               <div className="form-row">
                 <div className="input-group">
                   <FaIdCard className="input-icon" />
@@ -314,7 +361,8 @@ export default function CadastroUsuario() {
                     className={erros.cpf ? "input-erro" : ""}
                   />
                 </div>
-                {form.tipo === "contratante" && (
+
+                {form.tipo === "contratante" && form.sou_empresa && (
                   <div className="input-group">
                     <FaBuilding className="input-icon" />
                     <input
@@ -355,7 +403,11 @@ export default function CadastroUsuario() {
                 )}
               </div>
 
-              <button type="submit" className="btn btn-primary btn-submit" disabled={carregando}>
+              <button
+                type="submit"
+                className="btn btn-primary btn-submit"
+                disabled={carregando}
+              >
                 {carregando ? "Cadastrando..." : "Cadastrar"}
               </button>
             </form>
