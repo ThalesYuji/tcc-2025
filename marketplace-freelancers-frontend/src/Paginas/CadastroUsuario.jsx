@@ -73,7 +73,7 @@ export default function CadastroUsuario() {
   }
 
   function handleChange(e) {
-    const { name, value, type, checked, files } = e.target;
+    const { name, value, checked, files } = e.target;
 
     if (name === "sou_empresa") {
       // ✅ Se desmarcar "sou empresa", apaga CNPJ
@@ -97,7 +97,7 @@ export default function CadastroUsuario() {
     if (!/[A-Z]/.test(senha)) errosSenha.push("letra maiúscula");
     if (!/[a-z]/.test(senha)) errosSenha.push("letra minúscula");
     if (!/[0-9]/.test(senha)) errosSenha.push("número");
-    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(senha))
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha))
       errosSenha.push("símbolo especial");
     return errosSenha;
   }
