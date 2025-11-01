@@ -506,3 +506,60 @@
     height: 14px !important;
   }
 }
+
+/* ==============================
+   ✅ CHECKBOX "SOU UMA EMPRESA"
+   ============================== */
+
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #fff;
+}
+
+.form-check-input:hover {
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.form-check-input:checked {
+  background-color: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+}
+
+.form-check-input:checked::after {
+  content: "✓";
+  position: absolute;
+  top: 0px;
+  left: 4px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.form-check-label {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 600;
+  user-select: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.form-check-label:hover {
+  color: var(--cor-primaria-dark);
+}
