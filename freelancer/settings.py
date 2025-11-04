@@ -250,18 +250,36 @@ CSRF_TRUSTED_ORIGINS = list({
 })
 
 # ------------------------
-# E-MAIL (SendGrid)
+# 📧 E-MAIL (SendGrid)
 # ------------------------
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True").lower() in ("true", "1", "yes")
 
+# Servidor SMTP do SendGrid
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
+
+# Porta recomendada para Railway (TLS)
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+
+# Segurança e protocolo
+# ⚠️ Railway bloqueia SSL (porta 465), então usamos TLS (porta 587)
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+
+# Autenticação SendGrid
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")  # obrigatório: literal 'apikey'
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # sua chave SendGrid
+
+# Endereço que aparece como remetente
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
+
+# Nome do site (usado em e-mails e templates)
 SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
+
+# 💡 Log no console para depuração
+# (útil para confirmar que o Django tentou enviar)
+import logging
+logging.getLogger("django.core.mail").setLevel(logging.DEBUG)
+logging.getLogger("django.core.mail").addHandler(logging.StreamHandler())
 
 # ------------------------
 # API CPF/CNPJ
