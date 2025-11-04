@@ -299,15 +299,18 @@ from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSer
 
 # 🔹 Função auxiliar: envio de e-mail em segundo plano
 def enviar_email_async(msg):
-    """Executa o envio do e-mail em background (thread separada)."""
+    """Envia o e-mail sem travar o request principal."""
     try:
-        print("\n🚀 [THREAD] Iniciando envio de e-mail de redefinição...")
+        print("🚀 [THREAD] Iniciando envio de e-mail de redefinição...")
         inicio = time.time()
-        msg.send(fail_silently=False)
+        resultado = msg.send(fail_silently=False)
         duracao = round(time.time() - inicio, 2)
-        print(f"✅ [OK] E-mail de redefinição enviado com sucesso em {duracao}s.\n")
+        if resultado:
+            print(f"✅ [OK] E-mail enviado com sucesso em {duracao}s.")
+        else:
+            print(f"⚠️ [ALERTA] Nenhum e-mail foi enviado (resultado={resultado}).")
     except Exception as e:
-        print(f"❌ [ERRO] Falha ao enviar e-mail de redefinição: {e}\n")
+        print(f"❌ [ERRO] Falha ao enviar e-mail: {type(e).__name__} -> {e}")
 
 
 class PasswordResetRequestView(APIView):
