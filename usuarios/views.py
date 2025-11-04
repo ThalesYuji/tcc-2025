@@ -1,16 +1,24 @@
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from django.utils.encoding import force_str, force_bytes
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.contrib.auth.tokens import default_token_generator
-from django.template.loader import render_to_string
-from django.core.mail import EmailMultiAlternatives
+# 🔹 Bibliotecas padrão Python
+import threading
+import time
+
+# 🔹 Django
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Q, Count
 
+# 🔹 Django REST Framework
+from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import action
+
+# 🔹 Modelos e Serializers locais
 from .models import Usuario
 from .serializers import (
     UsuarioSerializer,
@@ -19,15 +27,16 @@ from .serializers import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
 )
+
+# 🔹 Permissões e utilidades do app
 from .permissoes import PermissaoUsuario
 from notificacoes.utils import enviar_notificacao
 
-# Importações adicionais
+# 🔹 Importações adicionais (outros apps)
 from avaliacoes.models import Avaliacao
 from avaliacoes.serializers import AvaliacaoSerializer
 from propostas.models import Proposta
 from contratos.models import Contrato
-
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     """
@@ -270,7 +279,7 @@ class UsuarioMeAPIView(APIView):
         return Response(serializer.errors, status=400)
 
 
-# ------------------ RECUPERAÇÃO DE SENHA ------------------
+# ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA E OTIMIZADA) ------------------
 import threading
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -282,22 +291,27 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
+import time
 
 from .models import Usuario
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 
 
-# 🔹 Função auxiliar: envia o e-mail em background
+# 🔹 Função auxiliar: envio de e-mail em segundo plano
 def enviar_email_async(msg):
-    """Envia o e-mail sem travar o request principal."""
+    """Executa o envio do e-mail em background (thread separada)."""
     try:
-        msg.send(fail_silently=True)
-        print("📨 E-mail de redefinição enviado com sucesso.")
+        print("\n🚀 [THREAD] Iniciando envio de e-mail de redefinição...")
+        inicio = time.time()
+        msg.send(fail_silently=False)
+        duracao = round(time.time() - inicio, 2)
+        print(f"✅ [OK] E-mail de redefinição enviado com sucesso em {duracao}s.\n")
     except Exception as e:
-        print(f"⚠️ Erro ao enviar e-mail de redefinição: {e}")
+        print(f"❌ [ERRO] Falha ao enviar e-mail de redefinição: {e}\n")
 
 
 class PasswordResetRequestView(APIView):
+    """Endpoint público: /api/password-reset/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -310,29 +324,24 @@ class PasswordResetRequestView(APIView):
         except Usuario.DoesNotExist:
             user = None
 
-        # 🔹 Só gera e envia se o usuário existir
         if user:
-            # Gera link seguro com token
+            # 🔹 Cria token e link de redefinição
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
-
-            # Monta o link do frontend (React)
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
             reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
 
-            # Contexto do e-mail
+            # 🔹 Prepara contexto e templates
             context = {
                 "user": user,
                 "reset_link": reset_link,
                 "site_name": getattr(settings, "SITE_NAME", "ProFreelaBR"),
             }
-
-            # Renderiza templates
             subject = f"[{context['site_name']}] Redefinição de senha"
             text_body = render_to_string("emails/password_reset.txt", context)
             html_body = render_to_string("emails/password_reset.html", context)
 
-            # Cria a mensagem
+            # 🔹 Cria o objeto de e-mail
             msg = EmailMultiAlternatives(
                 subject,
                 text_body,
@@ -341,10 +350,16 @@ class PasswordResetRequestView(APIView):
             )
             msg.attach_alternative(html_body, "text/html")
 
-            # 🔹 Envia em thread separada (não bloqueia o backend)
-            threading.Thread(target=enviar_email_async, args=(msg,)).start()
+            # 🔹 Log visual no console
+            print("📧 Iniciando envio de e-mail para:", user.email)
+            print("🔗 Link de redefinição:", reset_link)
 
-        # ✅ Responde rápido mesmo que o envio falhe
+            # 🔹 Executa envio em segundo plano
+            threading.Thread(target=enviar_email_async, args=(msg,), daemon=True).start()
+        else:
+            print(f"⚠️ E-mail {email} não encontrado — nenhuma ação tomada.")
+
+        # 🔹 Retorno rápido (independente do resultado do envio)
         return Response(
             {
                 "detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
@@ -354,6 +369,7 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    """Endpoint público: /api/password-reset-confirm/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -364,26 +380,29 @@ class PasswordResetConfirmView(APIView):
         token = serializer.validated_data["token"]
         new_password = serializer.validated_data["new_password"]
 
-        # 🔹 Decodifica e valida o usuário
+        # 🔹 Localiza o usuário correspondente
         try:
             uid_int = force_str(urlsafe_base64_decode(uid))
             user = Usuario.objects.get(pk=uid_int)
         except Exception:
+            print("❌ [ERRO] UID inválido ou não encontrado.")
             return Response(
                 {"detail": "Link inválido ou expirado."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 Verifica se o token ainda é válido
+        # 🔹 Valida o token de redefinição
         if not default_token_generator.check_token(user, token):
+            print("❌ [ERRO] Token inválido ou expirado.")
             return Response(
                 {"detail": "Token inválido ou expirado."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 Atualiza a senha com sucesso
+        # 🔹 Define nova senha
         user.set_password(new_password)
         user.save()
+        print(f"🔑 Senha redefinida com sucesso para o usuário ID {user.id} ({user.email})")
 
         return Response(
             {"detail": "Senha redefinida com sucesso."},
