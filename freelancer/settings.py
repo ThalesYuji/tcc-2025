@@ -35,7 +35,6 @@ def _host_from_url(url: str | None) -> str | None:
     except Exception:
         return None
 
-
 def _origin(url: str | None) -> str | None:
     if not url:
         return None
@@ -135,6 +134,7 @@ TEMPLATES = [
 # ------------------------
 WSGI_APPLICATION = 'freelancer.wsgi.application'
 
+# ------------------------
 # BANCO DE DADOS
 # ------------------------
 DATABASES = {
@@ -220,13 +220,20 @@ SIMPLE_JWT = {
 # CORS
 # ------------------------
 if DEBUG:
+    # Ambiente local - tudo liberado
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = ['*']
     CORS_ALLOW_METHODS = ['*']
 else:
-    _front_origin = _origin(FRONTEND_URL)
-    CORS_ALLOWED_ORIGINS = [o for o in [_front_origin] if o]
+    # Ambiente Railway - libera origens locais e a pública
+    _cors_env = [o for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o]
+    CORS_ALLOWED_ORIGINS = _cors_env or [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
     CORS_ALLOW_CREDENTIALS = True
 
 # ------------------------
