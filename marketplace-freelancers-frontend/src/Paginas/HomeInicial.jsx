@@ -11,7 +11,6 @@ export default function HomeInicial() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [pagina, setPagina] = useState(1);
-  const [temMais, setTemMais] = useState(false);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
   useEffect(() => {
@@ -56,7 +55,6 @@ export default function HomeInicial() {
         if (res.data.results !== undefined) {
           // Formato DRF: { count, next, previous, results }
           setOportunidades(res.data.results || []);
-          setTemMais(!!res.data.next);
           
           const pageSize = 6;
           const totalItens = res.data.count || 0;
@@ -67,19 +65,16 @@ export default function HomeInicial() {
           // Formato: { results, total, page, page_size, num_pages }
           setOportunidades(res.data.results || []);
           setTotalPaginas(res.data.num_pages || 1);
-          setTemMais(res.data.page < res.data.num_pages);
         }
         // 🔹 Array direto
         else if (Array.isArray(res.data)) {
           setOportunidades(res.data);
-          setTemMais(false);
           setTotalPaginas(1);
         }
         // ❌ Formato desconhecido
         else {
           console.error("Formato de resposta desconhecido:", res.data);
           setOportunidades([]);
-          setTemMais(false);
           setTotalPaginas(1);
         }
 
@@ -140,21 +135,19 @@ export default function HomeInicial() {
 
   // 🔹 Atalhos rápidos do painel
   const getShortcuts = () => {
-    const baseShortcuts = [
-      { path: "/propostas", icon: "bi-file-earmark-text", label: "Propostas", color: "bg-primary" },
-      { path: "/contratos", icon: "bi-file-earmark-check", label: "Contratos", color: "bg-success" },
-      { path: "/notificacoes", icon: "bi-bell", label: "Notificações", color: "bg-warning" }
-    ];
-
     if (usuarioLogado.tipo === "contratante") {
       return [
-        ...baseShortcuts,
-        { path: "/trabalhos/novo", icon: "bi-megaphone", label: "Publicar", color: "bg-danger" }
+        { path: "/trabalhos/novo", icon: "bi-megaphone", label: "Publicar", color: "bg-danger" },
+        { path: "/propostas", icon: "bi-file-earmark-text", label: "Propostas", color: "bg-primary" },
+        { path: "/contratos", icon: "bi-file-earmark-check", label: "Contratos", color: "bg-success" },
+        { path: "/notificacoes", icon: "bi-bell", label: "Notificações", color: "bg-warning" }
       ];
     } else {
       return [
-        ...baseShortcuts,
-        { path: "/trabalhos", icon: "bi-search", label: "Trabalhos", color: "bg-secondary" }
+        { path: "/trabalhos", icon: "bi-search", label: "Trabalhos", color: "bg-danger" },
+        { path: "/propostas", icon: "bi-file-earmark-text", label: "Propostas", color: "bg-primary" },
+        { path: "/contratos", icon: "bi-file-earmark-check", label: "Contratos", color: "bg-success" },
+        { path: "/notificacoes", icon: "bi-bell", label: "Notificações", color: "bg-warning" }
       ];
     }
   };
@@ -163,30 +156,15 @@ export default function HomeInicial() {
     <div className="home-wrapper page-container fade-in">
       {/* 🏠 Hero Section */}
       <section className="hero-section">
-        <div className="welcome-text">
-          <span className="wave-emoji">👋</span>
-          <span>Bem-vindo de volta!</span>
-        </div>
-
         <h1 className="user-greeting">
           Olá, {usuarioLogado.nome || usuarioLogado.username || "Usuário"}!
         </h1>
 
         <p className="hero-description">
           {usuarioLogado.tipo === "freelancer"
-            ? "Descubra projetos incríveis e impulsione sua carreira para o próximo nível 🚀"
-            : "Conecte-se com talentos extraordinários e transforme suas ideias em realidade 💡"}
+            ? "Descubra projetos incríveis e impulsione sua carreira para o próximo nível"
+            : "Conecte-se com talentos extraordinários e transforme suas ideias em realidade"}
         </p>
-
-        {usuarioLogado.tipo === "contratante" ? (
-          <Link to="/trabalhos/novo" className="hero-cta">
-            <i className="bi bi-plus-circle"></i> Publicar Novo Trabalho
-          </Link>
-        ) : (
-          <Link to="/trabalhos" className="hero-cta">
-            <i className="bi bi-search"></i> Explorar Oportunidades
-          </Link>
-        )}
       </section>
 
       {/* ⚡ Atalhos Rápidos */}

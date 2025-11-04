@@ -27,16 +27,6 @@
   z-index: -1;
 }
 
-.welcome-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  font-size: 1.125rem;
-  color: var(--cor-texto-light);
-  margin-bottom: var(--space-md);
-}
-
 .user-greeting {
   font-size: 2.5rem;
   font-weight: 700;
@@ -56,27 +46,6 @@
   margin-left: auto;
   margin-right: auto;
   line-height: 1.6;
-}
-
-.hero-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-xl);
-  background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
-  color: white;
-  border-radius: var(--radius-lg);
-  font-weight: 600;
-  font-size: 1rem;
-  box-shadow: var(--sombra-lg);
-  transition: all var(--transition-normal);
-  text-decoration: none;
-}
-
-.hero-cta:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: var(--sombra-xl);
-  filter: brightness(1.05);
 }
 
 /* ==============================
@@ -522,10 +491,5 @@
   .job-card-body,
   .freelancer-card-body {
     padding: var(--space-lg);
-  }
-  
-  .hero-cta {
-    padding: var(--space-sm) var(--space-lg);
-    font-size: 0.9rem;
   }
 }

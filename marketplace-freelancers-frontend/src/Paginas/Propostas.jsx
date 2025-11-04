@@ -206,7 +206,7 @@ export default function Propostas() {
             <div className="propostas-title-icon">
               <i className="bi bi-file-earmark-text"></i>
             </div>
-            {usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas (Contratante)"}
+            {usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
           </h1>
           <p className="propostas-subtitle">
             {usuarioLogado.tipo === "freelancer" 
