@@ -271,6 +271,32 @@ class UsuarioMeAPIView(APIView):
 
 
 # ------------------ RECUPERAÇÃO DE SENHA ------------------
+import threading
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.conf import settings
+
+from .models import Usuario
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+
+
+# 🔹 Função auxiliar: envia o e-mail em background
+def enviar_email_async(msg):
+    """Envia o e-mail sem travar o request principal."""
+    try:
+        msg.send(fail_silently=True)
+        print("📨 E-mail de redefinição enviado com sucesso.")
+    except Exception as e:
+        print(f"⚠️ Erro ao enviar e-mail de redefinição: {e}")
+
+
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
 
@@ -284,28 +310,45 @@ class PasswordResetRequestView(APIView):
         except Usuario.DoesNotExist:
             user = None
 
+        # 🔹 Só gera e envia se o usuário existir
         if user:
+            # Gera link seguro com token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
+
+            # Monta o link do frontend (React)
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
             reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
 
+            # Contexto do e-mail
             context = {
                 "user": user,
                 "reset_link": reset_link,
                 "site_name": getattr(settings, "SITE_NAME", "ProFreelaBR"),
             }
 
+            # Renderiza templates
             subject = f"[{context['site_name']}] Redefinição de senha"
             text_body = render_to_string("emails/password_reset.txt", context)
             html_body = render_to_string("emails/password_reset.html", context)
 
-            msg = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [user.email])
+            # Cria a mensagem
+            msg = EmailMultiAlternatives(
+                subject,
+                text_body,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email]
+            )
             msg.attach_alternative(html_body, "text/html")
-            msg.send(fail_silently=False)
 
+            # 🔹 Envia em thread separada (não bloqueia o backend)
+            threading.Thread(target=enviar_email_async, args=(msg,)).start()
+
+        # ✅ Responde rápido mesmo que o envio falhe
         return Response(
-            {"detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."},
+            {
+                "detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -316,19 +359,33 @@ class PasswordResetConfirmView(APIView):
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         uid = serializer.validated_data["uid"]
         token = serializer.validated_data["token"]
         new_password = serializer.validated_data["new_password"]
 
+        # 🔹 Decodifica e valida o usuário
         try:
             uid_int = force_str(urlsafe_base64_decode(uid))
             user = Usuario.objects.get(pk=uid_int)
         except Exception:
-            return Response({"detail": "Link inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Link inválido ou expirado."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        # 🔹 Verifica se o token ainda é válido
         if not default_token_generator.check_token(user, token):
-            return Response({"detail": "Token inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Token inválido ou expirado."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        # 🔹 Atualiza a senha com sucesso
         user.set_password(new_password)
         user.save()
-        return Response({"detail": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)
+
+        return Response(
+            {"detail": "Senha redefinida com sucesso."},
+            status=status.HTTP_200_OK
+        )
