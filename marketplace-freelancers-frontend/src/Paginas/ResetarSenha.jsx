@@ -1,8 +1,9 @@
+// src/Paginas/ResetarSenha.jsx
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import axios from "axios";
-import "../styles/ResetarSenha.css";
 import { FaLock, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import api from "../Servicos/Api";
+import "../styles/ResetarSenha.css";
 
 export default function ResetarSenha() {
   const { uid, token } = useParams();
@@ -18,17 +19,15 @@ export default function ResetarSenha() {
     setErro(null);
     setMensagem(null);
 
-    // Validações
+    // Validações básicas
     if (!senha || !confirmarSenha) {
       setErro("Preencha todos os campos.");
       return;
     }
-
     if (senha.length < 8) {
       setErro("A senha deve ter no mínimo 8 caracteres.");
       return;
     }
-
     if (senha !== confirmarSenha) {
       setErro("As senhas não coincidem.");
       return;
@@ -36,7 +35,8 @@ export default function ResetarSenha() {
 
     setCarregando(true);
     try {
-      await axios.post("http://127.0.0.1:8000/api/password-reset-confirm/", {
+      // ✅ Usa o api.js (Railway)
+      await api.post("/password-reset-confirm/", {
         uid,
         token,
         new_password: senha,
@@ -45,6 +45,7 @@ export default function ResetarSenha() {
       setMensagem("Senha redefinida com sucesso!");
       setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
+      console.error("❌ Erro ao redefinir senha:", err);
       const errorMsg =
         err?.response?.data?.detail ||
         err?.response?.data?.new_password?.[0] ||
@@ -61,7 +62,7 @@ export default function ResetarSenha() {
     <div className="resetar-bg">
       <div className="resetar-container">
         <div className="resetar-card fade-in">
-          {/* Logo e Cabeçalho */}
+          {/* Cabeçalho */}
           <div className="resetar-header">
             <img
               src="/profreelabr.png"
@@ -76,7 +77,7 @@ export default function ResetarSenha() {
             </p>
           </div>
 
-          {/* Mensagem de Sucesso */}
+          {/* Sucesso */}
           {mensagem ? (
             <div className="sucesso-box">
               <FaCheckCircle className="sucesso-icon" />
@@ -89,7 +90,6 @@ export default function ResetarSenha() {
           ) : (
             // Formulário
             <form onSubmit={handleSubmit} className="resetar-form">
-              {/* Mensagem de Erro Geral */}
               {erro && (
                 <div className="alert-erro">
                   <FaExclamationTriangle className="alert-icon" />
@@ -97,7 +97,6 @@ export default function ResetarSenha() {
                 </div>
               )}
 
-              {/* Nova Senha */}
               <div className="input-group">
                 <label className="input-label">Nova Senha</label>
                 <div className="input-wrapper">
@@ -115,7 +114,6 @@ export default function ResetarSenha() {
                 </div>
               </div>
 
-              {/* Confirmar Senha */}
               <div className="input-group">
                 <label className="input-label">Confirmar Senha</label>
                 <div className="input-wrapper">
@@ -133,20 +131,24 @@ export default function ResetarSenha() {
                 </div>
               </div>
 
-              {/* Dicas de Senha */}
               <div className="senha-dicas">
                 <p className="dica-titulo">Sua senha deve conter:</p>
                 <ul className="dica-lista">
                   <li className={senha.length >= 8 ? "valido" : ""}>
                     Mínimo de 8 caracteres
                   </li>
-                  <li className={senha && confirmarSenha && senha === confirmarSenha ? "valido" : ""}>
+                  <li
+                    className={
+                      senha && confirmarSenha && senha === confirmarSenha
+                        ? "valido"
+                        : ""
+                    }
+                  >
                     Senhas coincidem
                   </li>
                 </ul>
               </div>
 
-              {/* Botão */}
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -157,7 +159,6 @@ export default function ResetarSenha() {
             </form>
           )}
 
-          {/* Link de volta ao login */}
           <div className="link-voltar">
             <Link to="/login">Voltar para o Login</Link>
           </div>

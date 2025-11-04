@@ -1,8 +1,9 @@
+// src/Paginas/EsqueciSenha.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-import "../styles/EsqueciSenha.css";
 import { FaEnvelope, FaCheckCircle, FaArrowLeft } from "react-icons/fa";
+import api from "../Servicos/Api";
+import "../styles/EsqueciSenha.css";
 
 export default function EsqueciSenha() {
   const [email, setEmail] = useState("");
@@ -15,6 +16,7 @@ export default function EsqueciSenha() {
     setMensagem(null);
     setErro(null);
 
+    // Validações básicas
     if (!email.trim()) {
       setErro("Por favor, informe seu e-mail.");
       return;
@@ -28,13 +30,12 @@ export default function EsqueciSenha() {
 
     setCarregando(true);
     try {
-      await axios.post("http://127.0.0.1:8000/api/password-reset/", { 
-        email: email.trim() 
-      });
-      
+      // ✅ Agora usa o api.js (Railway)
+      await api.post("/password-reset/", { email: email.trim() });
       setMensagem(true);
     } catch (err) {
-      const errorMsg = 
+      console.error("❌ Erro ao solicitar redefinição:", err);
+      const errorMsg =
         err?.response?.data?.email?.[0] ||
         err?.response?.data?.detail ||
         "Erro ao solicitar redefinição. Tente novamente.";
@@ -59,23 +60,23 @@ export default function EsqueciSenha() {
             />
           </div>
 
-          {/* Conteúdo dinâmico */}
+          {/* Conteúdo */}
           {mensagem ? (
-            // Tela de Sucesso
+            // Sucesso
             <div className="sucesso-container">
               <FaCheckCircle className="sucesso-icon" />
               <h2 className="sucesso-titulo">Verifique sua caixa de entrada</h2>
               <p className="sucesso-texto">
-                Enviamos um e-mail para <strong>{email}</strong> com
-                as instruções para redefinir sua senha.
+                Enviamos um e-mail para <strong>{email}</strong> com as instruções
+                para redefinir sua senha.
               </p>
-              
+
               <div className="dicas-box">
                 <p className="dicas-titulo">Não recebeu o e-mail?</p>
                 <ul className="dicas-lista">
-                  <li>Verifique sua caixa de spam ou lixo eletrônico</li>
+                  <li>Verifique sua caixa de spam</li>
                   <li>Aguarde alguns minutos e tente novamente</li>
-                  <li>Certifique-se de que o e-mail está correto</li>
+                  <li>Confirme se o e-mail está correto</li>
                 </ul>
               </div>
 
