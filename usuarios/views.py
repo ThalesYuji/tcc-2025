@@ -302,7 +302,7 @@ class PasswordResetRequestView(APIView):
 
             msg = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [user.email])
             msg.attach_alternative(html_body, "text/html")
-            msg.send(fail_silently=True)
+            msg.send(fail_silently=False)
 
         return Response(
             {"detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."},
