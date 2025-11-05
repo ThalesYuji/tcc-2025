@@ -10,7 +10,6 @@ export default function Dashboard() {
   const [resumo, setResumo] = useState(null);
   const [erro, setErro] = useState("");
 
-  // 🔹 Carrega o resumo de estatísticas do usuário logado
   useEffect(() => {
     async function fetchResumo() {
       try {
@@ -33,7 +32,7 @@ export default function Dashboard() {
     }
   }, [usuarioLogado]);
 
-  // 🔹 Configuração dos cards exibidos no painel (estatísticas)
+  // 🔹 Configuração REORGANIZADA dos cards
   const getStatsConfig = () => {
     const avaliacoesEnviadas = resumo?.avaliacoesEnviadas ?? 0;
     const avaliacoesRecebidas = resumo?.avaliacoesRecebidas ?? 0;
@@ -42,135 +41,137 @@ export default function Dashboard() {
 
     // 🧑‍💻 Painel para FREELANCER
     if (usuarioLogado?.tipo === "freelancer") {
-      return [
+      return {
+        propostas: [
+          {
+            key: "enviadas",
+            title: "Enviadas",
+            icon: "bi-send-fill",
+            color: "primary",
+            value: resumo?.enviadas ?? 0,
+          },
+          {
+            key: "aceitas",
+            title: "Aceitas",
+            icon: "bi-check-circle-fill",
+            color: "success",
+            value: resumo?.aceitas ?? 0,
+          },
+          {
+            key: "recusadas",
+            title: "Recusadas",
+            icon: "bi-x-circle-fill",
+            color: "danger",
+            value: resumo?.recusadas ?? 0,
+          },
+        ],
+        avaliacoes: [
+          {
+            key: "avaliacoesEnviadas",
+            title: "Enviadas",
+            icon: "bi-pencil-square",
+            color: "info",
+            value: avaliacoesEnviadas,
+          },
+          {
+            key: "avaliacoesRecebidas",
+            title: "Recebidas",
+            icon: "bi-star-fill",
+            color: "warning",
+            value: avaliacoesRecebidas,
+          },
+        ],
+        denuncias: [
+          {
+            key: "denunciasEnviadas",
+            title: "Enviadas",
+            icon: "bi-flag-fill",
+            color: "danger",
+            value: denunciasEnviadas,
+          },
+          {
+            key: "denunciasRecebidas",
+            title: "Recebidas",
+            icon: "bi-exclamation-triangle-fill",
+            color: "warning",
+            value: denunciasRecebidas,
+          },
+        ],
+      };
+    }
+
+    // 🧍 Painel para CONTRATANTE
+    return {
+      propostas: [
         {
-          key: "enviadas",
-          title: "Propostas Enviadas",
-          icon: "bi-send",
+          key: "recebidas",
+          title: "Recebidas",
+          icon: "bi-inbox-fill",
           color: "primary",
-          value: resumo?.enviadas ?? 0,
+          value: resumo?.recebidas ?? 0,
+        },
+        {
+          key: "pendentes",
+          title: "Pendentes",
+          icon: "bi-clock-fill",
+          color: "warning",
+          value: resumo?.pendentes ?? 0,
         },
         {
           key: "aceitas",
-          title: "Propostas Aceitas",
-          icon: "bi-check-circle",
+          title: "Aceitas",
+          icon: "bi-check-circle-fill",
           color: "success",
           value: resumo?.aceitas ?? 0,
         },
-        {
-          key: "recusadas",
-          title: "Propostas Recusadas",
-          icon: "bi-x-circle",
-          color: "danger",
-          value: resumo?.recusadas ?? 0,
-        },
-        // 🔸 Avaliações
+      ],
+      avaliacoes: [
         {
           key: "avaliacoesEnviadas",
-          title: "Avaliações Enviadas",
-          icon: "bi-chat-left-quote-fill",
+          title: "Enviadas",
+          icon: "bi-pencil-square",
           color: "info",
           value: avaliacoesEnviadas,
         },
         {
           key: "avaliacoesRecebidas",
-          title: "Avaliações Recebidas",
+          title: "Recebidas",
           icon: "bi-star-fill",
-          color: "secondary",
+          color: "warning",
           value: avaliacoesRecebidas,
         },
-        // 🔸 Denúncias
+      ],
+      denuncias: [
         {
           key: "denunciasEnviadas",
-          title: "Denúncias Enviadas",
+          title: "Enviadas",
           icon: "bi-flag-fill",
           color: "danger",
           value: denunciasEnviadas,
         },
         {
           key: "denunciasRecebidas",
-          title: "Denúncias Recebidas",
+          title: "Recebidas",
           icon: "bi-exclamation-triangle-fill",
           color: "warning",
           value: denunciasRecebidas,
         },
-      ];
-    }
-
-    // 🧍 Painel para CONTRATANTE
-    return [
-      {
-        key: "recebidas",
-        title: "Propostas Recebidas",
-        icon: "bi-inbox",
-        color: "primary",
-        value: resumo?.recebidas ?? 0,
-      },
-      {
-        key: "pendentes",
-        title: "Propostas Pendentes",
-        icon: "bi-clock",
-        color: "warning",
-        value: resumo?.pendentes ?? 0,
-      },
-      {
-        key: "aceitas",
-        title: "Propostas Aceitas",
-        icon: "bi-check-circle",
-        color: "success",
-        value: resumo?.aceitas ?? 0,
-      },
-      // 🔸 Avaliações
-      {
-        key: "avaliacoesEnviadas",
-        title: "Avaliações Enviadas",
-        icon: "bi-chat-left-quote-fill",
-        color: "info",
-        value: avaliacoesEnviadas,
-      },
-      {
-        key: "avaliacoesRecebidas",
-        title: "Avaliações Recebidas",
-        icon: "bi-star-fill",
-        color: "secondary",
-        value: avaliacoesRecebidas,
-      },
-      // 🔸 Denúncias
-      {
-        key: "denunciasEnviadas",
-        title: "Denúncias Enviadas",
-        icon: "bi-flag-fill",
-        color: "danger",
-        value: denunciasEnviadas,
-      },
-      {
-        key: "denunciasRecebidas",
-        title: "Denúncias Recebidas",
-        icon: "bi-exclamation-triangle-fill",
-        color: "warning",
-        value: denunciasRecebidas,
-      },
-    ];
+      ],
+    };
   };
 
-  // 🔹 Tela de carregamento
   if (carregando) {
     return (
       <div className="dashboard-page page-container">
         <div className="dashboard-loading">
           <div className="loading-icon"></div>
-          <h3 style={{ color: "var(--cor-texto-light)" }}>
-            Carregando seu painel...
-          </h3>
-          <p style={{ color: "var(--cor-texto-light)", textAlign: "center" }}>
-            Buscando suas estatísticas mais recentes
-          </p>
+          <h3>Carregando seu painel...</h3>
+          <p>Buscando suas estatísticas mais recentes</p>
         </div>
       </div>
     );
   }
 
-  // 🔹 Caso não esteja autenticado
   if (!usuarioLogado) {
     return (
       <div className="dashboard-page page-container">
@@ -189,7 +190,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page page-container fade-in">
-      {/* Cabeçalho */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">
           <div className="dashboard-title-icon">
@@ -202,7 +202,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Erro ao carregar dados */}
       {erro && (
         <div className="dashboard-error">
           <div className="error-icon">❌</div>
@@ -218,21 +217,79 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Cards de estatísticas */}
-      <div className="stats-grid">
-        {statsConfig.map((stat) => (
-          <div key={stat.key} className={`stat-card ${stat.color}`}>
-            <div className="stat-header">
-              <div className="stat-icon">
-                <i className={`bi ${stat.icon}`}></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-number">{stat.value}</div>
-                <p className="stat-label">{stat.title}</p>
+      {/* SEÇÃO DE PROPOSTAS */}
+      <div className="stats-section">
+        <div className="section-header">
+          <div className="section-icon">
+            <i className="bi bi-briefcase-fill"></i>
+          </div>
+          <h2 className="section-title">Propostas</h2>
+        </div>
+        <div className="stats-grid">
+          {statsConfig.propostas.map((stat) => (
+            <div key={stat.key} className={`stat-card ${stat.color}`}>
+              <div className="stat-header">
+                <div className="stat-icon">
+                  <i className={`bi ${stat.icon}`}></i>
+                </div>
+                <div className="stat-content">
+                  <div className="stat-number">{stat.value}</div>
+                  <p className="stat-label">{stat.title}</p>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SEÇÃO DE AVALIAÇÕES */}
+      <div className="stats-section">
+        <div className="section-header">
+          <div className="section-icon">
+            <i className="bi bi-star-fill"></i>
           </div>
-        ))}
+          <h2 className="section-title">Avaliações</h2>
+        </div>
+        <div className="stats-grid stats-grid-2">
+          {statsConfig.avaliacoes.map((stat) => (
+            <div key={stat.key} className={`stat-card ${stat.color}`}>
+              <div className="stat-header">
+                <div className="stat-icon">
+                  <i className={`bi ${stat.icon}`}></i>
+                </div>
+                <div className="stat-content">
+                  <div className="stat-number">{stat.value}</div>
+                  <p className="stat-label">{stat.title}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SEÇÃO DE DENÚNCIAS */}
+      <div className="stats-section">
+        <div className="section-header">
+          <div className="section-icon">
+            <i className="bi bi-shield-fill-exclamation"></i>
+          </div>
+          <h2 className="section-title">Denúncias</h2>
+        </div>
+        <div className="stats-grid stats-grid-2">
+          {statsConfig.denuncias.map((stat) => (
+            <div key={stat.key} className={`stat-card ${stat.color}`}>
+              <div className="stat-header">
+                <div className="stat-icon">
+                  <i className={`bi ${stat.icon}`}></i>
+                </div>
+                <div className="stat-content">
+                  <div className="stat-number">{stat.value}</div>
+                  <p className="stat-label">{stat.title}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

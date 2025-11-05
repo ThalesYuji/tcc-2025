@@ -157,8 +157,8 @@ export default function AvaliacaoContrato() {
   }
 
   const statusColor = {
-    ativo: "#10B981",
-    concluido: "#3B82F6",
+    ativo: "#3B82F6",
+    concluido: "#10B981",
     cancelado: "#EF4444",
     pausado: "#F59E0B",
   };

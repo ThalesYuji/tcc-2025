@@ -265,13 +265,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
-  border: 1px solid transparent;
   flex-shrink: 0;
+  color: white;
 }
 
 .contract-details {

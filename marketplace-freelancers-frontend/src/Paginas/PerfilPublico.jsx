@@ -148,13 +148,6 @@ export default function PerfilPublico() {
     new Date() - new Date(usuario.date_joined || usuario.created_at) <
     30 * 24 * 60 * 60 * 1000;
 
-  const distribuicaoNotas = [5, 4, 3, 2, 1].map((nota) => {
-    const count = avaliacoes.filter((av) => Math.round(av.nota) === nota).length;
-    const percentual =
-      avaliacoes.length > 0 ? (count / avaliacoes.length) * 100 : 0;
-    return { nota, count, percentual };
-  });
-
   return (
     <>
       <Navbar />
@@ -218,7 +211,7 @@ export default function PerfilPublico() {
                 <i
                   className={`bi ${
                     usuario.tipo === "freelancer"
-                      ? "bi-person-workspace"
+                      ? "bi-briefcase"
                       : "bi-building"
                   }`}
                 ></i>

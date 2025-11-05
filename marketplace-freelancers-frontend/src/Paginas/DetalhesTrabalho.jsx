@@ -38,12 +38,13 @@ export default function DetalhesTrabalho() {
   const [erro, setErro] = useState("");
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
   const [formErro, setFormErro] = useState("");
-  const [formSucesso, setFormSucesso] = useState("");
   const [alerta, setAlerta] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [enviandoProposta, setEnviandoProposta] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const navigate = useNavigate();
 
   // Buscar dados
@@ -114,11 +115,14 @@ export default function DetalhesTrabalho() {
 
   // Excluir trabalho
   const handleDelete = async () => {
-    if (!window.confirm("Tem certeza que deseja excluir este trabalho?")) return;
+    setExcluindo(true);
     try {
       await api.delete(`/trabalhos/${trabalho.id}/`);
+      setShowDeleteModal(false);
       mostrarAlerta("sucesso", "Trabalho excluído com sucesso!", "/trabalhos");
     } catch {
+      setExcluindo(false);
+      setShowDeleteModal(false);
       mostrarAlerta("erro", "Erro ao excluir trabalho.");
     }
   };
@@ -127,14 +131,12 @@ export default function DetalhesTrabalho() {
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
     setFormErro("");
-    setFormSucesso("");
     setShowForm(true);
   };
 
   const enviarProposta = async (e) => {
     e.preventDefault();
     setFormErro("");
-    setFormSucesso("");
 
     if (!form.descricao || !form.valor || !form.prazo_estimado) {
       setFormErro("Por favor, preencha todos os campos da proposta.");
@@ -152,10 +154,8 @@ export default function DetalhesTrabalho() {
         prazo_estimado: form.prazo_estimado,
       });
       
-      setFormSucesso("✅ Proposta enviada com sucesso!");
       setShowForm(false);
-      mostrarAlerta("sucesso", "Proposta enviada com sucesso! O contratante será notificado.");
-      setTimeout(() => setFormSucesso(""), 3000);
+      mostrarAlerta("sucesso", "Proposta enviada! Redirecionando para suas propostas...", "/propostas");
     } catch (err) {
       const mensagem =
         err.response?.data?.erro ||
@@ -237,22 +237,71 @@ export default function DetalhesTrabalho() {
     );
   }
 
+  // Função para determinar o ícone do alerta
+  const getAlertaIcon = () => {
+    if (alerta.tipo === 'sucesso') return 'bi-check-circle-fill';
+    if (alerta.tipo === 'erro') return 'bi-x-circle-fill';
+    return 'bi-info-circle-fill';
+  };
+
   return (
     <div className="detalhes-trabalho-page page-container fade-in">
-      {/* Alerta Overlay */}
       {alerta && (
         <div className="alerta-overlay">
           <div className={`alerta-box alerta-${alerta.tipo}`}>
-            <i className={`bi ${
-              alerta.tipo === 'sucesso' ? 'bi-check-circle-fill' : 
-              alerta.tipo === 'erro' ? 'bi-x-circle-fill' : 'bi-info-circle-fill'
-            }`}></i>
+            <i className={`bi ${getAlertaIcon()}`}></i>
             <span>{alerta.texto}</span>
           </div>
         </div>
       )}
 
-      {/* Modal de Proposta */}
+      {showDeleteModal && (
+        <div className="delete-modal-overlay">
+          <div className="delete-modal-content zoom-in">
+            <div className="delete-modal-icon">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            
+            <h3 className="delete-modal-title">Confirmar Exclusão</h3>
+            <p className="delete-modal-message">
+              Tem certeza que deseja excluir o trabalho <strong>{trabalho.titulo}</strong>?
+            </p>
+            <p className="delete-modal-warning">
+              <i className="bi bi-info-circle"></i>
+              Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="delete-modal-actions">
+              <button 
+                className="btn-modal btn-cancel"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={excluindo}
+              >
+                <i className="bi bi-x-circle"></i>
+                Cancelar
+              </button>
+              <button 
+                className="btn-modal btn-confirm-delete"
+                onClick={handleDelete}
+                disabled={excluindo}
+              >
+                {excluindo ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm"></span>
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-trash-fill"></i>
+                    Sim, Excluir
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showForm && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
@@ -359,11 +408,7 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* Header */}
       <div className="detalhes-header">
-        <div className="detalhes-nav">
-        </div>
-        
         <div className="detalhes-title-section">
           <div className="title-with-status">
             <h1 className="detalhes-title">
@@ -381,17 +426,14 @@ export default function DetalhesTrabalho() {
         </div>
       </div>
 
-        {/* Navegação - Botão de Voltar */}
-        <div style={{ marginBottom: 'var(--space-xl)' }}>
-          <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
-            <i className="bi bi-arrow-left"></i>
-            Voltar aos Trabalhos
-          </button>
-        </div>
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
+          <i className="bi bi-arrow-left"></i>
+          Voltar aos Trabalhos
+        </button>
+      </div>
 
-      {/* Conteúdo Principal */}
       <div className="detalhes-content">
-        {/* Card Principal */}
         <div className="detalhes-main-card modern-card">
           <div className="detalhes-card-header">
             <h2>
@@ -405,7 +447,6 @@ export default function DetalhesTrabalho() {
               {trabalho.descricao || "Nenhuma descrição fornecida."}
             </div>
 
-            {/* Informações em Grid */}
             <div className="trabalho-info-grid">
               <div className="info-item">
                 <div className="info-icon">
@@ -461,7 +502,6 @@ export default function DetalhesTrabalho() {
               )}
             </div>
 
-            {/* Habilidades */}
             {trabalho.habilidades_detalhes?.length > 0 && (
               <div className="trabalho-habilidades-section">
                 <h3>
@@ -478,7 +518,6 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* Anexo */}
             {trabalho.anexo && (
               <div className="trabalho-anexo-section">
                 <h3>
@@ -499,7 +538,6 @@ export default function DetalhesTrabalho() {
           </div>
         </div>
 
-        {/* Card de Ações */}
         <div className="detalhes-actions-card modern-card">
           <div className="detalhes-card-header">
             <h2>
@@ -509,15 +547,6 @@ export default function DetalhesTrabalho() {
           </div>
           
           <div className="detalhes-card-body">
-            {/* Mensagem de Sucesso Global */}
-            {formSucesso && !showForm && (
-              <div className="success-message-global">
-                <i className="bi bi-check-circle-fill"></i>
-                {formSucesso}
-              </div>
-            )}
-
-            {/* Botões de Gerenciamento */}
             {podeEditarOuExcluir() && (
               <div className="action-group">
                 <h4>Gerenciar Trabalho</h4>
@@ -531,7 +560,7 @@ export default function DetalhesTrabalho() {
                   </button>
                   <button 
                     className="btn-action btn-danger-action" 
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteModal(true)}
                   >
                     <i className="bi bi-trash"></i>
                     Excluir
@@ -540,7 +569,6 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* Proposta */}
             {podeEnviarProposta && (
               <div className="action-group">
                 <h4>Interessado no Projeto?</h4>
@@ -554,7 +582,6 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* Aceitar / Recusar */}
             {podeAceitarOuRecusar && (
               <div className="action-group">
                 <h4>Trabalho Privado</h4>
@@ -580,7 +607,6 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* Estado quando não há ações disponíveis */}
             {!podeEditarOuExcluir() && !podeEnviarProposta && !podeAceitarOuRecusar && (
               <div className="no-actions">
                 <div className="no-actions-icon">
