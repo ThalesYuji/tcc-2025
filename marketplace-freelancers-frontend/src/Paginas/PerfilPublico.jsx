@@ -287,28 +287,30 @@ export default function PerfilPublico() {
                 </button>
               </div>
 
-              {/* ABA ESTATÍSTICAS */}
+              {/* ABA ESTATÍSTICAS - ORGANIZADA POR SEÇÕES */}
               {activeTab === "estatisticas" && (
                 <div className="fade-in">
-                  <div className="standard-card">
-                    <div className="card-header-std">
-                      <i className="bi bi-bar-chart-fill header-icon-std"></i>
-                      <h3>Estatísticas Detalhadas</h3>
-                    </div>
-                    <div className="card-body-std">
+                  {/* SEÇÃO: TRABALHOS */}
+                  {(usuario.tipo === "freelancer" || usuario.tipo === "contratante") && (
+                    <div className="stats-section-profile">
+                      <div className="section-header-profile">
+                        <div className="section-icon-profile primary">
+                          <i className="bi bi-briefcase-fill"></i>
+                        </div>
+                        <h2 className="section-title-profile">Trabalhos</h2>
+                      </div>
                       <div className="stats-detailed-grid">
-                        {/* Trabalhos */}
                         {usuario.tipo === "contratante" && (
                           <div className="stat-detail-card">
                             <div className="stat-detail-icon primary">
-                              <i className="bi bi-briefcase"></i>
+                              <i className="bi bi-briefcase-fill"></i>
                             </div>
                             <div className="stat-detail-info">
                               <span className="stat-detail-value">
                                 {formatarNumero(usuario.trabalhos_publicados ?? 0)}
                               </span>
                               <span className="stat-detail-label">
-                                Trabalhos Publicados
+                                Publicados
                               </span>
                             </div>
                           </div>
@@ -317,91 +319,96 @@ export default function PerfilPublico() {
                         {usuario.tipo === "freelancer" && (
                           <div className="stat-detail-card">
                             <div className="stat-detail-icon success">
-                              <i className="bi bi-check-circle"></i>
+                              <i className="bi bi-check-circle-fill"></i>
                             </div>
                             <div className="stat-detail-info">
                               <span className="stat-detail-value">
                                 {formatarNumero(usuario.trabalhos_concluidos ?? 0)}
                               </span>
                               <span className="stat-detail-label">
-                                Trabalhos Concluídos
+                                Concluídos
                               </span>
                             </div>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
 
-                        {/* Avaliações */}
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon info">
-                            <i className="bi bi-chat-left-quote-fill"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.avaliacoes_enviadas ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">
-                              Avaliações Enviadas
-                            </span>
-                          </div>
+                  {/* SEÇÃO: AVALIAÇÕES */}
+                  <div className="stats-section-profile">
+                    <div className="section-header-profile">
+                      <div className="section-icon-profile warning">
+                        <i className="bi bi-star-fill"></i>
+                      </div>
+                      <h2 className="section-title-profile">Avaliações</h2>
+                    </div>
+                    <div className="stats-detailed-grid">
+                      <div className="stat-detail-card">
+                        <div className="stat-detail-icon info">
+                          <i className="bi bi-pencil-square"></i>
                         </div>
-
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon secondary">
-                            <i className="bi bi-star-fill"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.avaliacoes_recebidas ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">
-                              Avaliações Recebidas
-                            </span>
-                          </div>
+                        <div className="stat-detail-info">
+                          <span className="stat-detail-value">
+                            {formatarNumero(usuario.avaliacoes_enviadas ?? 0)}
+                          </span>
+                          <span className="stat-detail-label">
+                            Enviadas
+                          </span>
                         </div>
+                      </div>
 
-                        {/* Denúncias */}
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon danger">
-                            <i className="bi bi-flag-fill"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.denuncias_enviadas ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">
-                              Denúncias Enviadas
-                            </span>
-                          </div>
+                      <div className="stat-detail-card">
+                        <div className="stat-detail-icon warning">
+                          <i className="bi bi-star-fill"></i>
                         </div>
-
-                        <div className="stat-detail-card">
-                          <div className="stat-detail-icon warning">
-                            <i className="bi bi-exclamation-triangle-fill"></i>
-                          </div>
-                          <div className="stat-detail-info">
-                            <span className="stat-detail-value">
-                              {formatarNumero(usuario.denuncias_recebidas ?? 0)}
-                            </span>
-                            <span className="stat-detail-label">
-                              Denúncias Recebidas
-                            </span>
-                          </div>
+                        <div className="stat-detail-info">
+                          <span className="stat-detail-value">
+                            {formatarNumero(usuario.avaliacoes_recebidas ?? 0)}
+                          </span>
+                          <span className="stat-detail-label">
+                            Recebidas
+                          </span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
 
-                        {/* Nota média */}
-                        {notaMedia && (
-                          <div className="stat-detail-card">
-                            <div className="stat-detail-icon info">
-                              <i className="bi bi-award"></i>
-                            </div>
-                            <div className="stat-detail-info">
-                              <span className="stat-detail-value">
-                                {notaMedia.toFixed(1)}/5
-                              </span>
-                              <span className="stat-detail-label">Nota Média</span>
-                            </div>
-                          </div>
-                        )}
+                  {/* SEÇÃO: DENÚNCIAS */}
+                  <div className="stats-section-profile">
+                    <div className="section-header-profile">
+                      <div className="section-icon-profile danger">
+                        <i className="bi bi-shield-fill-exclamation"></i>
+                      </div>
+                      <h2 className="section-title-profile">Denúncias</h2>
+                    </div>
+                    <div className="stats-detailed-grid">
+                      <div className="stat-detail-card">
+                        <div className="stat-detail-icon danger">
+                          <i className="bi bi-flag-fill"></i>
+                        </div>
+                        <div className="stat-detail-info">
+                          <span className="stat-detail-value">
+                            {formatarNumero(usuario.denuncias_enviadas ?? 0)}
+                          </span>
+                          <span className="stat-detail-label">
+                            Enviadas
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="stat-detail-card">
+                        <div className="stat-detail-icon warning">
+                          <i className="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div className="stat-detail-info">
+                          <span className="stat-detail-value">
+                            {formatarNumero(usuario.denuncias_recebidas ?? 0)}
+                          </span>
+                          <span className="stat-detail-label">
+                            Recebidas
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -444,7 +451,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
-              {/* Abas SOBRE e AVALIAÇÕES mantidas exatamente como estavam */}
+              {/* ABA SOBRE */}
               {activeTab === "sobre" && (
                 <div className="standard-card fade-in">
                   <div className="card-header-std">
@@ -464,6 +471,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
+              {/* ABA AVALIAÇÕES */}
               {activeTab === "avaliacoes" && (
                 <div className="fade-in">
                   {avaliacoes.length === 0 ? (
@@ -641,8 +649,6 @@ export default function PerfilPublico() {
                   </div>
                 </div>
               </div>
-
-              {/* 🔥 Card de Performance removido completamente */}
             </div>
           </div>
         </div>

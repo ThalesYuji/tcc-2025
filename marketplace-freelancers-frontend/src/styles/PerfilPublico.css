@@ -407,7 +407,59 @@
 }
 
 /* ==============================
-   ESTATÍSTICAS DETALHADAS
+   SEÇÕES AGRUPADAS - IGUAL DASHBOARD
+   ============================== */
+.stats-section-profile {
+  margin-bottom: var(--space-3xl);
+}
+
+.section-header-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
+  border-bottom: 2px solid var(--borda-light);
+}
+
+.section-icon-profile {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+  box-shadow: var(--sombra-md);
+  flex-shrink: 0;
+}
+
+.section-icon-profile.primary {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.section-icon-profile.warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+}
+
+.section-icon-profile.danger {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+.section-icon-profile.success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.section-title-profile {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0;
+}
+
+/* ==============================
+   ESTATÍSTICAS DETALHADAS - PADRÃO DASHBOARD
    ============================== */
 .stats-detailed-grid {
   display: grid;
@@ -431,6 +483,7 @@
   box-shadow: var(--sombra-sm);
 }
 
+/* Ícones seguindo o padrão do Dashboard */
 .stat-detail-icon {
   width: 48px;
   height: 48px;
@@ -441,22 +494,32 @@
   font-size: 1.125rem;
   color: white;
   flex-shrink: 0;
+  box-shadow: var(--sombra-sm);
 }
 
+/* Cores dos ícones - PADRÃO DASHBOARD */
 .stat-detail-icon.primary {
-  background: var(--cor-primaria);
+  background: #3B82F6;
 }
 
 .stat-detail-icon.success {
-  background: var(--cor-sucesso);
+  background: #10B981;
 }
 
 .stat-detail-icon.warning {
-  background: var(--cor-aviso);
+  background: #F59E0B;
+}
+
+.stat-detail-icon.danger {
+  background: #EF4444;
 }
 
 .stat-detail-icon.info {
-  background: var(--cor-neutro);
+  background: #06B6D4;
+}
+
+.stat-detail-icon.secondary {
+  background: #64748B;
 }
 
 .stat-detail-info {
