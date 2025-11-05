@@ -220,17 +220,21 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         )
         return Response({"mensagem": "Senha alterada com sucesso!"}, status=200)
 
-    # ------------------ EXCLUIR CONTA ------------------
-    @action(detail=True, methods=["post"], url_path="excluir_conta")
-    def excluir_conta(self, request, pk=None):
-        """Permite que o usuário exclua a própria conta."""
-        user = self.get_object()
+    # ------------------ EXCLUIR CONTA (ME) ------------------
+    @action(detail=False, methods=["post"], url_path="me/excluir_conta", permission_classes=[IsAuthenticated])
+    def excluir_conta_me(self, request):
+        """Exclui a conta do usuário logado, sem depender do get_queryset()."""
+        user = request.user
         senha = request.data.get("senha")
         if not senha:
             return Response({"erro": "Senha obrigatória."}, status=400)
         if not user.check_password(senha):
             return Response({"erro": "Senha incorreta."}, status=400)
 
+        # (Opcional) verificação de vínculos críticos antes de excluir
+        # Ex.: contratos ativos, propostas pendentes etc. -> retornar 409 com motivo.
+
+        # Notifica e exclui
         enviar_notificacao(usuario=user, mensagem="Sua conta foi excluída com sucesso.", link="/")
         user.delete()
         return Response({"mensagem": "Conta excluída com sucesso!"}, status=200)

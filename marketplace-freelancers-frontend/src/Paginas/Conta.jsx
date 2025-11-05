@@ -243,10 +243,8 @@ export default function Conta() {
     setErroExcluir("");
     setFeedbackExcluir("");
     try {
-      const resp = await api.post(
-        `/usuarios/${usuarioLogado.id}/excluir_conta/`,
-        { senha: senhaExcluir }
-      );
+
+      const resp = await api.post('/usuarios/me/excluir_conta/', { senha: senhaExcluir });
       setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
       setTimeout(() => {
         localStorage.removeItem("token");
