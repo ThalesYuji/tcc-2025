@@ -4,7 +4,6 @@ import time
 
 # 🔹 Django
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -32,7 +31,10 @@ from .serializers import (
 from .permissoes import PermissaoUsuario
 from notificacoes.utils import enviar_notificacao
 
-# 🔹 Importações adicionais (outros apps)
+# 🔹 Integrações externas
+from emails.utils import enviar_email_sendgrid  # ✅ Envio de e-mails via API SendGrid
+
+# 🔹 Outros apps relacionados
 from avaliacoes.models import Avaliacao
 from avaliacoes.serializers import AvaliacaoSerializer
 from propostas.models import Proposta
@@ -280,35 +282,15 @@ class UsuarioMeAPIView(APIView):
 
 
 # ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA E OTIMIZADA) ------------------
-import threading
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.contrib.auth.tokens import default_token_generator
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework import status
-from django.conf import settings
-import time
-
-from .models import Usuario
-from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-
-
-# 🔹 Função auxiliar: envio de e-mail em segundo plano
-def enviar_email_async(msg):
-    """Envia o e-mail sem travar o request principal."""
+# 🔹 Função auxiliar: executa o envio em segundo plano
+def enviar_email_async(destinatario, assunto, corpo_texto, corpo_html):
+    """Executa o envio do e-mail de redefinição em uma thread separada."""
     try:
         print("🚀 [THREAD] Iniciando envio de e-mail de redefinição...")
         inicio = time.time()
-        resultado = msg.send(fail_silently=False)
+        enviar_email_sendgrid(destinatario, assunto, corpo_texto, corpo_html)
         duracao = round(time.time() - inicio, 2)
-        if resultado:
-            print(f"✅ [OK] E-mail enviado com sucesso em {duracao}s.")
-        else:
-            print(f"⚠️ [ALERTA] Nenhum e-mail foi enviado (resultado={resultado}).")
+        print(f"✅ [OK] E-mail enviado com sucesso em {duracao}s para {destinatario}")
     except Exception as e:
         print(f"❌ [ERRO] Falha ao enviar e-mail: {type(e).__name__} -> {e}")
 
@@ -328,41 +310,36 @@ class PasswordResetRequestView(APIView):
             user = None
 
         if user:
-            # 🔹 Cria token e link de redefinição
+            # 🔹 Gera link seguro com token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
             reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
 
-            # 🔹 Prepara contexto e templates
+            # 🔹 Prepara contexto e renderiza templates
             context = {
                 "user": user,
                 "reset_link": reset_link,
                 "site_name": getattr(settings, "SITE_NAME", "ProFreelaBR"),
             }
+
             subject = f"[{context['site_name']}] Redefinição de senha"
             text_body = render_to_string("emails/password_reset.txt", context)
             html_body = render_to_string("emails/password_reset.html", context)
 
-            # 🔹 Cria o objeto de e-mail
-            msg = EmailMultiAlternatives(
-                subject,
-                text_body,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email]
-            )
-            msg.attach_alternative(html_body, "text/html")
-
-            # 🔹 Log visual no console
+            # 🔹 Logs no console
             print("📧 Iniciando envio de e-mail para:", user.email)
             print("🔗 Link de redefinição:", reset_link)
 
-            # 🔹 Executa envio em segundo plano
-            threading.Thread(target=enviar_email_async, args=(msg,), daemon=True).start()
+            # 🔹 Executa envio assíncrono via SendGrid API
+            threading.Thread(
+                target=enviar_email_async,
+                args=(user.email, subject, text_body, html_body),
+                daemon=True
+            ).start()
         else:
             print(f"⚠️ E-mail {email} não encontrado — nenhuma ação tomada.")
 
-        # 🔹 Retorno rápido (independente do resultado do envio)
         return Response(
             {
                 "detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
@@ -383,7 +360,6 @@ class PasswordResetConfirmView(APIView):
         token = serializer.validated_data["token"]
         new_password = serializer.validated_data["new_password"]
 
-        # 🔹 Localiza o usuário correspondente
         try:
             uid_int = force_str(urlsafe_base64_decode(uid))
             user = Usuario.objects.get(pk=uid_int)
@@ -394,7 +370,6 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 Valida o token de redefinição
         if not default_token_generator.check_token(user, token):
             print("❌ [ERRO] Token inválido ou expirado.")
             return Response(
@@ -402,12 +377,12 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 🔹 Define nova senha
         user.set_password(new_password)
         user.save()
-        print(f"🔑 Senha redefinida com sucesso para o usuário ID {user.id} ({user.email})")
+        print(f"🔑 Senha redefinida com sucesso para o usuário {user.email}")
 
         return Response(
             {"detail": "Senha redefinida com sucesso."},
             status=status.HTTP_200_OK
         )
+

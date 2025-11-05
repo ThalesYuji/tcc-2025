@@ -250,36 +250,25 @@ CSRF_TRUSTED_ORIGINS = list({
 })
 
 # ------------------------
-# 📧 E-MAIL (SendGrid)
+# E-MAIL (SendGrid API)
 # ------------------------
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-
-# Servidor SMTP do SendGrid
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.sendgrid.net")
-
-# Porta recomendada para Railway (TLS)
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
-
-# Segurança e protocolo
-# ⚠️ Railway bloqueia SSL (porta 465), então usamos TLS (porta 587)
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
-
-# Autenticação SendGrid
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "apikey")  # obrigatório: literal 'apikey'
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # sua chave SendGrid
-
-# Endereço que aparece como remetente
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
-
-# Nome do site (usado em e-mails e templates)
 SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 
-# 💡 Log no console para depuração
-# (útil para confirmar que o Django tentou enviar)
+# 💡 Log de envio (útil para verificar se Django tentou enviar)
 import logging
-logging.getLogger("django.core.mail").setLevel(logging.DEBUG)
-logging.getLogger("django.core.mail").addHandler(logging.StreamHandler())
+logger = logging.getLogger("sendgrid")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+# ⚙️ Função auxiliar (fallback opcional)
+# Caso você ainda use send_mail() em outro ponto, isso garante compatibilidade.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # ------------------------
 # API CPF/CNPJ
