@@ -48,21 +48,34 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return obj.contratante.id if obj.contratante else None
 
     def get_anexo_url(self, obj):
+        """
+        Retorna a URL completa e pública do arquivo no Cloudinary
+        """
         try:
-            if obj.anexo and hasattr(obj.anexo, 'url'):
-                request = self.context.get('request')
-                url = obj.anexo.url
-                
-                if url.startswith('http'):
-                    return url
-                
-                if request:
-                    return request.build_absolute_uri(url)
-                
+            # Verifica se existe arquivo anexado
+            if not obj.anexo:
+                return None
+            
+            # Verifica se o objeto tem URL
+            if not hasattr(obj.anexo, 'url'):
+                return None
+            
+            url = obj.anexo.url
+            
+            # Se a URL já está completa (começa com http/https), retorna diretamente
+            if url.startswith('http://') or url.startswith('https://'):
                 return url
-        except Exception:
-            pass
-        return None
+            
+            # Se for URL relativa, constrói a URL absoluta
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+            
+            return url
+            
+        except (AttributeError, ValueError, TypeError):
+            # Em caso de qualquer erro, retorna None ao invés de quebrar
+            return None
 
     def validate_prazo(self, value):
         if value < date.today():

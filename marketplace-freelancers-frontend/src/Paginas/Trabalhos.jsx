@@ -1,4 +1,4 @@
-// src/Paginas/Trabalhos.jsx
+// src/Paginas/Trabalhos.jsx - VERSÃO COMPLETA CORRIGIDA
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
@@ -371,22 +371,21 @@ export default function Trabalhos() {
                 {trabalho.anexo_url && (
                   <div className="trabalho-info-item">
                     <i className="bi bi-paperclip trabalho-info-icon"></i>
-                    
+                    <a
                       href={trabalho.anexo_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="trabalho-anexo"
-                      download
                       onClick={(e) => {
                         if (!trabalho.anexo_url || trabalho.anexo_url === 'null') {
                           e.preventDefault();
                           alert('Arquivo não disponível');
                         }
                       }}
-                    
+                    >
                       <i className="bi bi-download"></i>
                       Ver Anexo
-                    
+                    </a>
                   </div>
                 )}
               </div>
