@@ -201,15 +201,17 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             "contratos_cancelados": cancelados,
         })
 
-    # ------------------ ALTERAR SENHA ------------------
-    @action(detail=True, methods=["post"], url_path="alterar_senha")
-    def alterar_senha(self, request, pk=None):
-        """Permite que o usuário altere a própria senha."""
-        user = self.get_object()
+    # ------------------ ALTERAR SENHA (ME) ------------------
+    @action(detail=False, methods=["post"], url_path="me/alterar_senha", permission_classes=[IsAuthenticated])
+    def alterar_senha_me(self, request):
+        """
+        Troca a senha do usuário logado (não depende de {id} nem de get_queryset()).
+        """
         serializer = TrocaSenhaSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        user = request.user
         user.set_password(serializer.validated_data["nova_senha"])
         user.save()
 
