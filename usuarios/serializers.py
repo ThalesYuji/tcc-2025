@@ -208,20 +208,26 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 
 class UsuarioPublicoSerializer(serializers.ModelSerializer):
     """
-    Dados para perfil público.
-    Também garante URL absoluta da foto_perfil.
+    Dados públicos do perfil — agora com estatísticas adicionais.
     """
     nota_media = serializers.SerializerMethodField()
     trabalhos_publicados = serializers.SerializerMethodField()
     trabalhos_concluidos = serializers.SerializerMethodField()
+    avaliacoes_enviadas = serializers.SerializerMethodField()
+    avaliacoes_recebidas = serializers.SerializerMethodField()
+    denuncias_enviadas = serializers.SerializerMethodField()
+    denuncias_recebidas = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
         fields = [
             "id", "nome", "tipo", "foto_perfil", "bio",
-            "nota_media", "trabalhos_publicados", "trabalhos_concluidos"
+            "nota_media", "trabalhos_publicados", "trabalhos_concluidos",
+            "avaliacoes_enviadas", "avaliacoes_recebidas",
+            "denuncias_enviadas", "denuncias_recebidas"
         ]
 
+    # Garante URL absoluta da foto
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')
@@ -251,6 +257,19 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
             return obj.contratos_concluidos_count
         return Contrato.objects.filter(freelancer=obj, status="concluido").count()
 
+    def get_avaliacoes_enviadas(self, obj):
+        return Avaliacao.objects.filter(avaliador=obj).count()
+
+    def get_avaliacoes_recebidas(self, obj):
+        return Avaliacao.objects.filter(avaliado=obj).count()
+
+    def get_denuncias_enviadas(self, obj):
+        from denuncias.models import Denuncia
+        return Denuncia.objects.filter(denunciante=obj).count()
+
+    def get_denuncias_recebidas(self, obj):
+        from denuncias.models import Denuncia
+        return Denuncia.objects.filter(denunciado=obj).count()
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Recebe apenas o e-mail para iniciar o reset de senha."""
