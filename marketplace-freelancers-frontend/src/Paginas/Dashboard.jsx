@@ -33,15 +33,10 @@ export default function Dashboard() {
     }
   }, [usuarioLogado]);
 
-  // 🔹 Helper para singular/plural em avaliações
-  const tituloAvaliacoes = (n) => {
-    if (!n || n === 0) return "Sem Avaliações Recebidas";
-    return n === 1 ? "1 Avaliação" : `${n} Avaliações`;
-  };
-
   // 🔹 Configuração dos cards exibidos no painel (estatísticas)
   const getStatsConfig = () => {
-    const totalAvaliacoes = resumo?.totalAvaliacoes ?? 0;
+    const avaliacoesEnviadas = resumo?.avaliacoesEnviadas ?? 0;
+    const avaliacoesRecebidas = resumo?.avaliacoesRecebidas ?? 0;
     const denunciasEnviadas = resumo?.denunciasEnviadas ?? 0;
     const denunciasRecebidas = resumo?.denunciasRecebidas ?? 0;
 
@@ -69,14 +64,22 @@ export default function Dashboard() {
           color: "danger",
           value: resumo?.recusadas ?? 0,
         },
+        // 🔸 Avaliações
         {
-          key: "avaliacao",
-          title: tituloAvaliacoes(totalAvaliacoes),
-          icon: "bi-star",
-          color: "secondary",
-          value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+          key: "avaliacoesEnviadas",
+          title: "Avaliações Enviadas",
+          icon: "bi-chat-left-quote-fill",
+          color: "info",
+          value: avaliacoesEnviadas,
         },
-        // 🔸 NOVO CARD: denúncias enviadas
+        {
+          key: "avaliacoesRecebidas",
+          title: "Avaliações Recebidas",
+          icon: "bi-star-fill",
+          color: "secondary",
+          value: avaliacoesRecebidas,
+        },
+        // 🔸 Denúncias
         {
           key: "denunciasEnviadas",
           title: "Denúncias Enviadas",
@@ -84,7 +87,6 @@ export default function Dashboard() {
           color: "danger",
           value: denunciasEnviadas,
         },
-        // 🔸 NOVO CARD: denúncias recebidas
         {
           key: "denunciasRecebidas",
           title: "Denúncias Recebidas",
@@ -118,14 +120,22 @@ export default function Dashboard() {
         color: "success",
         value: resumo?.aceitas ?? 0,
       },
+      // 🔸 Avaliações
       {
-        key: "avaliacao",
-        title: tituloAvaliacoes(totalAvaliacoes),
-        icon: "bi-star",
-        color: "secondary",
-        value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+        key: "avaliacoesEnviadas",
+        title: "Avaliações Enviadas",
+        icon: "bi-chat-left-quote-fill",
+        color: "info",
+        value: avaliacoesEnviadas,
       },
-      // 🔸 NOVOS CARDS DE DENÚNCIAS
+      {
+        key: "avaliacoesRecebidas",
+        title: "Avaliações Recebidas",
+        icon: "bi-star-fill",
+        color: "secondary",
+        value: avaliacoesRecebidas,
+      },
+      // 🔸 Denúncias
       {
         key: "denunciasEnviadas",
         title: "Denúncias Enviadas",
@@ -149,7 +159,9 @@ export default function Dashboard() {
       <div className="dashboard-page page-container">
         <div className="dashboard-loading">
           <div className="loading-icon"></div>
-          <h3 style={{ color: "var(--cor-texto-light)" }}>Carregando seu painel...</h3>
+          <h3 style={{ color: "var(--cor-texto-light)" }}>
+            Carregando seu painel...
+          </h3>
           <p style={{ color: "var(--cor-texto-light)", textAlign: "center" }}>
             Buscando suas estatísticas mais recentes
           </p>
@@ -173,7 +185,6 @@ export default function Dashboard() {
     );
   }
 
-  // 🔹 Gera os cards com base no tipo de usuário
   const statsConfig = getStatsConfig();
 
   return (

@@ -238,37 +238,51 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     # ------------------ RESUMO ------------------
     @action(detail=False, methods=["get"], url_path="me/resumo")
     def resumo(self, request):
-        """Resumo de atividades do usuário logado (Dashboard + estatísticas de denúncias)."""
+        """
+        Retorna o resumo de atividades do usuário logado.
+        Inclui propostas, avaliações e denúncias (enviadas e recebidas).
+        Usado no Dashboard e no Perfil Público.
+        """
         user = request.user
         resumo = {}
 
         # 🔹 Importa localmente para evitar dependências circulares
         from denuncias.models import Denuncia
 
-        # 🔸 FREELANCER
+        # ================================
+        # 🔸 PROPOSTAS
+        # ================================
         if user.tipo == "freelancer":
             propostas = Proposta.objects.filter(freelancer=user)
             resumo["enviadas"] = propostas.count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
             resumo["recusadas"] = propostas.filter(status="recusada").count()
 
-        # 🔸 CONTRATANTE
         elif user.tipo == "contratante":
             propostas = Proposta.objects.filter(trabalho__contratante=user)
             resumo["recebidas"] = propostas.count()
             resumo["pendentes"] = propostas.filter(status="pendente").count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
 
-        # 🔸 Avaliações
-        avaliacoes = Avaliacao.objects.filter(avaliado=user)
-        resumo["totalAvaliacoes"] = avaliacoes.count()
+        # ================================
+        # 🔸 AVALIAÇÕES
+        # ================================
+        avaliacoes_recebidas = Avaliacao.objects.filter(avaliado=user)
+        avaliacoes_enviadas = Avaliacao.objects.filter(avaliador=user)
+
+        resumo["avaliacoesRecebidas"] = avaliacoes_recebidas.count()
+        resumo["avaliacoesEnviadas"] = avaliacoes_enviadas.count()
+
+        # Média apenas das avaliações recebidas
         resumo["mediaAvaliacao"] = (
-            round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
-            if avaliacoes.exists()
+            round(sum(a.nota for a in avaliacoes_recebidas) / avaliacoes_recebidas.count(), 2)
+            if avaliacoes_recebidas.exists()
             else None
         )
 
-        # 🔸 Denúncias (para ambos os tipos de usuário)
+        # ================================
+        # 🔸 DENÚNCIAS
+        # ================================
         resumo["denunciasEnviadas"] = Denuncia.objects.filter(denunciante=user).count()
         resumo["denunciasRecebidas"] = Denuncia.objects.filter(denunciado=user).count()
 
