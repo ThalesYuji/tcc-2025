@@ -301,6 +301,111 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
+      {/* MODAL DE PROPOSTA */}
+      {showForm && (
+        <div className="delete-modal-overlay">
+          <div className="delete-modal-content zoom-in">
+            <div className="delete-modal-icon" style={{ backgroundColor: '#10b981' }}>
+              <i className="bi bi-send-fill"></i>
+            </div>
+            <h3 className="delete-modal-title">Enviar Proposta</h3>
+            <p className="delete-modal-message">
+              Preencha os detalhes da sua proposta para <strong>{trabalho.titulo}</strong>
+            </p>
+
+            {formErro && (
+              <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
+                <i className="bi bi-exclamation-circle"></i> {formErro}
+              </div>
+            )}
+
+            <form onSubmit={enviarProposta} style={{ textAlign: 'left' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="descricao" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Descrição da Proposta *
+                </label>
+                <textarea
+                  id="descricao"
+                  className="form-control"
+                  rows="4"
+                  value={form.descricao}
+                  onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                  placeholder="Descreva como você pode ajudar neste projeto..."
+                  required
+                  disabled={enviandoProposta}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="valor" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Valor Proposto (R$) *
+                </label>
+                <input
+                  type="number"
+                  id="valor"
+                  className="form-control"
+                  value={form.valor}
+                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                  placeholder="Ex: 1500.00"
+                  step="0.01"
+                  min="0"
+                  required
+                  disabled={enviandoProposta}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label htmlFor="prazo" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Prazo Estimado *
+                </label>
+                <input
+                  type="date"
+                  id="prazo"
+                  className="form-control"
+                  value={form.prazo_estimado}
+                  onChange={(e) => setForm({ ...form, prazo_estimado: e.target.value })}
+                  required
+                  disabled={enviandoProposta}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="delete-modal-actions">
+                <button
+                  type="button"
+                  className="btn-modal btn-cancel"
+                  onClick={() => setShowForm(false)}
+                  disabled={enviandoProposta}
+                >
+                  <i className="bi bi-x-circle"></i>
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modal btn-confirm-delete"
+                  disabled={enviandoProposta}
+                  style={{ backgroundColor: '#10b981' }}
+                >
+                  {enviandoProposta ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm"></span>
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-send-fill"></i>
+                      Enviar Proposta
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="detalhes-header">
         <div className="detalhes-title-section">
@@ -412,7 +517,7 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* ✅ LINK DO ANEXO AJUSTADO */}
+            {/* ARQUIVO ANEXO */}
             {trabalho.anexo && (
               <div className="trabalho-anexo-section">
                 <h3>

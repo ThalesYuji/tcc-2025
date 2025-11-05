@@ -4,7 +4,6 @@ from habilidades.models import Habilidade
 from datetime import date
 import re
 
-
 class HabilidadeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Habilidade
@@ -16,6 +15,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     habilidades_detalhes = HabilidadeSerializer(source='habilidades', many=True, read_only=True)
     nome_contratante = serializers.SerializerMethodField(read_only=True)
     contratante_id = serializers.SerializerMethodField(read_only=True)
+    anexo = serializers.SerializerMethodField(read_only=True)  # ✅ substituímos o campo direto
 
     class Meta:
         model = Trabalho
@@ -29,7 +29,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     # ===================== GETTERS =====================
 
     def get_nome_contratante(self, obj):
-        """Retorna o nome legível do contratante do trabalho."""
         if obj.contratante:
             if hasattr(obj.contratante, 'nome') and obj.contratante.nome:
                 return obj.contratante.nome
@@ -40,8 +39,21 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return ""
 
     def get_contratante_id(self, obj):
-        """Retorna o ID do contratante vinculado."""
         return obj.contratante.id if obj.contratante else None
+
+    def get_anexo(self, obj):
+        """✅ Garante que o campo anexo nunca quebre mesmo se não houver arquivo."""
+        try:
+            if obj.anexo and hasattr(obj.anexo, 'url'):
+                request = self.context.get('request')
+                url = obj.anexo.url
+                if request and not url.startswith("http"):
+                    # gera URL absoluta em produção/local
+                    return request.build_absolute_uri(url)
+                return url
+        except Exception:
+            pass
+        return None
 
     # ===================== VALIDATIONS =====================
 
@@ -77,30 +89,20 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         habilidades_texto = self._extrair_habilidades()
         validated_data['contratante'] = self.context['request'].user
 
-        # 🔹 Define se é privado ou público
         freelancer = validated_data.get('freelancer')
-        if freelancer:
-            validated_data['is_privado'] = True
-            validated_data['status'] = 'aberto'  # aguardando aceitação do freela
-        else:
-            validated_data['is_privado'] = False
-            validated_data['status'] = 'aberto'
+        validated_data['is_privado'] = bool(freelancer)
+        validated_data['status'] = 'aberto'
 
         validated_data.pop('habilidades', None)
         trabalho = super().create(validated_data)
-
-        # Processa habilidades
         self._processar_habilidades(trabalho, habilidades_texto)
         return trabalho
 
     # ===================== UPDATE =====================
 
     def update(self, instance, validated_data):
-        # 🔹 Bloqueia alteração manual de status
         if 'status' in validated_data:
             validated_data.pop('status')
-
-        # 🔹 Bloqueia troca de freelancer depois de definido
         if 'freelancer' in validated_data and instance.freelancer:
             validated_data.pop('freelancer')
 
@@ -117,7 +119,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     # ===================== HABILIDADES =====================
 
     def _extrair_habilidades(self):
-        """Extrai a lista de habilidades do corpo da requisição."""
         request = self.context.get('request')
         habilidades = []
 
@@ -133,7 +134,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return habilidades
 
     def _processar_habilidades(self, trabalho, habilidades_texto):
-        """Processa e associa habilidades ao trabalho, com filtro de palavras proibidas."""
         PALAVRAS_PROIBIDAS = [
             "merda", "porra", "puta", "puto", "caralho", "buceta", "pinto", "piroca",
             "pau", "rola", "bosta", "arrombado", "vagabundo", "vagabunda", "corno",
