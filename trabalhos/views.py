@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser  # ✅ adicionado
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
@@ -13,6 +14,7 @@ from habilidades.models import Habilidade
 
 class TrabalhoAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # ✅ aceita uploads de arquivos
 
     def get(self, request):
         """
@@ -25,17 +27,15 @@ class TrabalhoAPIView(APIView):
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 6))
 
-        # 🔹 Base de trabalhos conforme o tipo de usuário
         if usuario.is_superuser:
             trabalhos = Trabalho.objects.all()
         elif usuario.tipo == "contratante":
             trabalhos = Trabalho.objects.filter(contratante=usuario)
-        else:  # freelancer
+        else:
             trabalhos = Trabalho.objects.filter(
                 Q(is_privado=False) | Q(freelancer=usuario)
             )
 
-        # 🔹 Busca textual
         if busca:
             trabalhos = trabalhos.filter(
                 Q(titulo__icontains=busca)
@@ -43,7 +43,6 @@ class TrabalhoAPIView(APIView):
                 | Q(habilidades__nome__icontains=busca)
             ).distinct()
 
-        # 🔹 Filtro por habilidade
         if habilidade_param:
             try:
                 habilidade_id = int(habilidade_param)
@@ -58,10 +57,8 @@ class TrabalhoAPIView(APIView):
             else:
                 trabalhos = trabalhos.none()
 
-        # ✅ CRÍTICO: Ordenação obrigatória (evita erro 500)
         trabalhos = trabalhos.order_by("-criado_em", "-id")
 
-        # 🔹 Paginação manual
         total = trabalhos.count()
         start = (page - 1) * page_size
         end = start + page_size
@@ -86,7 +83,6 @@ class TrabalhoAPIView(APIView):
             trabalho = serializer.save()
             from usuarios.models import Usuario
 
-            # 🔹 Envio de notificações
             if trabalho.is_privado and trabalho.freelancer:
                 enviar_notificacao(
                     usuario=trabalho.freelancer,
@@ -104,7 +100,6 @@ class TrabalhoAPIView(APIView):
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class TrabalhoDetalheAPIView(APIView):
     permission_classes = [IsAuthenticated]
