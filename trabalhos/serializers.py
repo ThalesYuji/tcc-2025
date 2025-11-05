@@ -11,22 +11,28 @@ class HabilidadeSerializer(serializers.ModelSerializer):
 
 
 class TrabalhoSerializer(serializers.ModelSerializer):
-    habilidades = serializers.CharField(required=False, allow_blank=True)
+    habilidades = serializers.CharField(required=False, allow_blank=True, write_only=True)
     habilidades_detalhes = HabilidadeSerializer(source='habilidades', many=True, read_only=True)
     nome_contratante = serializers.SerializerMethodField(read_only=True)
     contratante_id = serializers.SerializerMethodField(read_only=True)
-    anexo = serializers.SerializerMethodField(read_only=True)  # ✅ substituímos o campo direto
+    
+    anexo = serializers.FileField(required=False, allow_null=True, use_url=True)
+    anexo_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Trabalho
-        fields = '__all__'
+        fields = [
+            'id', 'titulo', 'descricao', 'prazo', 'orcamento', 'status',
+            'contratante', 'contratante_id', 'nome_contratante',
+            'freelancer', 'is_privado', 'anexo', 'anexo_url',
+            'habilidades', 'habilidades_detalhes',
+            'criado_em', 'atualizado_em'
+        ]
         read_only_fields = [
             'contratante', 'status', 'is_privado',
             'criado_em', 'atualizado_em',
-            'habilidades_detalhes', 'nome_contratante', 'contratante_id'
+            'habilidades_detalhes', 'nome_contratante', 'contratante_id', 'anexo_url'
         ]
-
-    # ===================== GETTERS =====================
 
     def get_nome_contratante(self, obj):
         if obj.contratante:
@@ -41,21 +47,22 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     def get_contratante_id(self, obj):
         return obj.contratante.id if obj.contratante else None
 
-    def get_anexo(self, obj):
-        """✅ Garante que o campo anexo nunca quebre mesmo se não houver arquivo."""
+    def get_anexo_url(self, obj):
         try:
             if obj.anexo and hasattr(obj.anexo, 'url'):
                 request = self.context.get('request')
                 url = obj.anexo.url
-                if request and not url.startswith("http"):
-                    # gera URL absoluta em produção/local
+                
+                if url.startswith('http'):
+                    return url
+                
+                if request:
                     return request.build_absolute_uri(url)
+                
                 return url
         except Exception:
             pass
         return None
-
-    # ===================== VALIDATIONS =====================
 
     def validate_prazo(self, value):
         if value < date.today():
@@ -64,11 +71,17 @@ class TrabalhoSerializer(serializers.ModelSerializer):
 
     def validate_anexo(self, value):
         if value:
+            max_size = 10 * 1024 * 1024
+            if value.size > max_size:
+                raise serializers.ValidationError(
+                    "Arquivo muito grande. Tamanho máximo: 10MB."
+                )
+            
             ext = str(value.name).split('.')[-1].lower()
-            tipos_permitidos = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
+            tipos_permitidos = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'zip', 'rar']
             if ext not in tipos_permitidos:
                 raise serializers.ValidationError(
-                    "Tipo de arquivo não permitido. Use: PDF, DOC, DOCX, JPG, JPEG ou PNG."
+                    f"Tipo de arquivo não permitido. Use: {', '.join(tipos_permitidos).upper()}"
                 )
         return value
 
@@ -83,8 +96,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Apenas contratantes ou administradores podem publicar trabalhos.")
         return data
 
-    # ===================== CREATE =====================
-
     def create(self, validated_data):
         habilidades_texto = self._extrair_habilidades()
         validated_data['contratante'] = self.context['request'].user
@@ -94,11 +105,10 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         validated_data['status'] = 'aberto'
 
         validated_data.pop('habilidades', None)
+        
         trabalho = super().create(validated_data)
         self._processar_habilidades(trabalho, habilidades_texto)
         return trabalho
-
-    # ===================== UPDATE =====================
 
     def update(self, instance, validated_data):
         if 'status' in validated_data:
@@ -108,6 +118,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
 
         habilidades_texto = self._extrair_habilidades()
         validated_data.pop('habilidades', None)
+        
         trabalho = super().update(instance, validated_data)
 
         if habilidades_texto is not None:
@@ -115,8 +126,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             self._processar_habilidades(trabalho, habilidades_texto)
 
         return trabalho
-
-    # ===================== HABILIDADES =====================
 
     def _extrair_habilidades(self):
         request = self.context.get('request')

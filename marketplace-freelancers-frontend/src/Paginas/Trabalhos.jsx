@@ -18,7 +18,6 @@ export default function Trabalhos() {
 
   const { usuarioLogado, carregando } = useContext(UsuarioContext);
 
-  // Carregar habilidades e trabalhos
   useEffect(() => {
     api
       .get("/habilidades/")
@@ -38,7 +37,6 @@ export default function Trabalhos() {
     // eslint-disable-next-line
   }, []);
 
-  // Buscar trabalhos
   function buscarTrabalhos(filtros = {}) {
     let url = "/trabalhos/";
     let params = [];
@@ -61,14 +59,12 @@ export default function Trabalhos() {
       .catch(() => setErro("Erro ao buscar trabalhos."));
   }
 
-  // Formatar data BR
   function formatarData(dataStr) {
     if (!dataStr) return "Não definido";
     const [ano, mes, dia] = dataStr.split("-");
     return `${dia}/${mes}/${ano}`;
   }
 
-  // Formatar orçamento
   function formatarOrcamento(valor) {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -76,7 +72,6 @@ export default function Trabalhos() {
     }).format(valor);
   }
 
-  // Obter classe do status
   function getStatusClass(status) {
     switch (status?.toLowerCase()) {
       case "concluido":
@@ -93,7 +88,6 @@ export default function Trabalhos() {
     }
   }
 
-  // Obter ícone do status
   function getStatusIcon(status) {
     switch (status?.toLowerCase()) {
       case "concluido":
@@ -110,24 +104,19 @@ export default function Trabalhos() {
     }
   }
 
-  // 🆕 Verificar se pode ver o trabalho privado
   function podeVerTrabalhoPrivado(trabalho) {
     if (!trabalho.is_privado) return true;
     if (!usuarioLogado) return false;
 
-    // Admin vê tudo
     if (usuarioLogado.is_superuser) return true;
 
-    // Contratante que criou
     if (trabalho.contratante_id === usuarioLogado.id) return true;
 
-    // Freelancer designado
     if (trabalho.freelancer === usuarioLogado.id) return true;
 
     return false;
   }
 
-  // Filtros
   function filtrar(e) {
     e.preventDefault();
     setPage(1);
@@ -141,7 +130,6 @@ export default function Trabalhos() {
     buscarTrabalhos({ page: 1 });
   }
 
-  // Paginação
   function anterior() {
     if (page > 1) {
       const newPage = page - 1;
@@ -158,7 +146,6 @@ export default function Trabalhos() {
     }
   }
 
-  // Estados de carregamento e erro
   if (carregando) {
     return (
       <div className="trabalhos-page page-container">
@@ -191,12 +178,10 @@ export default function Trabalhos() {
     );
   }
 
-  // 🆕 Filtrar trabalhos que o usuário pode ver
   const trabalhosVisiveis = trabalhos.filter(podeVerTrabalhoPrivado);
 
   return (
     <div className="trabalhos-page page-container fade-in">
-      {/* Header da Página */}
       <div className="trabalhos-header">
         <h1 className="trabalhos-title">
           <div className="trabalhos-title-icon">
@@ -210,7 +195,6 @@ export default function Trabalhos() {
         </p>
       </div>
 
-      {/* Filtros */}
       <div className="filtros-container">
         <form className="filtros-form" onSubmit={filtrar}>
           <div className="filtros-linha-principal">
@@ -275,7 +259,6 @@ export default function Trabalhos() {
         </form>
       </div>
 
-      {/* Mensagem de Erro */}
       {erro && (
         <div className="dashboard-error">
           <div className="error-icon">❌</div>
@@ -291,7 +274,6 @@ export default function Trabalhos() {
         </div>
       )}
 
-      {/* Lista de Trabalhos */}
       {trabalhosVisiveis.length === 0 && !erro ? (
         <div className="trabalhos-empty">
           <div className="empty-icon">
@@ -386,20 +368,25 @@ export default function Trabalhos() {
                   </div>
                 )}
 
-                {/* ✅ Link do anexo ajustado */}
-                {trabalho.anexo && (
+                {trabalho.anexo_url && (
                   <div className="trabalho-info-item">
                     <i className="bi bi-paperclip trabalho-info-icon"></i>
-                    <a
-                      href={trabalho.anexo}
+                    
+                      href={trabalho.anexo_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="trabalho-anexo"
                       download
-                    >
+                      onClick={(e) => {
+                        if (!trabalho.anexo_url || trabalho.anexo_url === 'null') {
+                          e.preventDefault();
+                          alert('Arquivo não disponível');
+                        }
+                      }}
+                    
                       <i className="bi bi-download"></i>
                       Ver Anexo
-                    </a>
+                    
                   </div>
                 )}
               </div>
@@ -418,7 +405,6 @@ export default function Trabalhos() {
         </div>
       )}
 
-      {/* Paginação */}
       {numPages > 1 && (
         <div className="trabalhos-pagination">
           <button
