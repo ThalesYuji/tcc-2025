@@ -238,30 +238,41 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     # ------------------ RESUMO ------------------
     @action(detail=False, methods=["get"], url_path="me/resumo")
     def resumo(self, request):
-        """Resumo de atividades do usuário logado (Dashboard)."""
+        """Resumo de atividades do usuário logado (Dashboard + estatísticas de denúncias)."""
         user = request.user
         resumo = {}
 
+        # 🔹 Importa localmente para evitar dependências circulares
+        from denuncias.models import Denuncia
+
+        # 🔸 FREELANCER
         if user.tipo == "freelancer":
             propostas = Proposta.objects.filter(freelancer=user)
             resumo["enviadas"] = propostas.count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
             resumo["recusadas"] = propostas.filter(status="recusada").count()
 
+        # 🔸 CONTRATANTE
         elif user.tipo == "contratante":
             propostas = Proposta.objects.filter(trabalho__contratante=user)
             resumo["recebidas"] = propostas.count()
             resumo["pendentes"] = propostas.filter(status="pendente").count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
 
+        # 🔸 Avaliações
         avaliacoes = Avaliacao.objects.filter(avaliado=user)
         resumo["totalAvaliacoes"] = avaliacoes.count()
         resumo["mediaAvaliacao"] = (
             round(sum(a.nota for a in avaliacoes) / avaliacoes.count(), 2)
-            if avaliacoes.exists() else None
+            if avaliacoes.exists()
+            else None
         )
-        return Response(resumo)
 
+        # 🔸 Denúncias (para ambos os tipos de usuário)
+        resumo["denunciasEnviadas"] = Denuncia.objects.filter(denunciante=user).count()
+        resumo["denunciasRecebidas"] = Denuncia.objects.filter(denunciado=user).count()
+
+        return Response(resumo)
 
 # ------------------ USUÁRIO LOGADO ------------------
 class UsuarioMeAPIView(APIView):

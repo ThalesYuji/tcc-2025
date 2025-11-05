@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [resumo, setResumo] = useState(null);
   const [erro, setErro] = useState("");
 
+  // 🔹 Carrega o resumo de estatísticas do usuário logado
   useEffect(() => {
     async function fetchResumo() {
       try {
@@ -32,16 +33,19 @@ export default function Dashboard() {
     }
   }, [usuarioLogado]);
 
-  // helper para singular/plural
+  // 🔹 Helper para singular/plural em avaliações
   const tituloAvaliacoes = (n) => {
     if (!n || n === 0) return "Sem Avaliações Recebidas";
     return n === 1 ? "1 Avaliação" : `${n} Avaliações`;
   };
 
-  // Configuração dos cards (apenas contagens reais)
+  // 🔹 Configuração dos cards exibidos no painel (estatísticas)
   const getStatsConfig = () => {
     const totalAvaliacoes = resumo?.totalAvaliacoes ?? 0;
+    const denunciasEnviadas = resumo?.denunciasEnviadas ?? 0;
+    const denunciasRecebidas = resumo?.denunciasRecebidas ?? 0;
 
+    // 🧑‍💻 Painel para FREELANCER
     if (usuarioLogado?.tipo === "freelancer") {
       return [
         {
@@ -72,41 +76,74 @@ export default function Dashboard() {
           color: "secondary",
           value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
         },
-      ];
-    } else {
-      return [
+        // 🔸 NOVO CARD: denúncias enviadas
         {
-          key: "recebidas",
-          title: "Propostas Recebidas",
-          icon: "bi-inbox",
-          color: "primary",
-          value: resumo?.recebidas ?? 0,
+          key: "denunciasEnviadas",
+          title: "Denúncias Enviadas",
+          icon: "bi-flag-fill",
+          color: "danger",
+          value: denunciasEnviadas,
         },
+        // 🔸 NOVO CARD: denúncias recebidas
         {
-          key: "pendentes",
-          title: "Propostas Pendentes",
-          icon: "bi-clock",
+          key: "denunciasRecebidas",
+          title: "Denúncias Recebidas",
+          icon: "bi-exclamation-triangle-fill",
           color: "warning",
-          value: resumo?.pendentes ?? 0,
-        },
-        {
-          key: "aceitas",
-          title: "Propostas Aceitas",
-          icon: "bi-check-circle",
-          color: "success",
-          value: resumo?.aceitas ?? 0,
-        },
-        {
-          key: "avaliacao",
-          title: tituloAvaliacoes(totalAvaliacoes),
-          icon: "bi-star",
-          color: "secondary",
-          value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+          value: denunciasRecebidas,
         },
       ];
     }
+
+    // 🧍 Painel para CONTRATANTE
+    return [
+      {
+        key: "recebidas",
+        title: "Propostas Recebidas",
+        icon: "bi-inbox",
+        color: "primary",
+        value: resumo?.recebidas ?? 0,
+      },
+      {
+        key: "pendentes",
+        title: "Propostas Pendentes",
+        icon: "bi-clock",
+        color: "warning",
+        value: resumo?.pendentes ?? 0,
+      },
+      {
+        key: "aceitas",
+        title: "Propostas Aceitas",
+        icon: "bi-check-circle",
+        color: "success",
+        value: resumo?.aceitas ?? 0,
+      },
+      {
+        key: "avaliacao",
+        title: tituloAvaliacoes(totalAvaliacoes),
+        icon: "bi-star",
+        color: "secondary",
+        value: totalAvaliacoes > 0 ? totalAvaliacoes : "—",
+      },
+      // 🔸 NOVOS CARDS DE DENÚNCIAS
+      {
+        key: "denunciasEnviadas",
+        title: "Denúncias Enviadas",
+        icon: "bi-flag-fill",
+        color: "danger",
+        value: denunciasEnviadas,
+      },
+      {
+        key: "denunciasRecebidas",
+        title: "Denúncias Recebidas",
+        icon: "bi-exclamation-triangle-fill",
+        color: "warning",
+        value: denunciasRecebidas,
+      },
+    ];
   };
 
+  // 🔹 Tela de carregamento
   if (carregando) {
     return (
       <div className="dashboard-page page-container">
@@ -121,6 +158,7 @@ export default function Dashboard() {
     );
   }
 
+  // 🔹 Caso não esteja autenticado
   if (!usuarioLogado) {
     return (
       <div className="dashboard-page page-container">
@@ -135,10 +173,12 @@ export default function Dashboard() {
     );
   }
 
+  // 🔹 Gera os cards com base no tipo de usuário
   const statsConfig = getStatsConfig();
 
   return (
     <div className="dashboard-page page-container fade-in">
+      {/* Cabeçalho */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">
           <div className="dashboard-title-icon">
@@ -151,6 +191,7 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Erro ao carregar dados */}
       {erro && (
         <div className="dashboard-error">
           <div className="error-icon">❌</div>
@@ -166,6 +207,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Cards de estatísticas */}
       <div className="stats-grid">
         {statsConfig.map((stat) => (
           <div key={stat.key} className={`stat-card ${stat.color}`}>
