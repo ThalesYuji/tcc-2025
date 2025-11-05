@@ -5,14 +5,12 @@ import { getUsuarioLogado } from "../Servicos/Auth";
 import { useParams, useNavigate } from "react-router-dom";
 import "../styles/DetalhesTrabalho.css";
 
-const BASE_URL = "http://localhost:8000";
-
 // Função para classe do status
 function getStatusClass(status) {
   switch (status?.toLowerCase()) {
     case "aberto": return "status-aberto";
     case "em_andamento": return "status-em-andamento";
-    case "concluido": 
+    case "concluido":
     case "concluído": return "status-concluido";
     case "cancelado": return "status-cancelado";
     case "recusado": return "status-recusado";
@@ -24,7 +22,7 @@ function getStatusIcon(status) {
   switch (status?.toLowerCase()) {
     case "aberto": return "bi-unlock";
     case "em_andamento": return "bi-clock";
-    case "concluido": 
+    case "concluido":
     case "concluído": return "bi-check-circle";
     case "cancelado": return "bi-x-circle";
     case "recusado": return "bi-x-circle";
@@ -78,9 +76,9 @@ export default function DetalhesTrabalho() {
   }
 
   function formatarOrcamento(valor) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(valor);
   }
 
@@ -153,7 +151,7 @@ export default function DetalhesTrabalho() {
         valor: form.valor,
         prazo_estimado: form.prazo_estimado,
       });
-      
+
       setShowForm(false);
       mostrarAlerta("sucesso", "Proposta enviada! Redirecionando para suas propostas...", "/propostas");
     } catch (err) {
@@ -206,7 +204,7 @@ export default function DetalhesTrabalho() {
           <div className="error-icon">⚠️</div>
           <h3 className="error-title">Erro ao Carregar</h3>
           <p className="error-message">{erro}</p>
-          <button 
+          <button
             className="btn btn-primary"
             onClick={() => navigate("/trabalhos")}
           >
@@ -225,7 +223,7 @@ export default function DetalhesTrabalho() {
           <div className="error-icon">🔍</div>
           <h3 className="error-title">Trabalho Não Encontrado</h3>
           <p className="error-message">O trabalho solicitado não foi encontrado.</p>
-          <button 
+          <button
             className="btn btn-primary"
             onClick={() => navigate("/trabalhos")}
           >
@@ -239,13 +237,14 @@ export default function DetalhesTrabalho() {
 
   // Função para determinar o ícone do alerta
   const getAlertaIcon = () => {
-    if (alerta.tipo === 'sucesso') return 'bi-check-circle-fill';
-    if (alerta.tipo === 'erro') return 'bi-x-circle-fill';
-    return 'bi-info-circle-fill';
+    if (alerta.tipo === "sucesso") return "bi-check-circle-fill";
+    if (alerta.tipo === "erro") return "bi-x-circle-fill";
+    return "bi-info-circle-fill";
   };
 
   return (
     <div className="detalhes-trabalho-page page-container fade-in">
+      {/* ALERTA CENTRAL */}
       {alerta && (
         <div className="alerta-overlay">
           <div className={`alerta-box alerta-${alerta.tipo}`}>
@@ -255,13 +254,13 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
+      {/* MODAL DE EXCLUSÃO */}
       {showDeleteModal && (
         <div className="delete-modal-overlay">
           <div className="delete-modal-content zoom-in">
             <div className="delete-modal-icon">
               <i className="bi bi-exclamation-triangle-fill"></i>
             </div>
-            
             <h3 className="delete-modal-title">Confirmar Exclusão</h3>
             <p className="delete-modal-message">
               Tem certeza que deseja excluir o trabalho <strong>{trabalho.titulo}</strong>?
@@ -272,7 +271,7 @@ export default function DetalhesTrabalho() {
             </p>
 
             <div className="delete-modal-actions">
-              <button 
+              <button
                 className="btn-modal btn-cancel"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={excluindo}
@@ -280,7 +279,7 @@ export default function DetalhesTrabalho() {
                 <i className="bi bi-x-circle"></i>
                 Cancelar
               </button>
-              <button 
+              <button
                 className="btn-modal btn-confirm-delete"
                 onClick={handleDelete}
                 disabled={excluindo}
@@ -302,112 +301,7 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {showForm && (
-        <div className="proposta-modal-overlay">
-          <div className="proposta-modal-content">
-            <div className="proposta-modal-header">
-              <h4>
-                <i className="bi bi-send-fill"></i>
-                Enviar Nova Proposta
-              </h4>
-              <button 
-                className="modal-close-btn"
-                onClick={() => setShowForm(false)}
-                type="button"
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
-            
-            <form onSubmit={enviarProposta} className="proposta-form">
-              <div className="form-group">
-                <label>
-                  <i className="bi bi-chat-text"></i>
-                  Mensagem para o Contratante
-                </label>
-                <textarea
-                  placeholder="Descreva sua proposta, experiência relevante e por que você é a melhor escolha para este projeto..."
-                  value={form.descricao}
-                  onChange={e => setForm({ ...form, descricao: e.target.value })}
-                  rows={5}
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>
-                    <i className="bi bi-currency-dollar"></i>
-                    Valor Proposto
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="R$ 0,00"
-                    value={form.valor}
-                    onChange={e => setForm({ ...form, valor: e.target.value })}
-                    className="form-control"
-                    min="1"
-                    step="0.01"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    <i className="bi bi-calendar-check"></i>
-                    Prazo Estimado
-                  </label>
-                  <input
-                    type="date"
-                    value={form.prazo_estimado}
-                    onChange={e => setForm({ ...form, prazo_estimado: e.target.value })}
-                    className="form-control"
-                    required
-                  />
-                </div>
-              </div>
-
-              {formErro && (
-                <div className="error-message">
-                  <i className="bi bi-exclamation-circle-fill"></i>
-                  {formErro}
-                </div>
-              )}
-
-              <div className="form-actions">
-                <button 
-                  type="submit" 
-                  className="btn-action btn-primary-action"
-                  disabled={enviandoProposta}
-                >
-                  {enviandoProposta ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm"></span>
-                      Enviando...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-send-fill"></i>
-                      Enviar Proposta
-                    </>
-                  )}
-                </button>
-                <button 
-                  type="button" 
-                  className="btn-action btn-secondary-action"
-                  onClick={() => setShowForm(false)}
-                  disabled={enviandoProposta}
-                >
-                  <i className="bi bi-x"></i>
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      {/* HEADER */}
       <div className="detalhes-header">
         <div className="detalhes-title-section">
           <div className="title-with-status">
@@ -426,13 +320,14 @@ export default function DetalhesTrabalho() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 'var(--space-xl)' }}>
+      <div style={{ marginBottom: "var(--space-xl)" }}>
         <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
           <i className="bi bi-arrow-left"></i>
           Voltar aos Trabalhos
         </button>
       </div>
 
+      {/* CONTEÚDO PRINCIPAL */}
       <div className="detalhes-content">
         <div className="detalhes-main-card modern-card">
           <div className="detalhes-card-header">
@@ -441,7 +336,7 @@ export default function DetalhesTrabalho() {
               Descrição do Projeto
             </h2>
           </div>
-          
+
           <div className="detalhes-card-body">
             <div className="trabalho-descricao-completa">
               {trabalho.descricao || "Nenhuma descrição fornecida."}
@@ -466,9 +361,7 @@ export default function DetalhesTrabalho() {
                 </div>
                 <div className="info-content">
                   <span className="info-label">Prazo</span>
-                  <span className="info-value">
-                    {formatarData(trabalho.prazo)}
-                  </span>
+                  <span className="info-value">{formatarData(trabalho.prazo)}</span>
                 </div>
               </div>
 
@@ -478,7 +371,7 @@ export default function DetalhesTrabalho() {
                 </div>
                 <div className="info-content">
                   <span className="info-label">Contratante</span>
-                  <span 
+                  <span
                     className="info-value cliente-link"
                     onClick={() => navigate(`/perfil/${trabalho.contratante_id}`)}
                   >
@@ -502,6 +395,7 @@ export default function DetalhesTrabalho() {
               )}
             </div>
 
+            {/* HABILIDADES */}
             {trabalho.habilidades_detalhes?.length > 0 && (
               <div className="trabalho-habilidades-section">
                 <h3>
@@ -518,6 +412,7 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
+            {/* ✅ LINK DO ANEXO AJUSTADO */}
             {trabalho.anexo && (
               <div className="trabalho-anexo-section">
                 <h3>
@@ -525,10 +420,11 @@ export default function DetalhesTrabalho() {
                   Arquivo Anexo
                 </h3>
                 <a
-                  href={`${BASE_URL}${trabalho.anexo}`}
+                  href={trabalho.anexo}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="anexo-link"
+                  download
                 >
                   <i className="bi bi-download"></i>
                   Baixar Arquivo
@@ -538,6 +434,7 @@ export default function DetalhesTrabalho() {
           </div>
         </div>
 
+        {/* AÇÕES */}
         <div className="detalhes-actions-card modern-card">
           <div className="detalhes-card-header">
             <h2>
@@ -545,21 +442,21 @@ export default function DetalhesTrabalho() {
               Ações Disponíveis
             </h2>
           </div>
-          
+
           <div className="detalhes-card-body">
             {podeEditarOuExcluir() && (
               <div className="action-group">
                 <h4>Gerenciar Trabalho</h4>
                 <div className="btn-group-actions">
-                  <button 
+                  <button
                     className="btn-action btn-primary-action"
                     onClick={() => navigate(`/trabalhos/editar/${trabalho.id}`)}
                   >
                     <i className="bi bi-pencil"></i>
                     Editar
                   </button>
-                  <button 
-                    className="btn-action btn-danger-action" 
+                  <button
+                    className="btn-action btn-danger-action"
                     onClick={() => setShowDeleteModal(true)}
                   >
                     <i className="bi bi-trash"></i>
@@ -572,7 +469,7 @@ export default function DetalhesTrabalho() {
             {podeEnviarProposta && (
               <div className="action-group">
                 <h4>Interessado no Projeto?</h4>
-                <button 
+                <button
                   className="btn-action btn-success-action full-width"
                   onClick={abrirFormProposta}
                 >
@@ -589,14 +486,14 @@ export default function DetalhesTrabalho() {
                   Este é um trabalho privado direcionado a você. Escolha sua ação:
                 </p>
                 <div className="btn-group-actions">
-                  <button 
+                  <button
                     className="btn-action btn-success-action"
                     onClick={aceitarTrabalho}
                   >
                     <i className="bi bi-check-circle"></i>
                     Aceitar Trabalho
                   </button>
-                  <button 
+                  <button
                     className="btn-action btn-danger-action"
                     onClick={recusarTrabalho}
                   >
@@ -607,15 +504,17 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {!podeEditarOuExcluir() && !podeEnviarProposta && !podeAceitarOuRecusar && (
-              <div className="no-actions">
-                <div className="no-actions-icon">
-                  <i className="bi bi-info-circle"></i>
+            {!podeEditarOuExcluir() &&
+              !podeEnviarProposta &&
+              !podeAceitarOuRecusar && (
+                <div className="no-actions">
+                  <div className="no-actions-icon">
+                    <i className="bi bi-info-circle"></i>
+                  </div>
+                  <h4>Nenhuma Ação Disponível</h4>
+                  <p>Você não tem permissões para realizar ações neste trabalho.</p>
                 </div>
-                <h4>Nenhuma Ação Disponível</h4>
-                <p>Você não tem permissões para realizar ações neste trabalho.</p>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </div>

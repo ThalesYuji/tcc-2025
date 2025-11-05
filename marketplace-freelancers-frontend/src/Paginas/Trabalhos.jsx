@@ -5,8 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import "../styles/Trabalhos.css";
 
-const BASE_URL = "http://localhost:8000";
-
 export default function Trabalhos() {
   const [trabalhos, setTrabalhos] = useState([]);
   const [erro, setErro] = useState("");
@@ -72,43 +70,43 @@ export default function Trabalhos() {
 
   // Formatar orçamento
   function formatarOrcamento(valor) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(valor);
   }
 
   // Obter classe do status
   function getStatusClass(status) {
     switch (status?.toLowerCase()) {
-      case 'concluido': 
-      case 'concluído': 
-        return 'status-concluido';
-      case 'cancelado': 
-      case 'recusado': 
-        return 'status-recusado';
-      case 'em_andamento':
-      case 'em andamento':
-      case 'andamento':
-      default: 
-        return 'status-em-andamento';
+      case "concluido":
+      case "concluído":
+        return "status-concluido";
+      case "cancelado":
+      case "recusado":
+        return "status-recusado";
+      case "em_andamento":
+      case "em andamento":
+      case "andamento":
+      default:
+        return "status-em-andamento";
     }
   }
 
   // Obter ícone do status
   function getStatusIcon(status) {
     switch (status?.toLowerCase()) {
-      case 'concluido': 
-      case 'concluído': 
-        return 'bi-check-circle-fill';
-      case 'cancelado': 
-      case 'recusado': 
-        return 'bi-x-circle-fill';
-      case 'em_andamento':
-      case 'em andamento':
-      case 'andamento':
-      default: 
-        return 'bi-clock-fill';
+      case "concluido":
+      case "concluído":
+        return "bi-check-circle-fill";
+      case "cancelado":
+      case "recusado":
+        return "bi-x-circle-fill";
+      case "em_andamento":
+      case "em andamento":
+      case "andamento":
+      default:
+        return "bi-clock-fill";
     }
   }
 
@@ -116,16 +114,16 @@ export default function Trabalhos() {
   function podeVerTrabalhoPrivado(trabalho) {
     if (!trabalho.is_privado) return true;
     if (!usuarioLogado) return false;
-    
+
     // Admin vê tudo
     if (usuarioLogado.is_superuser) return true;
-    
+
     // Contratante que criou
     if (trabalho.contratante_id === usuarioLogado.id) return true;
-    
+
     // Freelancer designado
     if (trabalho.freelancer === usuarioLogado.id) return true;
-    
+
     return false;
   }
 
@@ -166,8 +164,12 @@ export default function Trabalhos() {
       <div className="trabalhos-page page-container">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <h3 style={{ color: "var(--cor-texto-light)" }}>Carregando trabalhos...</h3>
-          <p style={{ color: "var(--cor-texto-light)", textAlign: "center" }}>
+          <h3 style={{ color: "var(--cor-texto-light)" }}>
+            Carregando trabalhos...
+          </h3>
+          <p
+            style={{ color: "var(--cor-texto-light)", textAlign: "center" }}
+          >
             Buscando as melhores oportunidades para você
           </p>
         </div>
@@ -203,14 +205,14 @@ export default function Trabalhos() {
           Trabalhos Disponíveis
         </h1>
         <p className="trabalhos-subtitle">
-          Encontre oportunidades incríveis ou publique novos projetos com segurança
+          Encontre oportunidades incríveis ou publique novos projetos com
+          segurança
         </p>
       </div>
 
       {/* Filtros */}
       <div className="filtros-container">
         <form className="filtros-form" onSubmit={filtrar}>
-          {/* Primeira linha - Campos de busca */}
           <div className="filtros-linha-principal">
             <div className="filtro-group filtro-busca">
               <label className="filtro-label">Buscar trabalhos</label>
@@ -247,7 +249,6 @@ export default function Trabalhos() {
             </div>
           </div>
 
-          {/* Segunda linha - Botões */}
           <div className="filtros-botoes">
             <button type="submit" className="btn-filtrar">
               <i className="bi bi-search"></i>
@@ -259,7 +260,8 @@ export default function Trabalhos() {
               Limpar
             </button>
 
-            {(usuarioLogado.tipo === "contratante" || usuarioLogado.is_superuser) && (
+            {(usuarioLogado.tipo === "contratante" ||
+              usuarioLogado.is_superuser) && (
               <button
                 type="button"
                 className="btn-novo-trabalho"
@@ -279,7 +281,7 @@ export default function Trabalhos() {
           <div className="error-icon">❌</div>
           <h3 className="error-title">Erro ao Carregar</h3>
           <p className="error-message">{erro}</p>
-          <button 
+          <button
             className="btn gradient-btn"
             onClick={() => buscarTrabalhos({ busca, habilidade, page })}
           >
@@ -297,10 +299,9 @@ export default function Trabalhos() {
           </div>
           <h3 className="empty-title">Nenhum trabalho encontrado</h3>
           <p className="empty-description">
-            {busca || habilidade 
+            {busca || habilidade
               ? "Tente ajustar os filtros para encontrar mais oportunidades."
-              : "Não há trabalhos disponíveis no momento. Volte em breve!"
-            }
+              : "Não há trabalhos disponíveis no momento. Volte em breve!"}
           </p>
           {(busca || habilidade) && (
             <button className="btn gradient-btn" onClick={limpar}>
@@ -313,7 +314,6 @@ export default function Trabalhos() {
         <div className="trabalhos-grid">
           {trabalhosVisiveis.map((trabalho) => (
             <div key={trabalho.id} className="trabalho-card modern-card">
-              {/* Header do Card */}
               <div className="trabalho-header">
                 <div className="trabalho-titulo-container">
                   <h3 className="trabalho-titulo">
@@ -321,13 +321,14 @@ export default function Trabalhos() {
                     {trabalho.titulo}
                   </h3>
                 </div>
-                <div className={`trabalho-status ${getStatusClass(trabalho.status)}`}>
+                <div
+                  className={`trabalho-status ${getStatusClass(trabalho.status)}`}
+                >
                   <i className={`bi ${getStatusIcon(trabalho.status)}`}></i>
                   {trabalho.status}
                 </div>
               </div>
 
-              {/* Body do Card */}
               <div className="trabalho-body">
                 <p className="trabalho-descricao">
                   {trabalho.descricao || "Sem descrição disponível."}
@@ -352,20 +353,23 @@ export default function Trabalhos() {
                 <div className="trabalho-info-item">
                   <i className="bi bi-person trabalho-info-icon"></i>
                   <span>Contratante: </span>
-                  <span 
+                  <span
                     className="trabalho-info-value trabalho-cliente"
-                    onClick={() => navigate(`/perfil/${trabalho.contratante_id}`)}
+                    onClick={() =>
+                      navigate(`/perfil/${trabalho.contratante_id}`)
+                    }
                   >
                     {trabalho.nome_contratante}
                   </span>
                 </div>
-                  {/* 🆕 Badge de Trabalho Privado */}
-                  {trabalho.is_privado && (
-                    <div className="badge-privado-card">
-                      <i className="bi bi-lock-fill"></i>
-                      Trabalho Privado
-                    </div>
-                  )}
+
+                {trabalho.is_privado && (
+                  <div className="badge-privado-card">
+                    <i className="bi bi-lock-fill"></i>
+                    Trabalho Privado
+                  </div>
+                )}
+
                 {trabalho.habilidades_detalhes?.length > 0 && (
                   <div>
                     <div className="trabalho-info-item">
@@ -382,14 +386,16 @@ export default function Trabalhos() {
                   </div>
                 )}
 
+                {/* ✅ Link do anexo ajustado */}
                 {trabalho.anexo && (
                   <div className="trabalho-info-item">
                     <i className="bi bi-paperclip trabalho-info-icon"></i>
                     <a
-                      href={`${BASE_URL}${trabalho.anexo}`}
+                      href={trabalho.anexo}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="trabalho-anexo"
+                      download
                     >
                       <i className="bi bi-download"></i>
                       Ver Anexo
@@ -398,7 +404,6 @@ export default function Trabalhos() {
                 )}
               </div>
 
-              {/* Footer do Card */}
               <div className="trabalho-footer">
                 <button
                   className="btn-ver-detalhes"
@@ -416,22 +421,22 @@ export default function Trabalhos() {
       {/* Paginação */}
       {numPages > 1 && (
         <div className="trabalhos-pagination">
-          <button 
+          <button
             className="pagination-btn"
-            disabled={page <= 1} 
+            disabled={page <= 1}
             onClick={anterior}
           >
             <i className="bi bi-chevron-left"></i>
             Anterior
           </button>
-          
+
           <div className="pagination-info">
             Página <strong>{page}</strong> de <strong>{numPages}</strong>
           </div>
-          
-          <button 
+
+          <button
             className="pagination-btn"
-            disabled={page >= numPages} 
+            disabled={page >= numPages}
             onClick={proxima}
           >
             Próxima
