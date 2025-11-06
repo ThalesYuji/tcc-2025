@@ -43,10 +43,11 @@ class MensagemSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "texto": {
+                "required": False,  # 🔹 agora o campo texto é opcional
+                "allow_blank": True,
                 "error_messages": {
                     "blank": "O campo texto não pode ficar em branco.",
-                    "required": "O campo texto é obrigatório.",
-                }
+                },
             }
         }
 
@@ -73,10 +74,12 @@ class MensagemSerializer(serializers.ModelSerializer):
     # VALIDAÇÕES
     # -------------------------
     def validate_texto(self, value):
+        """
+        Texto pode ser opcional (caso haja apenas anexo).
+        Apenas valida comprimento se houver texto.
+        """
         value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("A mensagem não pode estar vazia.")
-        if len(value) > 2000:
+        if value and len(value) > 2000:
             raise serializers.ValidationError("A mensagem não pode ter mais que 2000 caracteres.")
         return value
 
