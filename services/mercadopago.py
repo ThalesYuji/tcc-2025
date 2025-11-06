@@ -66,20 +66,28 @@ def _url_valida(url: Optional[str]) -> bool:
         return False
 
 
+def _ensure_trailing_slash(u: Optional[str]) -> Optional[str]:
+    """Garante barra final na URL (evita 301 no Django)."""
+    if not u:
+        return None
+    return u if u.endswith("/") else u + "/"
+
+
 def _build_notification_url() -> Optional[str]:
     """
     Tenta montar a notification_url a partir de MP_WEBHOOK_URL ou SITE_URL.
-    Só retorna se for uma URL pública válida; caso contrário, None.
+    Só retorna se for uma URL pública válida; SEMPRE com barra final.
     """
     url = getattr(settings, "MP_WEBHOOK_URL", None)
     if _url_valida(url):
-        return url.rstrip("/")
+        return _ensure_trailing_slash(url)
 
     base = getattr(settings, "SITE_URL", "") or ""
     if base:
         candidate = f"{base.rstrip('/')}/mercadopago/webhook/"
         if _url_valida(candidate):
-            return candidate.rstrip("/")
+            return _ensure_trailing_slash(candidate)
+
     return None
 
 

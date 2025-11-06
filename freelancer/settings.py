@@ -52,7 +52,7 @@ def _origin(url: str | None) -> str | None:
 SITE_URL = os.getenv("SITE_URL", "").rstrip("/")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 FRONT_RETURN_URL = os.getenv("FRONT_RETURN_URL", f"{FRONTEND_URL}/checkout/retorno").rstrip("/")
-MP_WEBHOOK_URL = os.getenv("MP_WEBHOOK_URL", f"{SITE_URL}/mercadopago/webhook/").rstrip("/")
+MP_WEBHOOK_URL = os.getenv("MP_WEBHOOK_URL", f"{SITE_URL}/mercadopago/webhook/")
 
 _default_allowed = ['localhost', '127.0.0.1']
 _site_host = _host_from_url(SITE_URL)
