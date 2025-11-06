@@ -14,14 +14,16 @@ class Proposta(models.Model):
     trabalho = models.ForeignKey(
         Trabalho,
         on_delete=models.CASCADE,
-        related_name='propostas'
+        related_name='propostas',
+        db_index=True,
     )
 
     # 🔹 Usuário freelancer que enviou a proposta
     freelancer = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
-        related_name='propostas_enviadas'
+        related_name='propostas_enviadas',
+        db_index=True,
     )
 
     descricao = models.TextField()
@@ -31,7 +33,8 @@ class Proposta(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='pendente'
+        default='pendente',
+        db_index=True,
     )
 
     # 🔹 Controle de reenvio/histórico
@@ -40,11 +43,12 @@ class Proposta(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='revisoes'
+        related_name='revisoes',
+        help_text="Referência para a proposta anterior quando esta é uma revisão."
     )
-    motivo_revisao = models.CharField(
-        max_length=255,
+    motivo_revisao = models.TextField(
         blank=True,
+        default="",
         help_text="Explique o que mudou nesta nova proposta (valor/escopo/prazo)."
     )
     numero_envio = models.PositiveSmallIntegerField(
@@ -58,6 +62,16 @@ class Proposta(models.Model):
         ordering = ['-data_envio']
         verbose_name = 'Proposta'
         verbose_name_plural = 'Propostas'
+        indexes = [
+            models.Index(fields=['trabalho', 'freelancer']),
+            models.Index(fields=['freelancer', 'status']),
+            models.Index(fields=['trabalho', 'status']),
+        ]
 
     def __str__(self):
         return f"Proposta de {self.freelancer.nome} para o trabalho '{self.trabalho.titulo}'"
+
+    # 🔎 Útil no front/serializers
+    @property
+    def is_reenvio(self) -> bool:
+        return (self.numero_envio or 1) > 1
