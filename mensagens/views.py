@@ -71,7 +71,7 @@ class MensagemViewSet(viewsets.ModelViewSet):
             enviar_notificacao(
                 usuario=mensagem.destinatario,
                 mensagem=texto_notificacao[:255],
-                link=f"/mensagens/conversa?contrato={mensagem.contrato.id}",
+                link=f"/chat/{mensagem.contrato.id}",  # ✅ Agora leva direto ao chat
             )
 
         # Guarda o ID do contrato para o retorno pós-criação
