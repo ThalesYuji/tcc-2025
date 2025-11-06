@@ -71,17 +71,26 @@ export default function DetalhesTrabalho() {
 
         // Busca propostas do usuário e filtra por este trabalho
         if (user) {
-          // Se sua API aceitar filtro server-side, use: /propostas/?trabalho=${id}
-          const propsResp = await api.get(`/propostas/`, { params: { trabalho: id } }).catch(async () => {
-            // fallback: pega todas e filtra no front
-            const all = await api.get(`/propostas/`);
-            return { data: all.data };
-          });
-          const lista = Array.isArray(propsResp.data) ? propsResp.data : [];
-          const somenteEsteTrabalho = lista
-            .filter(p => p.trabalho === Number(id) || p.trabalho?.id === Number(id));
-          // A ViewSet já ordena por -data_envio, mas garantimos
-          somenteEsteTrabalho.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+          // Preferir filtro server-side (?trabalho=ID)
+          const propsResp = await api
+            .get(`/propostas/`, { params: { trabalho: id } })
+            .catch(async () => {
+              // fallback: pega todas e filtra no front
+              const all = await api.get(`/propostas/`);
+              return { data: all.data };
+            });
+
+          const data = propsResp.data;
+          const lista = Array.isArray(data) ? data : (data?.results || []);
+          const somenteEsteTrabalho = lista.filter(
+            (p) => p.trabalho === Number(id) || p.trabalho?.id === Number(id)
+          );
+
+          // Ordena por data_envio desc
+          somenteEsteTrabalho.sort(
+            (a, b) => new Date(b.data_envio) - new Date(a.data_envio)
+          );
+
           setMinhasPropostas(somenteEsteTrabalho);
         }
       } catch (e) {
@@ -203,7 +212,6 @@ export default function DetalhesTrabalho() {
         valor: form.valor,
         prazo_estimado: form.prazo_estimado,
         ...(isReenvio ? { motivo_revisao: motivoRevisao.trim() } : {}),
-        // NÃO enviar freelancer: o backend usa o usuário logado
       };
 
       await api.post("/propostas/", payload);
@@ -214,7 +222,6 @@ export default function DetalhesTrabalho() {
         : "Proposta enviada! Redirecionando para suas propostas...";
       mostrarAlerta("sucesso", textoSucesso, "/propostas");
     } catch (err) {
-      // Trata vários formatos de erro do DRF
       const data = err.response?.data;
       let mensagem = "Erro ao enviar proposta. Tente novamente.";
       if (typeof data === "string") mensagem = data;

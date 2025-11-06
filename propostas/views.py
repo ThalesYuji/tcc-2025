@@ -134,7 +134,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
         """
         Permite que o contratante (ou admin) altere o status da proposta:
         - Aceitar: cria contrato, marca trabalho 'em_andamento' e recusa outras pendentes do mesmo trabalho.
-        - Recusar: marca 'recusada' e reabre o trabalho se não houver proposta aceita.
+        - Recusar: marca 'recusada', salva motivo_recusa e reabre o trabalho se não houver proposta aceita.
         """
         proposta = self.get_object()
 
@@ -222,7 +222,10 @@ class PropostaViewSet(viewsets.ModelViewSet):
 
         # ❌ Recusar proposta
         elif novo_status == "recusada":
+            motivo_recusa = serializer.validated_data.get('motivo_recusa', '').strip()
+            
             proposta.status = "recusada"
+            proposta.motivo_recusa = motivo_recusa  # 🆕 Salva o motivo
             proposta.save()
 
             trabalho = proposta.trabalho
@@ -232,14 +235,21 @@ class PropostaViewSet(viewsets.ModelViewSet):
                 trabalho.status = "aberto"
                 trabalho.save()
 
-            # 🔔 Notifica freelancer
+            # 🔔 Notifica freelancer com o motivo
+            mensagem_notif = f"Sua proposta para o trabalho '{trabalho.titulo}' foi recusada."
+            if motivo_recusa:
+                mensagem_notif += f" Motivo: {motivo_recusa[:100]}..."  # Preview do motivo
+            
             enviar_notificacao(
                 usuario=proposta.freelancer,
-                mensagem=f"Sua proposta para o trabalho '{trabalho.titulo}' foi recusada.",
+                mensagem=mensagem_notif,
                 link=f"/propostas?id={proposta.id}",
             )
 
             return Response(
-                {"mensagem": f"Status alterado para '{proposta.status}' com sucesso."},
+                {
+                    "mensagem": f"Status alterado para '{proposta.status}' com sucesso.",
+                    "motivo_recusa": motivo_recusa
+                },
                 status=status.HTTP_200_OK,
             )

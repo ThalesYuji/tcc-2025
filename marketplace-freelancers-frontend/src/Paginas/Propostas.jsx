@@ -12,6 +12,13 @@ export default function Propostas() {
   const [loading, setLoading] = useState(true);
   const [sucesso, setSucesso] = useState("");
 
+  // Modal de recusa
+  const [showRecusaModal, setShowRecusaModal] = useState(false);
+  const [propostaParaRecusar, setPropostaParaRecusar] = useState(null);
+  const [motivoRecusa, setMotivoRecusa] = useState("");
+  const [erroRecusa, setErroRecusa] = useState("");
+  const [processandoRecusa, setProcessandoRecusa] = useState(false);
+
   // Paginação
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
@@ -89,20 +96,69 @@ export default function Propostas() {
     if (m.includes("already exists") || m.includes("unique"))
       return "Já existe uma proposta enviada para esse trabalho.";
     if (m.includes("limite") && m.includes("envios"))
-      return msg; // mostra a mensagem amigável do backend (limite de 3 envios)
+      return msg;
     return msg;
   }
 
   async function aceitarOuRecusar(propostaId, status) {
     setSucesso("");
     setErro("");
+    
+    // Se for recusa, abre modal para pedir motivo
+    if (status === "recusada") {
+      setPropostaParaRecusar(propostaId);
+      setMotivoRecusa("");
+      setErroRecusa("");
+      setShowRecusaModal(true);
+      return;
+    }
+    
+    // Aceitar proposta
     try {
       const resp = await api.patch(`/propostas/${propostaId}/alterar-status/`, { status });
-      setSucesso(resp.data.mensagem || "Operação realizada com sucesso!");
+      setSucesso(resp.data.mensagem || "Proposta aceita com sucesso!");
     } catch (err) {
       const backendMsg =
         err.response?.data?.erro || err.response?.data?.detail || "Erro ao alterar status.";
       setErro(traduzirErroBackend(backendMsg));
+    }
+  }
+
+  async function confirmarRecusa() {
+    const motivo = motivoRecusa.trim();
+    
+    if (!motivo) {
+      setErroRecusa("Por favor, informe o motivo da recusa para ajudar o freelancer.");
+      return;
+    }
+
+    if (motivo.length < 20) {
+      setErroRecusa("Por favor, forneça um feedback mais detalhado (mínimo 20 caracteres).");
+      return;
+    }
+    
+    setProcessandoRecusa(true);
+    setErroRecusa("");
+    
+    try {
+      const resp = await api.patch(`/propostas/${propostaParaRecusar}/alterar-status/`, { 
+        status: "recusada",
+        motivo_recusa: motivo
+      });
+      
+      setShowRecusaModal(false);
+      setPropostaParaRecusar(null);
+      setMotivoRecusa("");
+      setSucesso(resp.data.mensagem || "Proposta recusada. O freelancer foi notificado com seu feedback.");
+    } catch (err) {
+      const backendMsg =
+        err.response?.data?.erro || 
+        err.response?.data?.motivo_recusa?.[0] ||
+        err.response?.data?.detail || 
+        "Erro ao recusar proposta.";
+      setErroRecusa(traduzirErroBackend(backendMsg));
+    } finally {
+      setProcessandoRecusa(false);
     }
   }
 
@@ -203,6 +259,103 @@ export default function Propostas() {
           </div>
         )}
 
+        {/* Modal de Recusa */}
+        {showRecusaModal && (
+          <div className="delete-modal-overlay">
+            <div className="delete-modal-content zoom-in">
+              <div className="delete-modal-icon" style={{ backgroundColor: '#ef4444' }}>
+                <i className="bi bi-x-circle-fill"></i>
+              </div>
+              <h3 className="delete-modal-title">Recusar Proposta</h3>
+              <p className="delete-modal-message">
+                Por favor, forneça um feedback construtivo para ajudar o freelancer a melhorar sua próxima proposta.
+              </p>
+
+              {erroRecusa && (
+                <div className="alert alert-danger" style={{ 
+                  marginBottom: '1rem', 
+                  textAlign: 'left',
+                  padding: '12px 16px',
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <i className="bi bi-exclamation-triangle"></i>
+                  {erroRecusa}
+                </div>
+              )}
+
+              <form onSubmit={(e) => { e.preventDefault(); confirmarRecusa(); }} style={{ textAlign: 'left' }}>
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="motivo_recusa" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    Motivo da recusa *
+                  </label>
+                  <textarea
+                    id="motivo_recusa"
+                    className="form-control"
+                    rows="4"
+                    value={motivoRecusa}
+                    onChange={(e) => setMotivoRecusa(e.target.value)}
+                    placeholder="Ex.: O valor está acima do orçamento disponível. Sugiro algo entre R$ 800 e R$ 1.200 para este escopo."
+                    required
+                    disabled={processandoRecusa}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem', 
+                      borderRadius: '8px', 
+                      border: '1px solid #ddd',
+                      fontSize: '0.95rem',
+                      lineHeight: '1.5'
+                    }}
+                  />
+                  <small style={{ color: '#64748b', fontSize: '0.875rem', display: 'block', marginTop: '6px' }}>
+                    💡 Seja específico: comente sobre valor, prazo, escopo ou experiência necessária
+                  </small>
+                </div>
+
+                <div className="delete-modal-actions">
+                  <button
+                    type="button"
+                    className="btn-modal btn-cancel"
+                    onClick={() => {
+                      setShowRecusaModal(false);
+                      setPropostaParaRecusar(null);
+                      setMotivoRecusa("");
+                      setErroRecusa("");
+                    }}
+                    disabled={processandoRecusa}
+                  >
+                    <i className="bi bi-arrow-left"></i>
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-modal btn-confirm-delete"
+                    disabled={processandoRecusa}
+                    style={{ backgroundColor: '#ef4444' }}
+                  >
+                    {processandoRecusa ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm"></span>
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-x-circle"></i>
+                        Confirmar Recusa
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Lista vazia */}
         {propostas.length === 0 && !erro && (
           <div className="propostas-empty">
@@ -240,7 +393,8 @@ export default function Propostas() {
                 `Trabalho #${trabalhoId}`;
 
               const numeroEnvio = proposta.numero_envio || 1;
-              const motivo = (proposta.motivo_revisao || "").trim();
+              const motivoRevisao = (proposta.motivo_revisao || "").trim();
+              const motivoRecusaTexto = (proposta.motivo_recusa || "").trim();
 
               return (
                 <div
@@ -291,13 +445,24 @@ export default function Propostas() {
 
                     <div className="proposta-descricao">{proposta.descricao}</div>
 
-                    {/* Motivo da revisão (apenas quando houver) */}
-                    {motivo && (
+                    {/* Motivo da revisão (freelancer explicando o que mudou) */}
+                    {motivoRevisao && (
                       <div className="proposta-revisao">
                         <i className="bi bi-arrow-repeat"></i>
                         <div>
                           <strong>Motivo da revisão:</strong>
-                          <div className="motivo-text">{motivo}</div>
+                          <div className="motivo-text">{motivoRevisao}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Feedback do contratante (quando recusada) */}
+                    {proposta.status === "recusada" && motivoRecusaTexto && (
+                      <div className="proposta-recusa">
+                        <i className="bi bi-exclamation-circle"></i>
+                        <div>
+                          <strong>Feedback do contratante:</strong>
+                          <div className="motivo-text">{motivoRecusaTexto}</div>
                         </div>
                       </div>
                     )}

@@ -19,6 +19,7 @@ class PropostaSerializer(serializers.ModelSerializer):
             "freelancer",
             "numero_envio",
             "revisao_de",
+            "motivo_recusa",  # 🆕 Só o contratante preenche via endpoint específico
         ]
 
     # ========================= VALIDAÇÕES DE CAMPOS =========================
@@ -112,10 +113,28 @@ class PropostaSerializer(serializers.ModelSerializer):
 
 
 class AlterarStatusSerializer(serializers.Serializer):
-    """Serializer simples para endpoint de alteração de status."""
+    """Serializer para endpoint de alteração de status com motivo de recusa."""
     status = serializers.ChoiceField(choices=["aceita", "recusada"])
+    motivo_recusa = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1000,
+        help_text="Motivo da recusa (obrigatório ao recusar)"
+    )
 
     def validate_status(self, value):
         if value not in ["aceita", "recusada"]:
             raise serializers.ValidationError("Status inválido.")
         return value
+    
+    def validate(self, data):
+        """Valida que motivo_recusa é obrigatório quando status é 'recusada'"""
+        status = data.get('status')
+        motivo = (data.get('motivo_recusa') or '').strip()
+        
+        if status == 'recusada' and not motivo:
+            raise serializers.ValidationError({
+                'motivo_recusa': 'O motivo da recusa é obrigatório para recusar uma proposta.'
+            })
+        
+        return data
