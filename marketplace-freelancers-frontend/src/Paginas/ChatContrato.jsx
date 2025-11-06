@@ -285,6 +285,7 @@ export default function ChatContrato() {
                       key={m.id}
                       className={`mensagem ${m.remetente === userId ? "enviada" : "recebida"}`}
                     >
+                      {/* 🔹 Anexo (acima da bolha de texto) */}
                       {m.anexo_url && !m.excluida && (
                         <div className="mensagem-anexo">
                           <a
@@ -299,36 +300,50 @@ export default function ChatContrato() {
                         </div>
                       )}
 
+                      {/* 🔹 Conteúdo da mensagem */}
                       <div className="mensagem-content">
-                        <p className={`mensagem-texto ${m.excluida ? "mensagem-excluida" : ""}`}>
-                          {m.texto}
-                        </p>
-                        <span className="mensagem-info">{formatarData(m.data_envio)}</span>
-                      </div>
+                        {/* Texto (só aparece se existir) */}
+                        {m.texto && (
+                          <p className={`mensagem-texto ${m.excluida ? "mensagem-excluida" : ""}`}>
+                            {m.texto}
+                          </p>
+                        )}
 
-                      {m.remetente === userId && !m.excluida && (podeEditar || podeExcluir) && (
-                        <div className="mensagem-menu-wrapper">
-                          <button className="menu-toggle" onClick={() => toggleMenu(m.id)}>
-                            <i className="bi bi-three-dots-vertical"></i>
-                          </button>
-                          {m.menuAberto && (
-                            <div className="mensagem-menu">
-                              {podeEditar && (
-                                <button onClick={() => abrirModalEdicao(m)} className="menu-item">
-                                  <i className="bi bi-pencil"></i>
-                                  <span>Editar</span>
-                                </button>
-                              )}
-                              {podeExcluir && (
-                                <button onClick={() => abrirModalExclusao(m)} className="menu-item">
-                                  <i className="bi bi-trash"></i>
-                                  <span>Excluir</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        {/* Horário */}
+                        <span className="mensagem-info">{formatarData(m.data_envio)}</span>
+
+                        {/* 🔹 Menu (agora DENTRO da bolha, canto superior direito) */}
+                        {m.remetente === userId && !m.excluida && (podeEditar || podeExcluir) && (
+                          <div className="mensagem-menu-wrapper">
+                            <button className="menu-toggle" onClick={() => toggleMenu(m.id)}>
+                              <i className="bi bi-three-dots-vertical"></i>
+                            </button>
+
+                            {m.menuAberto && (
+                              <div className="mensagem-menu">
+                                {podeEditar && (
+                                  <button
+                                    onClick={() => abrirModalEdicao(m)}
+                                    className="menu-item"
+                                  >
+                                    <i className="bi bi-pencil"></i>
+                                    <span>Editar</span>
+                                  </button>
+                                )}
+                                {podeExcluir && (
+                                  <button
+                                    onClick={() => abrirModalExclusao(m)}
+                                    className="menu-item"
+                                  >
+                                    <i className="bi bi-trash"></i>
+                                    <span>Excluir</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

@@ -385,8 +385,8 @@
    ============================== */
 .mensagem-menu-wrapper {
   position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
+  top: 6px;
+  right: 8px;
   opacity: 0;
   transition: opacity var(--transition-fast);
   z-index: 10;
@@ -397,23 +397,23 @@
 }
 
 .menu-toggle {
-  background: rgba(0, 0, 0, 0.1);
+  background: transparent;
   border: none;
   color: inherit;
-  padding: var(--space-xs);
-  border-radius: var(--radius-full);
+  padding: 2px;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: all var(--transition-fast);
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .menu-toggle:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.15);
   transform: scale(1.1);
 }
 
