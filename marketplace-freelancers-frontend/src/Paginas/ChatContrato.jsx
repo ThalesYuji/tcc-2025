@@ -101,35 +101,57 @@ export default function ChatContrato() {
 
   const enviarMensagem = async (e) => {
     if (e) e.preventDefault();
+
+    // 🚫 Bloqueia apenas se não houver NEM texto NEM anexo
     if (!novaMensagem.trim() && !anexo) return;
+
+    // 🚫 Se por algum motivo o destinatário não estiver definido, não envia
     if (!destinatarioId) return;
 
     setEnviando(true);
 
+    // 📨 Monta o corpo da requisição
     const formData = new FormData();
     formData.append("contrato", contratoId);
     formData.append("destinatario", destinatarioId);
-    formData.append("texto", novaMensagem);
-    if (anexo) formData.append("anexo", anexo);
+
+    // ✍️ Só adiciona o texto se realmente tiver algo
+    if (novaMensagem.trim()) {
+      formData.append("texto", novaMensagem.trim());
+    }
+
+    // 📎 Só adiciona o anexo se houver
+    if (anexo) {
+      formData.append("anexo", anexo);
+    }
 
     try {
+      // 🚀 Envia mensagem para o backend
       const resp = await api.post("/mensagens/", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
+
+      // 🔄 Atualiza lista de mensagens
       setMensagens(resp.data.mensagens || resp.data || []);
+
+      // 🧹 Limpa campos e estado após envio
       setNovaMensagem("");
       setAnexo(null);
 
+      // 🧭 Reseta a altura do textarea
       if (inputRef.current) inputRef.current.style.height = "auto";
 
+      // 🧹 Limpa o campo de input de arquivo
       const fileInput = document.querySelector('input[type="file"]');
       if (fileInput) fileInput.value = "";
 
+      // ⬇️ Rola até o final da conversa
       scrollToBottom();
     } catch (err) {
+      // ⚠️ Exibe erro amigável
       alert(err.response?.data?.erro || "Erro ao enviar mensagem.");
     } finally {
       setEnviando(false);

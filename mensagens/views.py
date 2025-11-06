@@ -3,6 +3,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 
 from .models import Mensagem
@@ -51,12 +52,21 @@ class MensagemViewSet(viewsets.ModelViewSet):
     # CREATE
     # -------------------------
     def perform_create(self, serializer):
+        """Cria uma nova mensagem (texto e/ou anexo permitido)."""
+        texto = self.request.data.get("texto", "").strip()
+        anexo = self.request.FILES.get("anexo")
+
+        # 🚫 Bloqueia apenas se estiver completamente vazio
+        if not texto and not anexo:
+            raise ValidationError({"erro": "A mensagem deve conter texto ou anexo."})
+
         mensagem = serializer.save(remetente=self.request.user)
 
         # 🔔 Envia notificação ao destinatário
         if mensagem.destinatario and mensagem.destinatario != self.request.user:
             texto_notificacao = (
-                f"Você recebeu uma nova mensagem de {mensagem.remetente.nome}: {mensagem.texto}"
+                f"Você recebeu uma nova mensagem de {mensagem.remetente.nome}"
+                + (f": {mensagem.texto}" if mensagem.texto else ".")
             )
             enviar_notificacao(
                 usuario=mensagem.destinatario,
