@@ -13,47 +13,91 @@ from notificacoes.utils import enviar_notificacao  # 🔹 Função central de no
 class PropostaViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gerenciamento de propostas.
-    - Freelancers só veem suas próprias propostas.
-    - Contratantes só veem propostas de seus trabalhos.
-    - Admin pode ver todas.
+
+    Regras de visibilidade:
+    - Admin: vê tudo.
+    - Freelancer: vê as próprias propostas.
+    - Contratante: vê propostas dos seus trabalhos.
+
+    Extras:
+    - Filtro opcional por trabalho via query param: ?trabalho=ID
     """
-    queryset = Proposta.objects.all()
+    queryset = Proposta.objects.all().order_by('-data_envio')
     serializer_class = PropostaSerializer
     permission_classes = [IsAuthenticated, PermissaoProposta]
 
+    # ======================= LISTAGEM / FILTROS =======================
+
     def get_queryset(self):
         user = self.request.user
+        qs = Proposta.objects.all().order_by('-data_envio')
 
-        if user.is_superuser:
-            return Proposta.objects.all().order_by('-data_envio')
+        if not user.is_superuser:
+            tipo = getattr(user, 'tipo', None)
+            if tipo == 'freelancer':
+                qs = qs.filter(freelancer=user)
+            elif tipo == 'contratante':
+                qs = qs.filter(trabalho__contratante=user)
+            else:
+                return Proposta.objects.none()
 
-        if user.tipo == 'freelancer':
-            return Proposta.objects.filter(freelancer=user).order_by('-data_envio')
+        # 🔎 Filtro opcional por trabalho (?trabalho=ID)
+        trabalho_id = self.request.query_params.get('trabalho')
+        if trabalho_id:
+            qs = qs.filter(trabalho_id=trabalho_id)
 
-        if user.tipo == 'contratante':
-            return Proposta.objects.filter(trabalho__contratante=user).order_by('-data_envio')
+        return qs
 
-        return Proposta.objects.none()
+    # ======================= CRIAÇÃO =======================
 
     def perform_create(self, serializer):
         """
-        Ao criar proposta, vincula ao freelancer logado e notifica o contratante dono do trabalho.
+        Ao criar proposta:
+        - Vincula ao freelancer logado.
+        - Define 'numero_envio' e 'revisao_de' automaticamente com base nas anteriores.
+        - Notifica o contratante do trabalho.
         """
-        proposta = serializer.save(freelancer=self.request.user)
+        user = self.request.user
+        trabalho = serializer.validated_data['trabalho']
+
+        anteriores = Proposta.objects.filter(
+            trabalho=trabalho,
+            freelancer=user
+        ).order_by('-data_envio')
+
+        numero_envio = anteriores.count() + 1
+        revisao_de = anteriores.first() if anteriores.exists() else None
+
+        proposta = serializer.save(
+            freelancer=user,
+            numero_envio=numero_envio,
+            revisao_de=revisao_de
+        )
+
+        # Mensagem diferenciada quando for reenvio
+        titulo = trabalho.titulo
+        if numero_envio > 1:
+            msg = f"Você recebeu uma nova proposta (revisada #{numero_envio}) para o trabalho '{titulo}'."
+        else:
+            msg = f"Você recebeu uma nova proposta para o trabalho '{titulo}'."
 
         enviar_notificacao(
-            usuario=proposta.trabalho.contratante,
-            mensagem=f"Você recebeu uma nova proposta para o trabalho '{proposta.trabalho.titulo}'.",
+            usuario=trabalho.contratante,
+            mensagem=msg,
             link=f"/propostas?id={proposta.id}"
         )
 
+    # ======================= ATUALIZAÇÃO =======================
+
     def perform_update(self, serializer):
         """
-        Bloqueia atualização direta do status por esse endpoint.
+        Bloqueia atualização direta do status por esse endpoint (use 'alterar-status').
         """
         if 'status' in self.request.data:
             raise ValidationError("O status deve ser alterado apenas via endpoint específico.")
         serializer.save()
+
+    # ======================= EXCLUSÃO =======================
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -69,12 +113,14 @@ class PropostaViewSet(viewsets.ModelViewSet):
 
         return super().destroy(request, *args, **kwargs)
 
+    # ======================= AÇÃO: ALTERAR STATUS =======================
+
     @action(detail=True, methods=['patch'], url_path='alterar-status')
     def alterar_status(self, request, pk=None):
         """
         Permite que o contratante (ou admin) altere o status da proposta:
-        - Aceitar: cria contrato e recusa outras propostas pendentes do mesmo trabalho.
-        - Recusar: atualiza status e, se necessário, reabre o trabalho.
+        - Aceitar: cria contrato, marca trabalho 'em_andamento' e recusa outras pendentes do mesmo trabalho.
+        - Recusar: marca 'recusada' e reabre o trabalho se não houver proposta aceita.
         """
         proposta = self.get_object()
 
@@ -104,10 +150,11 @@ class PropostaViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Atualiza status da proposta
             proposta.status = 'aceita'
             proposta.save()
 
-            # ❌ Recusar todas as outras propostas pendentes
+            # ❌ Recusa todas as outras propostas pendentes do mesmo trabalho
             Proposta.objects.filter(
                 trabalho=proposta.trabalho,
                 status='pendente'
@@ -128,7 +175,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
                 status="ativo"
             )
 
-            # 🔹 Notifica freelancer
+            # 🔔 Notifica freelancer
             enviar_notificacao(
                 usuario=proposta.freelancer,
                 mensagem=f"Sua proposta para o trabalho '{trabalho.titulo}' foi aceita! Contrato criado.",
@@ -150,12 +197,12 @@ class PropostaViewSet(viewsets.ModelViewSet):
 
             trabalho = proposta.trabalho
 
-            # 🔹 Se não houver nenhuma proposta aceita, reabre o trabalho
+            # 🔁 Reabre o trabalho se não houver nenhuma proposta aceita
             if not Proposta.objects.filter(trabalho=trabalho, status='aceita').exists():
                 trabalho.status = 'aberto'
                 trabalho.save()
 
-            # 🔹 Notifica freelancer
+            # 🔔 Notifica freelancer
             enviar_notificacao(
                 usuario=proposta.freelancer,
                 mensagem=f"Sua proposta para o trabalho '{trabalho.titulo}' foi recusada.",

@@ -12,48 +12,38 @@ export default function Propostas() {
   const [loading, setLoading] = useState(true);
   const [sucesso, setSucesso] = useState("");
 
-  // Estados para paginação
+  // Paginação
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
   const [numPages, setNumPages] = useState(1);
 
   const navigate = useNavigate();
 
-  // Função para buscar propostas
+  // Buscar propostas (suporta DRF com paginação ou lista simples)
   function buscarPropostas(filtros = {}) {
     if (!usuarioLogado) return;
-    
+
     setLoading(true);
     let url = "/propostas/";
-    let params = [];
-    
+    const params = [];
     params.push(`page=${filtros.page || page}`);
     params.push(`page_size=${pageSize}`);
-    
     if (params.length > 0) url += `?${params.join("&")}`;
 
     api
       .get(url)
       .then((response) => {
         const data = response.data;
-        
+
         if (Array.isArray(data)) {
-          // Se retornar array diretamente (sem paginação)
           setPropostas(data);
           setPage(1);
           setNumPages(1);
         } else {
-          // Se retornar objeto com paginação do DRF
           setPropostas(data.results || []);
-          
-          // Calcular página e total de páginas a partir dos dados do DRF
           const totalItens = data.count || 0;
-          const itensPorPagina = pageSize;
-          const totalPaginas = Math.ceil(totalItens / itensPorPagina);
-          
-          // Calcular página atual a partir da URL
+          const totalPaginas = Math.ceil(totalItens / pageSize);
           const paginaAtual = filtros.page || page;
-          
           setPage(paginaAtual);
           setNumPages(totalPaginas);
         }
@@ -66,22 +56,16 @@ export default function Propostas() {
         setPage(1);
         setNumPages(1);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }
 
-  // Carregar propostas inicial
   useEffect(() => {
     buscarPropostas({ page: 1 });
     // eslint-disable-next-line
   }, [usuarioLogado]);
 
-  // Recarregar quando houver sucesso
   useEffect(() => {
-    if (sucesso) {
-      buscarPropostas({ page });
-    }
+    if (sucesso) buscarPropostas({ page });
     // eslint-disable-next-line
   }, [sucesso]);
 
@@ -91,31 +75,21 @@ export default function Propostas() {
     const agora = new Date();
     const diffMs = agora - data;
     const diffDias = Math.floor(diffMs / 86400000);
-
     if (diffDias === 0) return "Hoje";
     if (diffDias === 1) return "Ontem";
     if (diffDias < 7) return `${diffDias}d atrás`;
-    
     return data.toLocaleDateString("pt-BR");
   }
 
   function traduzirErroBackend(msg) {
     if (!msg) return "Erro inesperado ao processar a proposta.";
-    if (
-      typeof msg === "string" &&
-      (msg.toLowerCase().includes("permission") ||
-        msg.toLowerCase().includes("not allowed") ||
-        msg.toLowerCase().includes("unauthorized"))
-    ) {
+    const m = String(msg).toLowerCase();
+    if (m.includes("permission") || m.includes("not allowed") || m.includes("unauthorized"))
       return "Você não tem permissão para realizar essa ação.";
-    }
-    if (
-      typeof msg === "string" &&
-      (msg.toLowerCase().includes("already exists") ||
-        msg.toLowerCase().includes("unique"))
-    ) {
+    if (m.includes("already exists") || m.includes("unique"))
       return "Já existe uma proposta enviada para esse trabalho.";
-    }
+    if (m.includes("limite") && m.includes("envios"))
+      return msg; // mostra a mensagem amigável do backend (limite de 3 envios)
     return msg;
   }
 
@@ -132,7 +106,7 @@ export default function Propostas() {
     }
   }
 
-  // Funções de paginação
+  // Paginação
   function anterior() {
     if (page > 1) {
       const newPage = page - 1;
@@ -167,7 +141,7 @@ export default function Propostas() {
     }
   }
 
-  // Estados básicos
+  // UI
   if (loading) {
     return (
       <div className="propostas-page">
@@ -199,7 +173,6 @@ export default function Propostas() {
   return (
     <div className="propostas-page">
       <div className="page-container fade-in">
-        
         {/* Header */}
         <div className="propostas-header">
           <h1 className="propostas-title">
@@ -209,10 +182,9 @@ export default function Propostas() {
             {usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
           </h1>
           <p className="propostas-subtitle">
-            {usuarioLogado.tipo === "freelancer" 
+            {usuarioLogado.tipo === "freelancer"
               ? "Acompanhe o status das suas propostas enviadas"
-              : "Gerencie as propostas recebidas em seus trabalhos como contratante"
-            }
+              : "Gerencie as propostas recebidas em seus trabalhos como contratante"}
           </p>
         </div>
 
@@ -223,7 +195,7 @@ export default function Propostas() {
             {sucesso}
           </div>
         )}
-        
+
         {erro && (
           <div className="alert-error">
             <i className="bi bi-exclamation-triangle"></i>
@@ -239,144 +211,156 @@ export default function Propostas() {
             <p>
               {usuarioLogado.tipo === "freelancer"
                 ? "Você ainda não enviou nenhuma proposta."
-                : "Você ainda não recebeu nenhuma proposta como contratante."
-              }
+                : "Você ainda não recebeu nenhuma proposta como contratante."}
             </p>
           </div>
         )}
 
-        {/* Mensagem de erro */}
+        {/* Erro */}
         {erro && (
           <div className="error-state">
             <i className="bi bi-exclamation-triangle"></i>
             <h3>Erro ao Carregar</h3>
             <p>{erro}</p>
-            <button 
-              className="btn gradient-btn"
-              onClick={() => buscarPropostas({ page })}
-            >
+            <button className="btn gradient-btn" onClick={() => buscarPropostas({ page })}>
               <i className="bi bi-arrow-clockwise"></i>
               Tentar Novamente
             </button>
           </div>
         )}
 
-        {/* Grid de propostas */}
+        {/* Grid */}
         {propostas.length > 0 && (
           <div className="propostas-grid">
-            {propostas.map((proposta, index) => (
-              <div 
-                key={proposta.id} 
-                className="proposta-card"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                {/* Header do card */}
-                <div className="proposta-header">
-                  <div className="proposta-trabalho">
-                    <button
-                      onClick={() => navigate(`/trabalhos/detalhes/${proposta.trabalho}`)}
-                      className="trabalho-link"
-                    >
-                      <i className="bi bi-briefcase"></i>
-                      {proposta.trabalho_titulo || `Trabalho #${proposta.trabalho}`}
-                    </button>
-                  </div>
-                  <div className="proposta-status">
-                    <i 
-                      className={`bi ${getStatusIcon(proposta.status)}`}
-                      style={{ color: getStatusColor(proposta.status) }}
-                    />
-                    <span 
-                      className="status-text"
-                      style={{ color: getStatusColor(proposta.status) }}
-                    >
-                      {proposta.status}
-                    </span>
-                  </div>
-                </div>
+            {propostas.map((proposta, index) => {
+              const trabalhoId = typeof proposta.trabalho === "object" ? proposta.trabalho.id : proposta.trabalho;
+              const trabalhoTitulo =
+                proposta.trabalho_titulo ||
+                (typeof proposta.trabalho === "object" && proposta.trabalho.titulo) ||
+                `Trabalho #${trabalhoId}`;
 
-                {/* Body do card */}
-                <div className="proposta-body">
-                  {usuarioLogado.tipo === "contratante" && (
-                    <div className="proposta-freelancer">
+              const numeroEnvio = proposta.numero_envio || 1;
+              const motivo = (proposta.motivo_revisao || "").trim();
+
+              return (
+                <div
+                  key={proposta.id}
+                  className="proposta-card"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Header do card */}
+                  <div className="proposta-header">
+                    <div className="proposta-trabalho">
                       <button
-                        onClick={() => navigate(`/perfil/${proposta.freelancer}`)}
-                        className="freelancer-link"
+                        onClick={() => navigate(`/trabalhos/detalhes/${trabalhoId}`)}
+                        className="trabalho-link"
                       >
-                        <i className="bi bi-person-circle"></i>
-                        {proposta.freelancer_nome || `Freelancer #${proposta.freelancer}`}
+                        <i className="bi bi-briefcase"></i>
+                        {trabalhoTitulo}
                       </button>
                     </div>
-                  )}
 
-                  <div className="proposta-descricao">
-                    {proposta.descricao}
+                    <div className="proposta-status">
+                      <span className="envio-badge">Envio #{numeroEnvio}</span>
+                      <i
+                        className={`bi ${getStatusIcon(proposta.status)}`}
+                        style={{ color: getStatusColor(proposta.status), marginLeft: 8 }}
+                      />
+                      <span
+                        className="status-text"
+                        style={{ color: getStatusColor(proposta.status) }}
+                      >
+                        {proposta.status}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="proposta-detalhes">
-                    <div className="detalhe-item">
-                      <i className="bi bi-currency-dollar"></i>
-                      <span>R$ {Number(proposta.valor).toFixed(2)}</span>
+                  {/* Body do card */}
+                  <div className="proposta-body">
+                    {usuarioLogado.tipo === "contratante" && (
+                      <div className="proposta-freelancer">
+                        <button
+                          onClick={() => navigate(`/perfil/${proposta.freelancer}`)}
+                          className="freelancer-link"
+                        >
+                          <i className="bi bi-person-circle"></i>
+                          {proposta.freelancer_nome || `Freelancer #${proposta.freelancer}`}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="proposta-descricao">{proposta.descricao}</div>
+
+                    {/* Motivo da revisão (apenas quando houver) */}
+                    {motivo && (
+                      <div className="proposta-revisao">
+                        <i className="bi bi-arrow-repeat"></i>
+                        <div>
+                          <strong>Motivo da revisão:</strong>
+                          <div className="motivo-text">{motivo}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="proposta-detalhes">
+                      <div className="detalhe-item">
+                        <i className="bi bi-currency-dollar"></i>
+                        <span>
+                          R$ {Number(proposta.valor).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="detalhe-item">
+                        <i className="bi bi-calendar-event"></i>
+                        <span>{proposta.prazo_estimado}</span>
+                      </div>
                     </div>
-                    <div className="detalhe-item">
-                      <i className="bi bi-calendar-event"></i>
-                      <span>{proposta.prazo_estimado}</span>
+                  </div>
+
+                  {/* Footer do card */}
+                  <div className="proposta-footer">
+                    <div className="proposta-data">
+                      <i className="bi bi-clock"></i>
+                      {formatarData(proposta.data_envio)}
                     </div>
+
+                    {usuarioLogado.tipo === "contratante" && proposta.status === "pendente" && (
+                      <div className="proposta-acoes">
+                        <button
+                          className="btn btn-success"
+                          onClick={() => aceitarOuRecusar(proposta.id, "aceita")}
+                        >
+                          <i className="bi bi-check"></i>
+                          Aceitar
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => aceitarOuRecusar(proposta.id, "recusada")}
+                        >
+                          <i className="bi bi-x"></i>
+                          Recusar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Footer do card */}
-                <div className="proposta-footer">
-                  <div className="proposta-data">
-                    <i className="bi bi-clock"></i>
-                    {formatarData(proposta.data_envio)}
-                  </div>
-
-                  {usuarioLogado.tipo === "contratante" && proposta.status === "pendente" && (
-                    <div className="proposta-acoes">
-                      <button
-                        className="btn btn-success"
-                        onClick={() => aceitarOuRecusar(proposta.id, "aceita")}
-                      >
-                        <i className="bi bi-check"></i>
-                        Aceitar
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => aceitarOuRecusar(proposta.id, "recusada")}
-                      >
-                        <i className="bi bi-x"></i>
-                        Recusar
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Paginação */}
         {numPages > 1 && (
           <div className="trabalhos-pagination">
-            <button
-              className="pagination-btn"
-              onClick={anterior}
-              disabled={page <= 1}
-            >
+            <button className="pagination-btn" onClick={anterior} disabled={page <= 1}>
               <i className="bi bi-chevron-left"></i>
               Anterior
             </button>
-            
+
             <div className="pagination-info">
               Página <strong>{page}</strong> de <strong>{numPages}</strong>
             </div>
-            
-            <button
-              className="pagination-btn"
-              onClick={proxima}
-              disabled={page >= numPages}
-            >
+
+            <button className="pagination-btn" onClick={proxima} disabled={page >= numPages}>
               Próxima
               <i className="bi bi-chevron-right"></i>
             </button>

@@ -1,5 +1,5 @@
-// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA CORRIGIDA
-import React, { useEffect, useState } from "react";
+// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA COM REENVIO (até 3 envios)
+import React, { useEffect, useState, useMemo } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
 import { useParams, useNavigate } from "react-router-dom";
@@ -32,37 +32,108 @@ function getStatusIcon(status) {
 
 export default function DetalhesTrabalho() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
+  // =================== STATES PRINCIPAIS ===================
   const [trabalho, setTrabalho] = useState(null);
   const [erro, setErro] = useState("");
   const [usuarioLogado, setUsuarioLogado] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+
+  // Modais/ações
   const [showForm, setShowForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
-  const [formErro, setFormErro] = useState("");
-  const [alerta, setAlerta] = useState(null);
-  const [carregando, setCarregando] = useState(true);
   const [enviandoProposta, setEnviandoProposta] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
-  const navigate = useNavigate();
 
-  // Buscar dados
+  // Form proposta
+  const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
+  const [motivoRevisao, setMotivoRevisao] = useState("");
+  const [formErro, setFormErro] = useState("");
+
+  // Alerta central
+  const [alerta, setAlerta] = useState(null);
+
+  // Propostas do usuário para ESTE trabalho
+  const [minhasPropostas, setMinhasPropostas] = useState([]);
+  const MAX_ENVIOS = 3; // 1 original + até 2 reenvios (total 3)
+
+  // =================== BUSCAS INICIAIS ===================
   useEffect(() => {
-    Promise.all([
-      api.get(`/trabalhos/${id}/`),
-      getUsuarioLogado().catch(() => null)
-    ])
-      .then(([trabalhoResponse, usuario]) => {
-        setTrabalho(trabalhoResponse.data);
-        setUsuarioLogado(usuario);
-        setCarregando(false);
-      })
-      .catch(() => {
+    (async () => {
+      try {
+        const [trabalhoResp, user] = await Promise.all([
+          api.get(`/trabalhos/${id}/`),
+          getUsuarioLogado().catch(() => null),
+        ]);
+        setTrabalho(trabalhoResp.data);
+        setUsuarioLogado(user);
+
+        // Busca propostas do usuário e filtra por este trabalho
+        if (user) {
+          // Se sua API aceitar filtro server-side, use: /propostas/?trabalho=${id}
+          const propsResp = await api.get(`/propostas/`, { params: { trabalho: id } }).catch(async () => {
+            // fallback: pega todas e filtra no front
+            const all = await api.get(`/propostas/`);
+            return { data: all.data };
+          });
+          const lista = Array.isArray(propsResp.data) ? propsResp.data : [];
+          const somenteEsteTrabalho = lista
+            .filter(p => p.trabalho === Number(id) || p.trabalho?.id === Number(id));
+          // A ViewSet já ordena por -data_envio, mas garantimos
+          somenteEsteTrabalho.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+          setMinhasPropostas(somenteEsteTrabalho);
+        }
+      } catch (e) {
         setErro("Erro ao buscar o trabalho.");
+      } finally {
         setCarregando(false);
-      });
+      }
+    })();
   }, [id]);
 
-  // Utilidades de data
+  // =================== DERIVADOS / REGRAS DE NEGÓCIO ===================
+  const {
+    totalEnvios,
+    ultimaProposta,
+    existePendenteOuAceita,
+    tentativasRestantes,
+    isReenvioElegivel
+  } = useMemo(() => {
+    const total = minhasPropostas.length;
+    const ultima = total > 0 ? minhasPropostas[0] : null;
+    const existeAtiva = minhasPropostas.some(p => p.status === "pendente" || p.status === "aceita");
+    const restantes = Math.max(0, MAX_ENVIOS - total);
+    const reenvioOk = !!ultima && ultima.status === "recusada" && restantes > 0;
+    return {
+      totalEnvios: total,
+      ultimaProposta: ultima,
+      existePendenteOuAceita: existeAtiva,
+      tentativasRestantes: restantes,
+      isReenvioElegivel: reenvioOk
+    };
+  }, [minhasPropostas]);
+
+  // Permissões de ação do usuário
+  const podeEditarOuExcluir = () =>
+    usuarioLogado &&
+    trabalho &&
+    (usuarioLogado.id === trabalho.contratante_id || usuarioLogado.is_superuser);
+
+  // Regra de enviar proposta com limite + status do trabalho
+  const podeEnviarProposta = useMemo(() => {
+    if (!usuarioLogado || usuarioLogado.tipo !== "freelancer") return false;
+    if (!trabalho || trabalho.status !== "aberto" || trabalho.is_privado) return false;
+    if (existePendenteOuAceita) return false;
+    // Primeira proposta:
+    if (totalEnvios === 0) return true;
+    // Reenvio: só se última foi recusada e sobrar tentativa
+    return isReenvioElegivel;
+  }, [usuarioLogado, trabalho, existePendenteOuAceita, totalEnvios, isReenvioElegivel]);
+
+  const isReenvio = useMemo(() => totalEnvios >= 1 && isReenvioElegivel, [totalEnvios, isReenvioElegivel]);
+
+  // =================== UTILIDADES ===================
   function formatarData(dataStr) {
     if (!dataStr) return "Não definido";
     const [ano, mes, dia] = dataStr.split("-");
@@ -76,13 +147,9 @@ export default function DetalhesTrabalho() {
   }
 
   function formatarOrcamento(valor) {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(valor);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
   }
 
-  // Alerta central
   function mostrarAlerta(tipo, texto, destino = null) {
     setAlerta({ tipo, texto });
     setTimeout(() => {
@@ -91,26 +158,7 @@ export default function DetalhesTrabalho() {
     }, 2500);
   }
 
-  // Permissões
-  const podeEditarOuExcluir = () =>
-    usuarioLogado &&
-    trabalho &&
-    (usuarioLogado.id === trabalho.contratante_id || usuarioLogado.is_superuser);
-
-  const podeEnviarProposta =
-    usuarioLogado &&
-    usuarioLogado.tipo === "freelancer" &&
-    trabalho &&
-    trabalho.status === "aberto" &&
-    !trabalho.is_privado;
-
-  const podeAceitarOuRecusar =
-    usuarioLogado &&
-    trabalho &&
-    trabalho.is_privado &&
-    trabalho.freelancer === usuarioLogado.id &&
-    trabalho.status === "aberto";
-
+  // =================== AÇÕES ===================
   // Excluir trabalho
   const handleDelete = async () => {
     setExcluindo(true);
@@ -125,13 +173,15 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // Formulário proposta
+  // Abrir modal de proposta
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
+    setMotivoRevisao("");
     setFormErro("");
     setShowForm(true);
   };
 
+  // Enviar proposta (com suporte a reenvio e motivo_revisao)
   const enviarProposta = async (e) => {
     e.preventDefault();
     setFormErro("");
@@ -140,32 +190,46 @@ export default function DetalhesTrabalho() {
       setFormErro("Por favor, preencha todos os campos da proposta.");
       return;
     }
+    if (isReenvio && !motivoRevisao.trim()) {
+      setFormErro("Informe o motivo da revisão: o que mudou nesta nova proposta?");
+      return;
+    }
 
     setEnviandoProposta(true);
-
     try {
-      await api.post("/propostas/", {
+      const payload = {
         trabalho: trabalho.id,
-        freelancer: usuarioLogado.id,
         descricao: form.descricao,
         valor: form.valor,
         prazo_estimado: form.prazo_estimado,
-      });
+        ...(isReenvio ? { motivo_revisao: motivoRevisao.trim() } : {}),
+        // NÃO enviar freelancer: o backend usa o usuário logado
+      };
+
+      await api.post("/propostas/", payload);
 
       setShowForm(false);
-      mostrarAlerta("sucesso", "Proposta enviada! Redirecionando para suas propostas...", "/propostas");
+      const textoSucesso = isReenvio
+        ? `Proposta revisada enviada! Restam ${Math.max(0, tentativasRestantes - 1)} tentativa(s).`
+        : "Proposta enviada! Redirecionando para suas propostas...";
+      mostrarAlerta("sucesso", textoSucesso, "/propostas");
     } catch (err) {
-      const mensagem =
-        err.response?.data?.erro ||
-        err.response?.data?.detail ||
-        "Erro ao enviar proposta. Tente novamente.";
+      // Trata vários formatos de erro do DRF
+      const data = err.response?.data;
+      let mensagem = "Erro ao enviar proposta. Tente novamente.";
+      if (typeof data === "string") mensagem = data;
+      else if (Array.isArray(data)) mensagem = data.join(" ");
+      else if (data && typeof data === "object") {
+        const flat = Object.values(data).flat().join(" ");
+        if (flat) mensagem = flat;
+      }
       setFormErro(mensagem);
     } finally {
       setEnviandoProposta(false);
     }
   };
 
-  // Aceitar / Recusar
+  // Aceitar / Recusar (trabalhos privados)
   const aceitarTrabalho = async () => {
     try {
       await api.post(`/trabalhos/${trabalho.id}/aceitar/`);
@@ -184,7 +248,7 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // Estados de loading e erro
+  // =================== ESTADOS DE TELA ===================
   if (carregando) {
     return (
       <div className="detalhes-trabalho-page page-container">
@@ -204,10 +268,7 @@ export default function DetalhesTrabalho() {
           <div className="error-icon">⚠️</div>
           <h3 className="error-title">Erro ao Carregar</h3>
           <p className="error-message">{erro}</p>
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate("/trabalhos")}
-          >
+          <button className="btn btn-primary" onClick={() => navigate("/trabalhos")}>
             <i className="bi bi-arrow-left"></i>
             Voltar para Trabalhos
           </button>
@@ -223,10 +284,7 @@ export default function DetalhesTrabalho() {
           <div className="error-icon">🔍</div>
           <h3 className="error-title">Trabalho Não Encontrado</h3>
           <p className="error-message">O trabalho solicitado não foi encontrado.</p>
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate("/trabalhos")}
-          >
+          <button className="btn btn-primary" onClick={() => navigate("/trabalhos")}>
             <i className="bi bi-arrow-left"></i>
             Voltar para Trabalhos
           </button>
@@ -235,8 +293,9 @@ export default function DetalhesTrabalho() {
     );
   }
 
-  // Função para determinar o ícone do alerta
+  // Ícone do alerta
   const getAlertaIcon = () => {
+    if (!alerta) return "bi-info-circle-fill";
     if (alerta.tipo === "sucesso") return "bi-check-circle-fill";
     if (alerta.tipo === "erro") return "bi-x-circle-fill";
     return "bi-info-circle-fill";
@@ -301,16 +360,25 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* MODAL DE PROPOSTA */}
+      {/* MODAL DE PROPOSTA (com motivo de revisão em reenvio) */}
       {showForm && (
         <div className="delete-modal-overlay">
           <div className="delete-modal-content zoom-in">
             <div className="delete-modal-icon" style={{ backgroundColor: '#10b981' }}>
               <i className="bi bi-send-fill"></i>
             </div>
-            <h3 className="delete-modal-title">Enviar Proposta</h3>
+            <h3 className="delete-modal-title">
+              {isReenvio ? "Enviar Nova Proposta (Revisada)" : "Enviar Proposta"}
+            </h3>
             <p className="delete-modal-message">
-              Preencha os detalhes da sua proposta para <strong>{trabalho.titulo}</strong>
+              {isReenvio ? (
+                <>
+                  Você já enviou {totalEnvios} proposta(s) para <strong>{trabalho.titulo}</strong>.
+                  Restam <strong>{tentativasRestantes}</strong> tentativa(s).
+                </>
+              ) : (
+                <>Preencha os detalhes da sua proposta para <strong>{trabalho.titulo}</strong></>
+              )}
             </p>
 
             {formErro && (
@@ -356,7 +424,7 @@ export default function DetalhesTrabalho() {
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
                 <label htmlFor="prazo" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
                   Prazo Estimado *
                 </label>
@@ -371,6 +439,25 @@ export default function DetalhesTrabalho() {
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
                 />
               </div>
+
+              {isReenvio && (
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="motivo_revisao" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    O que mudou na sua nova proposta? (Motivo da revisão) *
+                  </label>
+                  <textarea
+                    id="motivo_revisao"
+                    className="form-control"
+                    rows="3"
+                    value={motivoRevisao}
+                    onChange={(e) => setMotivoRevisao(e.target.value)}
+                    placeholder="Ex.: Ajustei o escopo/valor/prazo com base no feedback."
+                    required={isReenvio}
+                    disabled={enviandoProposta}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                </div>
+              )}
 
               <div className="delete-modal-actions">
                 <button
@@ -396,7 +483,7 @@ export default function DetalhesTrabalho() {
                   ) : (
                     <>
                       <i className="bi bi-send-fill"></i>
-                      Enviar Proposta
+                      {isReenvio ? "Enviar Nova Proposta" : "Enviar Proposta"}
                     </>
                   )}
                 </button>
@@ -517,7 +604,7 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* ARQUIVO ANEXO - CORRIGIDO */}
+            {/* ARQUIVO ANEXO */}
             {trabalho.anexo_url && (
               <div className="trabalho-anexo-section">
                 <h3>
@@ -584,39 +671,58 @@ export default function DetalhesTrabalho() {
                   onClick={abrirFormProposta}
                 >
                   <i className="bi bi-send"></i>
-                  Enviar Proposta
+                  {isReenvio
+                    ? `Enviar nova proposta (restam ${tentativasRestantes})`
+                    : "Enviar Proposta"}
                 </button>
               </div>
             )}
 
-            {podeAceitarOuRecusar && (
+            {usuarioLogado && usuarioLogado.tipo === "freelancer" && !podeEnviarProposta && (
               <div className="action-group">
-                <h4>Trabalho Privado</h4>
-                <p className="action-description">
-                  Este é um trabalho privado direcionado a você. Escolha sua ação:
-                </p>
-                <div className="btn-group-actions">
-                  <button
-                    className="btn-action btn-success-action"
-                    onClick={aceitarTrabalho}
-                  >
-                    <i className="bi bi-check-circle"></i>
-                    Aceitar Trabalho
-                  </button>
-                  <button
-                    className="btn-action btn-danger-action"
-                    onClick={recusarTrabalho}
-                  >
-                    <i className="bi bi-x-circle"></i>
-                    Recusar Trabalho
-                  </button>
+                <h4>Envios para este trabalho</h4>
+                <div className="text-muted small">
+                  {existePendenteOuAceita && "Você já possui uma proposta pendente/aceita para este trabalho."}
+                  {!existePendenteOuAceita && totalEnvios > 0 && ultimaProposta?.status !== "recusada" &&
+                    "Aguarde a decisão do contratante para enviar uma nova proposta."}
+                  {!existePendenteOuAceita && totalEnvios >= MAX_ENVIOS &&
+                    "Limite de envios atingido para este trabalho."}
+                  {!existePendenteOuAceita && trabalho.status !== "aberto" &&
+                    "Este trabalho não está aberto para novas propostas."}
                 </div>
               </div>
             )}
 
+            {usuarioLogado && trabalho?.is_privado &&
+              trabalho.freelancer === usuarioLogado.id &&
+              trabalho.status === "aberto" && (
+                <div className="action-group">
+                  <h4>Trabalho Privado</h4>
+                  <p className="action-description">
+                    Este é um trabalho privado direcionado a você. Escolha sua ação:
+                  </p>
+                  <div className="btn-group-actions">
+                    <button
+                      className="btn-action btn-success-action"
+                      onClick={aceitarTrabalho}
+                    >
+                      <i className="bi bi-check-circle"></i>
+                      Aceitar Trabalho
+                    </button>
+                    <button
+                      className="btn-action btn-danger-action"
+                      onClick={recusarTrabalho}
+                    >
+                      <i className="bi bi-x-circle"></i>
+                      Recusar Trabalho
+                    </button>
+                  </div>
+                </div>
+              )}
+
             {!podeEditarOuExcluir() &&
               !podeEnviarProposta &&
-              !podeAceitarOuRecusar && (
+              !(usuarioLogado && trabalho?.is_privado && trabalho.freelancer === usuarioLogado.id && trabalho.status === "aberto") && (
                 <div className="no-actions">
                   <div className="no-actions-icon">
                     <i className="bi bi-info-circle"></i>

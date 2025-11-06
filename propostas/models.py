@@ -34,6 +34,24 @@ class Proposta(models.Model):
         default='pendente'
     )
 
+    # 🔹 Controle de reenvio/histórico
+    revisao_de = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='revisoes'
+    )
+    motivo_revisao = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Explique o que mudou nesta nova proposta (valor/escopo/prazo)."
+    )
+    numero_envio = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="1 = proposta original; 2/3 = reenvios."
+    )
+
     data_envio = models.DateTimeField(auto_now_add=True)
 
     class Meta:
