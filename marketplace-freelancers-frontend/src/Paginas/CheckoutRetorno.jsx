@@ -11,22 +11,23 @@ export default function CheckoutRetorno() {
   // Params do Mercado Pago
   const qs = useMemo(() => new URLSearchParams(params), [params]);
   const paymentId = qs.get("payment_id") || qs.get("collection_id");
-  const externalReference = qs.get("external_reference"); // 🔹 removido "status"
+  const externalReference = qs.get("external_reference");
 
   // Estados de exibição
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
   const [tipo, setTipo] = useState("info"); // info | sucesso | erro
 
-  // ⚙️ Tenta forçar confirmação inicial no backend (fallback ao webhook)
+  // ⚙️ Fallback do webhook: tenta confirmar no backend
   useEffect(() => {
     (async () => {
       try {
+        if (!paymentId && !externalReference) return;
         await api.post("/pagamentos/confirmar_retorno/", {
           payment_id: paymentId,
           external_reference: externalReference,
         });
       } catch {
-        // silencioso — o polling abaixo continuará tentando
+        // silencioso — o polling continuará tentando
       }
     })();
   }, [paymentId, externalReference]);
@@ -40,7 +41,7 @@ export default function CheckoutRetorno() {
     return () => clearTimeout(t);
   }, [tipo, navigate]);
 
-  // 🔁 Polling automático a cada 3 segundos
+  // 🔁 Polling automático a cada 3s
   useEffect(() => {
     let parar = false;
     let tentativas = 0;
@@ -51,28 +52,61 @@ export default function CheckoutRetorno() {
       try {
         let pagamento = null;
 
-        // 1️⃣ Busca direta no endpoint de status
+        // 1️⃣ Nova rota preferida: consulta direta por payment_id (não depende de PK local)
         if (paymentId) {
           try {
-            const res = await api.get(`/pagamentos/${paymentId}/status/`);
-            pagamento = res.data;
+            const res = await api.get("/pagamentos/consultar-status-mp", {
+              params: { payment_id: paymentId },
+            });
+
+            // Dois formatos possíveis:
+            // a) { fonte: "local+mp", local: {...}, mp: {...} }
+            // b) { fonte: "mp", mp: {...} }   (ainda sem registro local)
+            if (res?.data?.fonte === "local+mp") {
+              pagamento = res.data.local; // já vem no mesmo formato do serializer
+            } else if (res?.data?.fonte === "mp") {
+              const mp = res.data.mp || {};
+              const st = String(mp.status || "").toLowerCase();
+              // normaliza para rótulos locais
+              if (st === "approved") {
+                setTipo("sucesso");
+                setMsg("Pagamento aprovado com sucesso!");
+                parar = true;
+                return;
+              } else if (st === "rejected" || st === "cancelled") {
+                setTipo("erro");
+                setMsg("Pagamento rejeitado. Tente novamente ou entre em contato com o suporte.");
+                parar = true;
+                return;
+              } else {
+                setTipo("info");
+                setMsg("Aguardando confirmação do pagamento...");
+              }
+            } else {
+              // Compatibilidade: alguns backends podem retornar diretamente o serializer
+              pagamento = res.data;
+            }
           } catch {
-            // ignora erros 404 enquanto o pagamento ainda não existe
+            // ignora 404/409 aqui; seguimos para o fallback
           }
         }
 
-        // 2️⃣ Fallback por external_reference
-        if (!pagamento) {
-          const resp = await api.get("/pagamentos/?page_size=50");
-          const results = resp?.data?.results || [];
-          pagamento = results.find(
-            (p) =>
-              String(p.mercadopago_payment_id) === String(paymentId) ||
-              String(p.contrato?.id) === String(externalReference)
-          );
+        // 2️⃣ Fallback por external_reference: varre lista e tenta achar
+        if (!pagamento && (paymentId || externalReference)) {
+          try {
+            const resp = await api.get("/pagamentos/?page_size=50");
+            const results = resp?.data?.results || [];
+            pagamento = results.find(
+              (p) =>
+                (paymentId && String(p.mercadopago_payment_id) === String(paymentId)) ||
+                (externalReference && String(p.contrato?.id) === String(externalReference))
+            );
+          } catch {
+            // mantemos silencioso
+          }
         }
 
-        // 3️⃣ Atualiza status na tela
+        // 3️⃣ Atualiza status na tela (quando houver registro local)
         if (pagamento) {
           const statusLocal = pagamento.status;
           if (statusLocal === "aprovado") {
@@ -99,7 +133,7 @@ export default function CheckoutRetorno() {
 
       tentativas += 1;
 
-      // 4️⃣ Timeout após 3 minutos
+      // 4️⃣ Timeout após ~3 minutos
       if (tentativas >= 60) {
         setTipo("erro");
         setMsg("Tempo limite atingido. Verifique seus contratos manualmente.");
