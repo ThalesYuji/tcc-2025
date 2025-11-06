@@ -465,6 +465,13 @@
   margin: 0 auto var(--space-lg);
   font-size: 2rem;
   color: white;
+  position: relative;
+}
+
+.delete-modal-icon i {
+  font-size: 2rem;
+  color: white;
+  z-index: 1;
 }
 
 .delete-modal-title {

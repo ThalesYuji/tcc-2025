@@ -506,27 +506,30 @@
   z-index: 9999;
   animation: fadeIn 0.3s ease-out;
   backdrop-filter: blur(4px);
+  padding: var(--space-md);
 }
 
 .proposta-modal-content {
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: var(--sombra-xl);
-  width: 90%;
-  max-width: 700px; /* ✅ LARGURA MAIOR */
-  max-height: 90vh;
+  width: 95%;
+  max-width: 900px; /* ✅ Mais largo */
+  max-height: 85vh;
   overflow-y: auto;
-  animation: slideInUp 0.4s ease-out;
+  animation: zoomIn 0.4s ease-out;
+  position: relative;
 }
 
 .proposta-modal-header {
   background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
   color: white;
-  padding: var(--space-xl);
+  padding: var(--space-lg) var(--space-xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  position: relative;
 }
 
 .proposta-modal-header h4 {

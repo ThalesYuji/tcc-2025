@@ -369,107 +369,132 @@ export default function DetalhesTrabalho() {
 
       {/* MODAL DE PROPOSTA (com motivo de revisão em reenvio) */}
       {showForm && (
-        <div className="delete-modal-overlay">
-          <div className="delete-modal-content zoom-in">
-            <div className="delete-modal-icon" style={{ backgroundColor: '#10b981' }}>
-              <i className="bi bi-send-fill"></i>
-            </div>
-            <h3 className="delete-modal-title">
-              {isReenvio ? "Enviar Nova Proposta (Revisada)" : "Enviar Proposta"}
-            </h3>
-            <p className="delete-modal-message">
-              {isReenvio ? (
-                <>
-                  Você já enviou {totalEnvios} proposta(s) para <strong>{trabalho.titulo}</strong>.
-                  Restam <strong>{tentativasRestantes}</strong> tentativa(s).
-                </>
-              ) : (
-                <>Preencha os detalhes da sua proposta para <strong>{trabalho.titulo}</strong></>
-              )}
-            </p>
-
-            {formErro && (
-              <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>
-                <i className="bi bi-exclamation-circle"></i> {formErro}
+        <div className="proposta-modal-overlay">
+          <div className="proposta-modal-content">
+            {/* Header */}
+            <div className="proposta-modal-header">
+              <div className="proposta-modal-title-wrapper">
+                <div className="proposta-modal-icon">
+                  <i className="bi bi-send-fill"></i>
+                </div>
+                <div>
+                  <h3 className="proposta-modal-title">
+                    {isReenvio ? "Nova Proposta (Revisada)" : "Enviar Proposta"}
+                  </h3>
+                  <p className="proposta-modal-subtitle">
+                    {trabalho.titulo}
+                  </p>
+                </div>
               </div>
-            )}
+              <button className="modal-close-btn" onClick={() => setShowForm(false)}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
 
-            <form onSubmit={enviarProposta} style={{ textAlign: 'left' }}>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label htmlFor="descricao" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+            {/* Form */}
+            <form className="proposta-form" onSubmit={enviarProposta}>
+              {/* Info Badge (quando é reenvio) */}
+              {isReenvio && (
+                <div className="proposta-info-badge">
+                  <i className="bi bi-arrow-repeat"></i>
+                  <span>
+                    Você já enviou <strong>{totalEnvios} proposta(s)</strong>.
+                    Restam <strong>{tentativasRestantes} tentativa(s)</strong>.
+                  </span>
+                </div>
+              )}
+
+              {/* Mensagem de erro */}
+              {formErro && (
+                <div className="proposta-form-error">
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <span>{formErro}</span>
+                </div>
+              )}
+
+              {/* Grid 2 colunas - Descrição */}
+              <div className="form-group-full">
+                <label htmlFor="descricao">
+                  <i className="bi bi-file-text"></i>
                   Descrição da Proposta *
                 </label>
                 <textarea
                   id="descricao"
-                  className="form-control"
-                  rows="4"
+                  className="form-control-compact"
                   value={form.descricao}
                   onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                  placeholder="Descreva como você pode ajudar neste projeto..."
+                  placeholder="Descreva como você pode contribuir para este projeto..."
                   required
                   disabled={enviandoProposta}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label htmlFor="valor" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Valor Proposto (R$) *
-                </label>
-                <input
-                  type="number"
-                  id="valor"
-                  className="form-control"
-                  value={form.valor}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                  placeholder="Ex: 1500.00"
-                  step="0.01"
-                  min="0"
-                  required
-                  disabled={enviandoProposta}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
-                />
+              {/* Grid 2 colunas - Valor e Prazo */}
+              <div className="proposta-form-grid">
+                <div className="form-group-compact">
+                  <label htmlFor="valor">
+                    <i className="bi bi-currency-dollar"></i>
+                    Valor Proposto (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    id="valor"
+                    className="form-control-compact"
+                    value={form.valor}
+                    onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                    placeholder="Ex: 1500.00"
+                    step="0.01"
+                    min="0"
+                    required
+                    disabled={enviandoProposta}
+                  />
+                </div>
+
+                <div className="form-group-compact">
+                  <label htmlFor="prazo">
+                    <i className="bi bi-calendar-event"></i>
+                    Prazo Estimado *
+                  </label>
+                  <input
+                    type="date"
+                    id="prazo"
+                    className="form-control-compact"
+                    value={form.prazo_estimado}
+                    onChange={(e) => setForm({ ...form, prazo_estimado: e.target.value })}
+                    required
+                    disabled={enviandoProposta}
+                  />
+                </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label htmlFor="prazo" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Prazo Estimado *
-                </label>
-                <input
-                  type="date"
-                  id="prazo"
-                  className="form-control"
-                  value={form.prazo_estimado}
-                  onChange={(e) => setForm({ ...form, prazo_estimado: e.target.value })}
-                  required
-                  disabled={enviandoProposta}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
-                />
-              </div>
-
+              {/* Campo de motivo de revisão (só aparece em reenvio) */}
               {isReenvio && (
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="motivo_revisao" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                    O que mudou na sua nova proposta? (Motivo da revisão) *
+                <div className="form-revisao-group">
+                  <label htmlFor="motivo_revisao">
+                    <i className="bi bi-arrow-clockwise"></i>
+                    O que mudou nesta proposta? *
                   </label>
                   <textarea
                     id="motivo_revisao"
-                    className="form-control"
-                    rows="3"
+                    className="form-control-compact"
                     value={motivoRevisao}
                     onChange={(e) => setMotivoRevisao(e.target.value)}
-                    placeholder="Ex.: Ajustei o escopo/valor/prazo com base no feedback."
+                    placeholder="Ex.: Ajustei o valor com base no feedback e aumentei o prazo em 5 dias."
                     required={isReenvio}
                     disabled={enviandoProposta}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
                   />
+                  <div className="form-revisao-hint">
+                    <i className="bi bi-lightbulb"></i>
+                    <span>Explique as mudanças para aumentar suas chances de aprovação</span>
+                  </div>
                 </div>
               )}
 
-              <div className="delete-modal-actions">
+              {/* Ações */}
+              <div className="proposta-form-actions">
                 <button
                   type="button"
-                  className="btn-modal btn-cancel"
+                  className="btn-modal-action btn-modal-cancel"
                   onClick={() => setShowForm(false)}
                   disabled={enviandoProposta}
                 >
@@ -478,13 +503,12 @@ export default function DetalhesTrabalho() {
                 </button>
                 <button
                   type="submit"
-                  className="btn-modal btn-confirm-delete"
+                  className="btn-modal-action btn-modal-submit"
                   disabled={enviandoProposta}
-                  style={{ backgroundColor: '#10b981' }}
                 >
                   {enviandoProposta ? (
                     <>
-                      <span className="spinner-border spinner-border-sm"></span>
+                      <span className="spinner-border"></span>
                       Enviando...
                     </>
                   ) : (

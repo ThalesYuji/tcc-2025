@@ -32,14 +32,16 @@ function formatarNumero(num) {
   if (num >= 1000) {
     return (num / 1000).toFixed(1) + "k";
   }
-  return num.toString();
+  return (num ?? 0).toString();
 }
 
 export default function PerfilPublico() {
-  const { id } = useParams();
+  // 🔹 Suporta /perfil/:id e /perfil/me
+  const { id: idParam } = useParams();
   const navigate = useNavigate();
   const { usuarioLogado } = useContext(UsuarioContext);
 
+  // Estados
   const [usuario, setUsuario] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(null);
@@ -51,38 +53,57 @@ export default function PerfilPublico() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const avaliacoesPorPagina = 4;
 
+  // 🔹 Busca dados com fallback e suporte a /me
   useEffect(() => {
     async function buscarDados() {
       try {
         setCarregando(true);
         setErro("");
 
-        const resp = await api.get(`/usuarios/${id}/perfil_publico/`);
-        if (resp.data && resp.data.id) {
-          setUsuario(resp.data);
-          setNotaMedia(resp.data.nota_media || null);
-        } else {
-          setErro("Perfil não encontrado");
-          return;
+        // 1) Resolver o alvo (id real)
+        let idAlvo = idParam;
+
+        // Se for /perfil/me, busca /usuarios/me/ e redireciona para /perfil/{id}
+        if (idParam === "me") {
+          const me = await api.get("/usuarios/me/");
+          idAlvo = me?.data?.id;
+          if (idAlvo) {
+            if (String(idAlvo) !== String(idParam)) {
+              navigate(`/perfil/${idAlvo}`, { replace: true });
+              return; // encerra aqui; o próximo efeito roda com o id real
+            }
+          } else {
+            setErro("Não foi possível resolver o usuário atual.");
+            return;
+          }
         }
 
-        const avs = await api.get(`/usuarios/${id}/avaliacoes_publicas/`);
+        // 2) Perfil público e avaliações
+        const resp = await api.get(`/usuarios/${idAlvo}/perfil_publico/`);
+        setUsuario(resp.data);
+        setNotaMedia(resp.data.nota_media || null);
+
+        const avs = await api.get(`/usuarios/${idAlvo}/avaliacoes_publicas/`);
         setAvaliacoes(avs.data);
       } catch (err) {
-        console.error("Erro ao buscar perfil:", err);
-        setErro("Erro ao carregar o perfil.");
+        const status = err?.response?.status;
+        if (status === 404) {
+          setErro("Perfil não encontrado.");
+        } else {
+          setErro("Erro ao carregar o perfil.");
+        }
       } finally {
         setCarregando(false);
       }
     }
 
-    if (id) buscarDados();
-  }, [id]);
+    if (idParam) buscarDados();
+  }, [idParam, navigate]);
 
   const handleCompartilhar = () => {
     if (navigator.share) {
       navigator.share({
-        title: `Perfil de ${usuario.nome}`,
+        title: `Perfil de ${usuario?.nome || "Usuário"}`,
         url: window.location.href,
       });
     } else {
@@ -92,7 +113,7 @@ export default function PerfilPublico() {
     }
   };
 
-  const totalPaginas = Math.ceil(avaliacoes.length / avaliacoesPorPagina);
+  const totalPaginas = Math.ceil(avaliacoes.length / avaliacoesPorPagina) || 1;
   const indiceInicial = (paginaAtual - 1) * avaliacoesPorPagina;
   const indiceFinal = indiceInicial + avaliacoesPorPagina;
   const avaliacoesPaginadas = avaliacoes.slice(indiceInicial, indiceFinal);
@@ -104,6 +125,7 @@ export default function PerfilPublico() {
     if (paginaAtual > 1) setPaginaAtual(paginaAtual - 1);
   };
 
+  // ================== ESTADOS DE CARREGAMENTO / ERRO ==================
   if (carregando) {
     return (
       <>
@@ -142,6 +164,7 @@ export default function PerfilPublico() {
     );
   }
 
+  // ================== CONTEÚDO PRINCIPAL ==================
   const fotoPerfil = usuario?.foto_perfil || "/icone-usuario.png";
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
   const isNewUser =
@@ -210,9 +233,7 @@ export default function PerfilPublico() {
               <div className="perfil-user-type">
                 <i
                   className={`bi ${
-                    usuario.tipo === "freelancer"
-                      ? "bi-briefcase"
-                      : "bi-building"
+                    usuario.tipo === "freelancer" ? "bi-briefcase" : "bi-building"
                   }`}
                 ></i>
                 {usuario.tipo === "freelancer" ? "Freelancer" : "Contratante"}
@@ -222,9 +243,7 @@ export default function PerfilPublico() {
                 <div className="rating-display">
                   <StarRating rating={notaMedia} />
                   <span className="rating-number">{notaMedia.toFixed(1)}</span>
-                  <span className="rating-count-text">
-                    ({avaliacoes.length} avaliações)
-                  </span>
+                  <span className="rating-count-text">({avaliacoes.length} avaliações)</span>
                 </div>
               )}
 
@@ -287,10 +306,9 @@ export default function PerfilPublico() {
                 </button>
               </div>
 
-              {/* ABA ESTATÍSTICAS - ORGANIZADA POR SEÇÕES */}
+              {/* === ABA ESTATÍSTICAS === */}
               {activeTab === "estatisticas" && (
                 <div className="fade-in">
-                  {/* SEÇÃO: TRABALHOS */}
                   {(usuario.tipo === "freelancer" || usuario.tipo === "contratante") && (
                     <div className="stats-section-profile">
                       <div className="section-header-profile">
@@ -309,9 +327,7 @@ export default function PerfilPublico() {
                               <span className="stat-detail-value">
                                 {formatarNumero(usuario.trabalhos_publicados ?? 0)}
                               </span>
-                              <span className="stat-detail-label">
-                                Publicados
-                              </span>
+                              <span className="stat-detail-label">Publicados</span>
                             </div>
                           </div>
                         )}
@@ -325,9 +341,7 @@ export default function PerfilPublico() {
                               <span className="stat-detail-value">
                                 {formatarNumero(usuario.trabalhos_concluidos ?? 0)}
                               </span>
-                              <span className="stat-detail-label">
-                                Concluídos
-                              </span>
+                              <span className="stat-detail-label">Concluídos</span>
                             </div>
                           </div>
                         )}
@@ -335,7 +349,7 @@ export default function PerfilPublico() {
                     </div>
                   )}
 
-                  {/* SEÇÃO: AVALIAÇÕES */}
+                  {/* AVALIAÇÕES */}
                   <div className="stats-section-profile">
                     <div className="section-header-profile">
                       <div className="section-icon-profile warning">
@@ -352,9 +366,7 @@ export default function PerfilPublico() {
                           <span className="stat-detail-value">
                             {formatarNumero(usuario.avaliacoes_enviadas ?? 0)}
                           </span>
-                          <span className="stat-detail-label">
-                            Enviadas
-                          </span>
+                          <span className="stat-detail-label">Enviadas</span>
                         </div>
                       </div>
 
@@ -366,15 +378,13 @@ export default function PerfilPublico() {
                           <span className="stat-detail-value">
                             {formatarNumero(usuario.avaliacoes_recebidas ?? 0)}
                           </span>
-                          <span className="stat-detail-label">
-                            Recebidas
-                          </span>
+                          <span className="stat-detail-label">Recebidas</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* SEÇÃO: DENÚNCIAS */}
+                  {/* DENÚNCIAS */}
                   <div className="stats-section-profile">
                     <div className="section-header-profile">
                       <div className="section-icon-profile danger">
@@ -391,9 +401,7 @@ export default function PerfilPublico() {
                           <span className="stat-detail-value">
                             {formatarNumero(usuario.denuncias_enviadas ?? 0)}
                           </span>
-                          <span className="stat-detail-label">
-                            Enviadas
-                          </span>
+                          <span className="stat-detail-label">Enviadas</span>
                         </div>
                       </div>
 
@@ -405,9 +413,7 @@ export default function PerfilPublico() {
                           <span className="stat-detail-value">
                             {formatarNumero(usuario.denuncias_recebidas ?? 0)}
                           </span>
-                          <span className="stat-detail-label">
-                            Recebidas
-                          </span>
+                          <span className="stat-detail-label">Recebidas</span>
                         </div>
                       </div>
                     </div>
@@ -451,7 +457,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
-              {/* ABA SOBRE */}
+              {/* === ABA SOBRE === */}
               {activeTab === "sobre" && (
                 <div className="standard-card fade-in">
                   <div className="card-header-std">
@@ -471,7 +477,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
-              {/* ABA AVALIAÇÕES */}
+              {/* === ABA AVALIAÇÕES === */}
               {activeTab === "avaliacoes" && (
                 <div className="fade-in">
                   {avaliacoes.length === 0 ? (
@@ -492,8 +498,7 @@ export default function PerfilPublico() {
                             <div className="review-header">
                               <div className="reviewer-info">
                                 <div className="reviewer-avatar">
-                                  {av.avaliador?.nome?.charAt(0)?.toUpperCase() ||
-                                    "?"}
+                                  {av.avaliador?.nome?.charAt(0)?.toUpperCase() || "?"}
                                 </div>
                                 <div className="reviewer-details">
                                   <span className="reviewer-name">
@@ -505,13 +510,8 @@ export default function PerfilPublico() {
                                 </div>
                               </div>
                               <div className="review-rating">
-                                <StarRating
-                                  rating={av.nota}
-                                  className="review-stars"
-                                />
-                                <span className="review-value">
-                                  {av.nota.toFixed(1)}
-                                </span>
+                                <StarRating rating={av.nota} className="review-stars" />
+                                <span className="review-value">{av.nota.toFixed(1)}</span>
                               </div>
                             </div>
                             {av.comentario && (
@@ -526,8 +526,7 @@ export default function PerfilPublico() {
                       {totalPaginas > 1 && (
                         <div className="pagination-container">
                           <div className="pagination-info">
-                            Página {paginaAtual} de {totalPaginas} •{" "}
-                            {avaliacoes.length} avaliações
+                            Página {paginaAtual} de {totalPaginas} • {avaliacoes.length} avaliações
                           </div>
                           <div className="pagination-controls">
                             <button
@@ -553,7 +552,7 @@ export default function PerfilPublico() {
               )}
             </div>
 
-            {/* SIDEBAR DIREITA */}
+            {/* === SIDEBAR DIREITA === */}
             <div className="content-right">
               {usuarioLogado && usuarioLogado.id !== usuario.id && (
                 <div className="standard-card">
@@ -586,10 +585,7 @@ export default function PerfilPublico() {
                         <i className="bi bi-flag-fill"></i>
                         Denunciar
                       </button>
-                      <button
-                        className="action-btn ghost"
-                        onClick={handleCompartilhar}
-                      >
+                      <button className="action-btn ghost" onClick={handleCompartilhar}>
                         <i className="bi bi-share-fill"></i>
                         Compartilhar
                       </button>
@@ -611,9 +607,7 @@ export default function PerfilPublico() {
                         <div className="info-label">Tipo</div>
                         <div className="info-value">
                           <span className={`badge-type ${usuario.tipo}`}>
-                            {usuario.tipo === "freelancer"
-                              ? "Freelancer"
-                              : "Contratante"}
+                            {usuario.tipo === "freelancer" ? "Freelancer" : "Contratante"}
                           </span>
                         </div>
                       </div>
