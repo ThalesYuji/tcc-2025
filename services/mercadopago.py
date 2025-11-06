@@ -41,7 +41,10 @@ def _extrair_msg_erro_mp(resp: object) -> str:
     msg = resp.get("message") or resp.get("error") or resp.get("status_detail") or str(resp)
     cause = resp.get("cause")
     if isinstance(cause, list) and cause:
-        msg = cause[0].get("description") or msg
+        # pega a primeira descrição detalhada, se existir
+        desc = cause[0].get("description") or cause[0].get("message")
+        if desc:
+            msg = desc
     return msg
 
 
@@ -82,13 +85,61 @@ def _build_notification_url() -> Optional[str]:
 
 def _back_urls_completas(back_urls: Optional[Dict[str, str]]) -> Dict[str, str]:
     """Garante que success/pending/failure existam, usando FRONT_RETURN_URL como fallback."""
-    default_return = (getattr(settings, "FRONT_RETURN_URL", None)
-                      or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/checkout/retorno").rstrip("/")
+    default_return = (
+        getattr(settings, "FRONT_RETURN_URL", None)
+        or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/checkout/retorno"
+    ).rstrip("/")
     b = dict(back_urls or {})
     b.setdefault("success", default_return)
     b.setdefault("pending", default_return)
     b.setdefault("failure", default_return)
     return b
+
+
+def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
+    """
+    Normaliza/valida o objeto payer.
+    - Garante first_name/last_name (mesmo que mínimos)
+    - Limpa CPF para apenas dígitos
+    - Só mantém identification se CPF tiver 11 dígitos
+    Retorna um novo dict normalizado, ou None se payer vier vazio.
+    """
+    if not payer or not isinstance(payer, dict):
+        return None
+
+    first = (payer.get("first_name") or "").strip()
+    last = (payer.get("last_name") or "").strip()
+
+    # fallback gentis
+    if not first and payer.get("name"):
+        first = payer["name"].strip()
+    if not last and payer.get("surname"):
+        last = payer["surname"].strip()
+
+    if not first and not last:
+        first = "Cliente"
+        last = "."
+
+    email = (payer.get("email") or "").strip()
+
+    # Identification (CPF)
+    ident = payer.get("identification") or {}
+    id_type = (ident.get("type") or "").upper().strip()
+    id_num = _only_digits(ident.get("number"))
+    identification = None
+    if id_type in {"CPF", "CPF_TAXPAYER"} and len(id_num) == 11:
+        identification = {"type": "CPF", "number": id_num}
+
+    normalized = {
+        "first_name": first,
+        "last_name": last or ".",
+    }
+    if email:
+        normalized["email"] = email
+    if identification:
+        normalized["identification"] = identification
+
+    return normalized
 
 
 # --------------- Serviço ---------------
@@ -113,7 +164,9 @@ class MercadoPagoService:
         """
         Cria uma 'preference' do Checkout Pro.
         back_urls: {"success": URL, "pending": URL, "failure": URL}
-        notification_url só é enviada se pública/valida (construída via _build_notification_url).
+        notification_url só é enviada se pública/válida (construída via _build_notification_url).
+        - Se 'payer' vier com CPF válido, apenas priorizamos o boleto como método padrão
+          (default_payment_method_id = "bolbradesco"), SEM bloquear os demais.
         """
         try:
             preference = {
@@ -136,8 +189,18 @@ class MercadoPagoService:
             if notif:
                 preference["notification_url"] = notif
 
-            if payer:
-                preference["payer"] = payer
+            # —— Normaliza o payer (se fornecido)
+            normalized_payer = _normalize_payer(payer)
+            if normalized_payer:
+                preference["payer"] = normalized_payer
+
+                # Se tiver CPF válido, sugerimos boleto como default (não exclui cartões/PIX)
+                ident = normalized_payer.get("identification") or {}
+                if ident.get("type") == "CPF" and len(_only_digits(ident.get("number"))) == 11:
+                    preference["payment_methods"] = {
+                        "default_payment_method_id": "bolbradesco",
+                        "installments": 1,  # boleto não parcela; cartões seguem com 1 por padrão
+                    }
 
             logger.info("MP PREF → payload: %s", preference)
             res = self.sdk.preference().create(preference)
