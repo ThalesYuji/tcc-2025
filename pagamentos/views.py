@@ -169,7 +169,45 @@ class PagamentoViewSet(viewsets.ModelViewSet):
     # ================ CONSULTAR STATUS ================
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
+        """
+        Consulta status do pagamento.
+        - Se vier ?payment_id= (id do Mercado Pago), consulta o MP,
+          tenta reconciliar com o Pagamento local via external_reference e sincroniza.
+        - Se não vier payment_id, mantém o comportamento antigo (busca por PK local).
+        """
         try:
+            payment_id_mp = request.query_params.get("payment_id")
+
+            # --- Consulta por payment_id do MP (novo fluxo) ---
+            if payment_id_mp:
+                mp = MercadoPagoService()
+                info = mp.consultar_pagamento(payment_id_mp)
+                if not info:
+                    return Response({"detail": "Pagamento não encontrado no Mercado Pago."}, status=404)
+
+                # Tenta resolver o Pagamento local pelo external_reference (id do contrato)
+                extref = info.get("external_reference")
+                pagamento = None
+                if extref:
+                    pagamento = self.get_queryset().filter(contrato__id=extref).order_by("-id").first()
+
+                # Se ainda não existir registro local, devolve dados do MP (o webhook pode criar depois)
+                if not pagamento:
+                    return Response({"fonte": "mercado_pago", "mp": info}, status=200)
+
+                # Sincroniza status local
+                novo = mp.mapear_status_mp_para_local(info["status"])
+                if novo != pagamento.status:
+                    pagamento.status = novo
+                    pagamento.mercadopago_payment_id = str(info.get("payment_id") or payment_id_mp)
+                    pagamento.save(update_fields=["status", "mercadopago_payment_id"])
+                    if novo == 'aprovado':
+                        self._concluir_contrato(pagamento.contrato)
+
+                serializer = self.get_serializer(pagamento)
+                return Response({"fonte": "local+mp", "local": serializer.data, "mp": info}, status=200)
+
+            # --- Fluxo antigo: por PK local ---
             pagamento = self.get_object()
             if pagamento.mercadopago_payment_id:
                 mp = MercadoPagoService()
@@ -178,17 +216,51 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                     novo = mp.mapear_status_mp_para_local(info['status'])
                     if novo != pagamento.status:
                         pagamento.status = novo
-                        pagamento.save()
+                        pagamento.save(update_fields=["status"])
                         if novo == 'aprovado':
                             self._concluir_contrato(pagamento.contrato)
 
             serializer = self.get_serializer(pagamento)
             return Response(serializer.data, status=200)
+
         except Exception:
             logger.exception("Erro ao consultar status")
             return Response({"erro": "Erro ao consultar status do pagamento"}, status=500)
 
-    # helper interno
+    @action(detail=False, methods=['get'], url_path='consultar-status-mp')
+    def consultar_status_mp(self, request):
+        """
+        Atalho sem PK local:
+        GET /api/pagamentos/consultar-status-mp?payment_id=XXXX
+        """
+        payment_id_mp = request.query_params.get("payment_id")
+        if not payment_id_mp:
+            return Response({"detail": "payment_id é obrigatório."}, status=400)
+
+        mp = MercadoPagoService()
+        info = mp.consultar_pagamento(payment_id_mp)
+        if not info:
+            return Response({"detail": "Pagamento não encontrado no Mercado Pago."}, status=404)
+
+        # Tenta reconciliar com o local
+        extref = info.get("external_reference")
+        pagamento = self.get_queryset().filter(contrato__id=extref).order_by("-id").first() if extref else None
+
+        if pagamento:
+            novo = mp.mapear_status_mp_para_local(info['status'])
+            if novo != pagamento.status:
+                pagamento.status = novo
+                pagamento.mercadopago_payment_id = str(info.get("payment_id") or payment_id_mp)
+                pagamento.save(update_fields=["status", "mercadopago_payment_id"])
+                if novo == 'aprovado':
+                    self._concluir_contrato(pagamento.contrato)
+
+            serializer = self.get_serializer(pagamento)
+            return Response({"fonte": "local+mp", "local": serializer.data, "mp": info}, status=200)
+
+        return Response({"fonte": "mp", "mp": info}, status=200)
+
+    # -------- Helper interno --------
     def _concluir_contrato(self, contrato):
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
