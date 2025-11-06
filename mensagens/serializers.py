@@ -13,7 +13,7 @@ MAX_FILE_MB = 5
 class MensagemSerializer(serializers.ModelSerializer):
     """
     Serializador das mensagens trocadas entre contratante e freelancer.
-    Inclui validações de remetente, destinatário, contrato e anexos.
+    Agora suporta edição de texto e anexo (substituir, remover ou manter).
     """
 
     remetente = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -43,7 +43,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "texto": {
-                "required": False,  # 🔹 agora o campo texto é opcional
+                "required": False,
                 "allow_blank": True,
                 "error_messages": {
                     "blank": "O campo texto não pode ficar em branco.",
@@ -61,7 +61,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         return getattr(obj.destinatario, "nome", None)
 
     def get_anexo_url(self, obj):
-        """Gera URL absoluta para o anexo (se existir)"""
+        """Gera URL absoluta para o anexo (se existir)."""
         if not obj.anexo or not hasattr(obj.anexo, "url"):
             return None
         request = self.context.get("request")
@@ -122,7 +122,7 @@ class MensagemSerializer(serializers.ModelSerializer):
             })
 
         # 🔹 Validação de anexo
-        anexo = attrs.get("anexo")
+        anexo = attrs.get("anexo") or request.FILES.get("anexo")
         if anexo:
             ext = os.path.splitext(anexo.name)[1].lower()
             if ext not in ALLOWED_EXTS:
@@ -141,9 +141,11 @@ class MensagemSerializer(serializers.ModelSerializer):
     # -------------------------
     def update(self, instance, validated_data):
         """
+        Edição de mensagem:
         - Apenas o remetente pode editar (checado na view)
+        - Pode alterar texto e/ou anexo
+        - Permite remover anexo existente
         - Só é permitido editar até 5 minutos após o envio
-        - Não é possível editar mensagens excluídas
         """
         if (timezone.now() - instance.data_envio).total_seconds() > 300:
             raise ValidationError("Prazo para editar mensagem expirou.")
@@ -154,6 +156,22 @@ class MensagemSerializer(serializers.ModelSerializer):
         validated_data.pop("remetente", None)
         validated_data.pop("contrato", None)
         validated_data.pop("destinatario", None)
+
+        request = self.context["request"]
+
+        # 🔹 Remove anexo se solicitado
+        if request.data.get("remover_anexo") == "true":
+            if instance.anexo:
+                instance.anexo.delete(save=False)
+            instance.anexo = None
+
+        # 🔹 Substitui anexo se houver novo upload
+        novo_anexo = request.FILES.get("anexo")
+        if novo_anexo:
+            # Apaga o antigo antes de substituir
+            if instance.anexo:
+                instance.anexo.delete(save=False)
+            instance.anexo = novo_anexo
 
         instance.editada_em = timezone.now()
         return super().update(instance, validated_data)

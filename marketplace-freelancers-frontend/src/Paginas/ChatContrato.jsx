@@ -173,11 +173,29 @@ export default function ChatContrato() {
 
   const salvarEdicao = async () => {
     try {
+      const formData = new FormData();
+
+      formData.append("texto", modalEdicao.texto);
+
+      if (modalEdicao.novoAnexo) {
+        formData.append("anexo", modalEdicao.novoAnexo);
+      }
+
+      if (modalEdicao.removerAnexo) {
+        formData.append("remover_anexo", "true");
+      }
+
       const resp = await api.patch(
         `/mensagens/${modalEdicao.mensagem.id}/`,
-        { texto: modalEdicao.texto },
-        { headers: { Authorization: `Bearer ${token}` } }
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
+
       setMensagens(resp.data.mensagens || resp.data || []);
       fecharModalEdicao();
       scrollToBottom();
@@ -417,7 +435,9 @@ export default function ChatContrato() {
               <div className="modal-header">
                 <h3>Editar mensagem</h3>
               </div>
+
               <div className="modal-body">
+                {/* Campo de texto */}
                 <textarea
                   value={modalEdicao.texto}
                   onChange={(e) =>
@@ -427,7 +447,56 @@ export default function ChatContrato() {
                   className="modal-textarea"
                   placeholder="Digite sua mensagem..."
                 />
+
+                {/* Campo para editar anexo */}
+                <div className="editar-anexo-section mt-3">
+                  <label className="form-label d-flex align-items-center gap-2">
+                    <i className="bi bi-paperclip"></i>
+                    Anexo
+                  </label>
+
+                  {/* Se já houver um anexo */}
+                  {modalEdicao.mensagem.anexo_url ? (
+                    <div className="anexo-atual-box">
+                      <a
+                        href={modalEdicao.mensagem.anexo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="anexo-link"
+                      >
+                        <i className="bi bi-file-earmark"></i>
+                        Ver anexo atual
+                      </a>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() =>
+                          setModalEdicao({
+                            ...modalEdicao,
+                            removerAnexo: !modalEdicao.removerAnexo,
+                          })
+                        }
+                      >
+                        {modalEdicao.removerAnexo ? "Restaurar" : "Remover"}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-muted small">Nenhum anexo nesta mensagem.</p>
+                  )}
+
+                  {/* Upload de novo anexo */}
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    className="form-control mt-2"
+                    onChange={(e) =>
+                      setModalEdicao({ ...modalEdicao, novoAnexo: e.target.files[0] })
+                    }
+                  />
+                </div>
               </div>
+
               <div className="modal-footer">
                 <button className="btn btn-ghost" onClick={fecharModalEdicao}>
                   Cancelar

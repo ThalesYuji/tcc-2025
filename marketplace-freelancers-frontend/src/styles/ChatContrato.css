@@ -565,6 +565,33 @@
   cursor: pointer;
 }
 
+.editar-anexo-section {
+  margin-top: 1rem;
+}
+
+.anexo-atual-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--superficie-hover);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.anexo-atual-box .anexo-link {
+  color: var(--cor-primaria);
+  font-weight: 500;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.anexo-atual-box .anexo-link:hover {
+  text-decoration: underline;
+}
+
 /* BOTÃO DE ENVIAR - SIMPLIFICADO */
 .chat-btn-enviar {
   display: flex;
