@@ -1,9 +1,8 @@
+// src/Paginas/EditarTrabalho.jsx - VERSÃO COMPLETA CORRIGIDA
 import React, { useState, useEffect } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useParams } from "react-router-dom";
 import "../styles/EditarTrabalho.css";
-
-const BASE_URL = "http://localhost:8000";
 
 export default function EditarTrabalho() {
   // Estados do formulário
@@ -14,8 +13,9 @@ export default function EditarTrabalho() {
   const [habilidades, setHabilidades] = useState([]);
   const [novaHabilidade, setNovaHabilidade] = useState("");
 
-  // Estados de anexo
-  const [anexoAtual, setAnexoAtual] = useState(null);
+  // Estados de anexo - CORRIGIDO: usar anexo_url
+  const [anexoAtualUrl, setAnexoAtualUrl] = useState(null);
+  const [anexoAtualNome, setAnexoAtualNome] = useState("");
   const [novoAnexo, setNovoAnexo] = useState(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
 
@@ -38,7 +38,14 @@ export default function EditarTrabalho() {
         setDescricao(resp.data.descricao);
         setPrazo(resp.data.prazo);
         setOrcamento(resp.data.orcamento);
-        setAnexoAtual(resp.data.anexo);
+        
+        // CORRIGIDO: usar anexo_url ao invés de anexo
+        if (resp.data.anexo_url) {
+          setAnexoAtualUrl(resp.data.anexo_url);
+          // Extrair nome do arquivo da URL
+          const nomeArquivo = resp.data.anexo_url.split('/').pop().split('?')[0];
+          setAnexoAtualNome(nomeArquivo || "Arquivo anexado");
+        }
 
         if (resp.data.habilidades_detalhes) {
           setHabilidades(resp.data.habilidades_detalhes.map((h) => h.nome));
@@ -430,7 +437,7 @@ export default function EditarTrabalho() {
                 </div>
               </div>
 
-              {/* Card: Anexos */}
+              {/* Card: Anexos - CORRIGIDO */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
@@ -441,8 +448,8 @@ export default function EditarTrabalho() {
                 </div>
 
                 <div className="card-body">
-                  {/* Arquivo Atual */}
-                  {anexoAtual && !removerAnexo && (
+                  {/* Arquivo Atual - CORRIGIDO */}
+                  {anexoAtualUrl && !removerAnexo && (
                     <div className="current-file-section">
                       <h4 className="subsection-title">
                         <i className="bi bi-file-check"></i>
@@ -454,14 +461,20 @@ export default function EditarTrabalho() {
                         </div>
                         <div className="file-details">
                           <span className="file-name">
-                            {anexoAtual.split("/").pop()}
+                            {anexoAtualNome}
                           </span>
                           <small className="file-size">Arquivo anexado</small>
                           <a 
-                            href={`${BASE_URL}${anexoAtual}`} 
+                            href={anexoAtualUrl}
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="file-link"
+                            onClick={(e) => {
+                              if (!anexoAtualUrl || anexoAtualUrl === 'null') {
+                                e.preventDefault();
+                                alert('Arquivo não disponível');
+                              }
+                            }}
                           >
                             <i className="bi bi-eye"></i>
                             Visualizar arquivo
@@ -504,7 +517,7 @@ export default function EditarTrabalho() {
                         
                         <div className="upload-text">
                           <span className="upload-title">
-                            {novoAnexo ? 'Arquivo Selecionado' : (anexoAtual && !removerAnexo ? 'Substituir Arquivo' : 'Adicionar Arquivo')}
+                            {novoAnexo ? 'Arquivo Selecionado' : (anexoAtualUrl && !removerAnexo ? 'Substituir Arquivo' : 'Adicionar Arquivo')}
                           </span>
                           <span className="upload-subtitle">
                             Clique aqui ou arraste um arquivo
@@ -601,7 +614,7 @@ export default function EditarTrabalho() {
                     </div>
                     <div className="preview-detail">
                       <i className="bi bi-paperclip"></i>
-                      <span>Anexo: {(anexoAtual && !removerAnexo) || novoAnexo ? "Sim" : "Nenhum"}</span>
+                      <span>Anexo: {(anexoAtualUrl && !removerAnexo) || novoAnexo ? "Sim" : "Nenhum"}</span>
                     </div>
                   </div>
                 </div>

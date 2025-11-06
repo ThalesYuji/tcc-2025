@@ -1,4 +1,4 @@
-// src/Paginas/DetalhesTrabalho.jsx
+// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA CORRIGIDA
 import React, { useEffect, useState } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
@@ -517,19 +517,24 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* ARQUIVO ANEXO */}
-            {trabalho.anexo && (
+            {/* ARQUIVO ANEXO - CORRIGIDO */}
+            {trabalho.anexo_url && (
               <div className="trabalho-anexo-section">
                 <h3>
                   <i className="bi bi-paperclip"></i>
                   Arquivo Anexo
                 </h3>
                 <a
-                  href={trabalho.anexo}
+                  href={trabalho.anexo_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="anexo-link"
-                  download
+                  onClick={(e) => {
+                    if (!trabalho.anexo_url || trabalho.anexo_url === 'null') {
+                      e.preventDefault();
+                      alert('Arquivo não disponível');
+                    }
+                  }}
                 >
                   <i className="bi bi-download"></i>
                   Baixar Arquivo
