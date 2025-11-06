@@ -8,16 +8,17 @@ export default function CheckoutRetorno() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
-  // Params do MP
+  // Params do Mercado Pago
   const qs = useMemo(() => new URLSearchParams(params), [params]);
   const paymentId = qs.get("payment_id") || qs.get("collection_id");
   const status = qs.get("status");
   const externalReference = qs.get("external_reference");
 
+  // Estados de exibição
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
   const [tipo, setTipo] = useState("info"); // info | sucesso | erro
 
-  // Fallback do webhook: tenta forçar confirmação no backend (apenas uma vez)
+  // ⚙️ Tenta forçar confirmação inicial no backend (fallback ao webhook)
   useEffect(() => {
     (async () => {
       try {
@@ -26,13 +27,13 @@ export default function CheckoutRetorno() {
           external_reference: externalReference,
         });
       } catch {
-        // silencioso — o polling abaixo continua tentando
+        // silencioso — o polling abaixo continuará tentando
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentId, externalReference]);
 
-  // REDIRECIONA automaticamente quando confirmar (tipo === "sucesso")
+  // ✅ Redireciona automaticamente quando o pagamento é confirmado
   useEffect(() => {
     if (tipo !== "sucesso") return;
     const t = setTimeout(() => {
@@ -41,89 +42,88 @@ export default function CheckoutRetorno() {
     return () => clearTimeout(t);
   }, [tipo, navigate]);
 
-  // Poll no backend procurando o pagamento local
+  // 🔁 Polling automático a cada 3 segundos
   useEffect(() => {
     let parar = false;
-    let t = 0;
+    let tentativas = 0;
 
-    async function tick() {
+    async function verificarStatus() {
       if (parar) return;
 
       try {
-        const resp = await api.get("/pagamentos/?page_size=50");
-        const results = resp?.data?.results || [];
+        let pagamento = null;
 
-        let encontrado = null;
+        // 1️⃣ Tenta buscar diretamente pelo payment_id no endpoint de status
         if (paymentId) {
-          encontrado = results.find(
-            (p) => String(p.mercadopago_payment_id) === String(paymentId)
-          );
+          try {
+            const res = await api.get(`/pagamentos/${paymentId}/status/`);
+            pagamento = res.data;
+          } catch (err) {
+            // ignora erros de 404 ou sem registro ainda
+          }
         }
-        if (!encontrado && externalReference) {
-          encontrado = results.find(
-            (p) => String(p.contrato?.id) === String(externalReference)
+
+        // 2️⃣ Se ainda não encontrou, faz fallback buscando por external_reference
+        if (!pagamento) {
+          const resp = await api.get("/pagamentos/?page_size=50");
+          const results = resp?.data?.results || [];
+          pagamento = results.find(
+            (p) =>
+              String(p.mercadopago_payment_id) === String(paymentId) ||
+              String(p.contrato?.id) === String(externalReference)
           );
         }
 
-        if (encontrado) {
-          if (encontrado.status === "aprovado") {
+        // 3️⃣ Atualiza a mensagem conforme o status
+        if (pagamento) {
+          const statusLocal = pagamento.status;
+          if (statusLocal === "aprovado") {
             setTipo("sucesso");
             setMsg("Pagamento aprovado com sucesso!");
             parar = true;
-            return; // para o polling; o useEffect acima fará o redirect
-          }
-          if (encontrado.status === "rejeitado") {
+            return;
+          } else if (statusLocal === "rejeitado") {
             setTipo("erro");
             setMsg("Pagamento rejeitado. Tente novamente ou entre em contato com o suporte.");
             parar = true;
             return;
+          } else {
+            setTipo("info");
+            setMsg("Aguardando confirmação do pagamento...");
           }
-
-          setTipo("info");
-          setMsg("Aguardando confirmação do pagamento...");
         } else {
           setTipo("info");
-          setMsg(
-            status === "approved"
-              ? "Processando pagamento aprovado..."
-              : "Aguardando confirmação do Mercado Pago..."
-          );
+          setMsg("Processando confirmação do Mercado Pago...");
         }
       } catch (error) {
         console.error("Erro ao verificar pagamento:", error);
-        // continua tentando mesmo com erro
       }
 
-      t += 1;
+      tentativas += 1;
 
-      if (t >= 30) { // ~60s
-        if (status === "approved") {
-          setTipo("sucesso");
-          setMsg("Pagamento processado! Redirecionando...");
-        } else {
-          setTipo("erro");
-          setMsg("Não foi possível confirmar o pagamento. Verifique seus contratos ou tente novamente.");
-        }
+      // 4️⃣ Para o loop após 3 minutos (60 tentativas × 3s)
+      if (tentativas >= 60) {
+        setTipo("erro");
+        setMsg("Tempo limite atingido. Verifique seus contratos manualmente.");
         parar = true;
         return;
       }
 
-      // Continua o polling se não parou
+      // 5️⃣ Continua o polling após 3 segundos
       if (!parar) {
-        setTimeout(tick, 2000);
+        setTimeout(verificarStatus, 3000);
       }
     }
 
-    // Inicia o polling
-    tick();
+    verificarStatus();
 
     // Cleanup
     return () => {
       parar = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentId, externalReference, status]);
+  }, [paymentId, externalReference]);
 
+  // Funções auxiliares de ícone e cor
   const getStatusIcon = () => {
     if (tipo === "sucesso") return "bi-check-circle-fill";
     if (tipo === "erro") return "bi-x-circle-fill";
@@ -148,10 +148,10 @@ export default function CheckoutRetorno() {
           {/* Mensagem principal */}
           <h2 className="status-title">{msg}</h2>
 
-          {/* Descrição adicional */}
+          {/* Descrições por estado */}
           {tipo === "info" && (
             <p className="status-description">
-              Estamos verificando seu pagamento com o Mercado Pago. 
+              Estamos verificando seu pagamento com o Mercado Pago.
               <br />
               Isso pode levar alguns segundos...
             </p>
@@ -171,16 +171,14 @@ export default function CheckoutRetorno() {
             </p>
           )}
 
-          {/* Loading spinner (apenas quando info) */}
-          {tipo === "info" && (
-            <div className="loading-spinner-large"></div>
-          )}
+          {/* Spinner de carregamento (somente quando info) */}
+          {tipo === "info" && <div className="loading-spinner-large"></div>}
 
-          {/* Botão de ação (apenas em erro) */}
+          {/* Botão de ação em caso de erro */}
           {tipo === "erro" && (
             <div className="action-buttons">
-              <button 
-                className="btn-voltar-contratos" 
+              <button
+                className="btn-voltar-contratos"
                 onClick={() => navigate("/contratos")}
               >
                 <i className="bi bi-arrow-left-circle"></i>
@@ -189,7 +187,7 @@ export default function CheckoutRetorno() {
             </div>
           )}
 
-          {/* Indicador de redirecionamento (apenas em sucesso) */}
+          {/* Indicador de redirecionamento (sucesso) */}
           {tipo === "sucesso" && (
             <div className="redirect-indicator">
               <div className="redirect-spinner"></div>
