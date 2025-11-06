@@ -11,8 +11,7 @@ export default function CheckoutRetorno() {
   // Params do Mercado Pago
   const qs = useMemo(() => new URLSearchParams(params), [params]);
   const paymentId = qs.get("payment_id") || qs.get("collection_id");
-  const status = qs.get("status");
-  const externalReference = qs.get("external_reference");
+  const externalReference = qs.get("external_reference"); // 🔹 removido "status"
 
   // Estados de exibição
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
@@ -30,7 +29,6 @@ export default function CheckoutRetorno() {
         // silencioso — o polling abaixo continuará tentando
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentId, externalReference]);
 
   // ✅ Redireciona automaticamente quando o pagamento é confirmado
@@ -38,7 +36,7 @@ export default function CheckoutRetorno() {
     if (tipo !== "sucesso") return;
     const t = setTimeout(() => {
       navigate("/contratos", { replace: true });
-    }, 2000); // 2s para o usuário ver a mensagem de sucesso
+    }, 2000);
     return () => clearTimeout(t);
   }, [tipo, navigate]);
 
@@ -53,17 +51,17 @@ export default function CheckoutRetorno() {
       try {
         let pagamento = null;
 
-        // 1️⃣ Tenta buscar diretamente pelo payment_id no endpoint de status
+        // 1️⃣ Busca direta no endpoint de status
         if (paymentId) {
           try {
             const res = await api.get(`/pagamentos/${paymentId}/status/`);
             pagamento = res.data;
-          } catch (err) {
-            // ignora erros de 404 ou sem registro ainda
+          } catch {
+            // ignora erros 404 enquanto o pagamento ainda não existe
           }
         }
 
-        // 2️⃣ Se ainda não encontrou, faz fallback buscando por external_reference
+        // 2️⃣ Fallback por external_reference
         if (!pagamento) {
           const resp = await api.get("/pagamentos/?page_size=50");
           const results = resp?.data?.results || [];
@@ -74,7 +72,7 @@ export default function CheckoutRetorno() {
           );
         }
 
-        // 3️⃣ Atualiza a mensagem conforme o status
+        // 3️⃣ Atualiza status na tela
         if (pagamento) {
           const statusLocal = pagamento.status;
           if (statusLocal === "aprovado") {
@@ -101,7 +99,7 @@ export default function CheckoutRetorno() {
 
       tentativas += 1;
 
-      // 4️⃣ Para o loop após 3 minutos (60 tentativas × 3s)
+      // 4️⃣ Timeout após 3 minutos
       if (tentativas >= 60) {
         setTipo("erro");
         setMsg("Tempo limite atingido. Verifique seus contratos manualmente.");
@@ -109,21 +107,15 @@ export default function CheckoutRetorno() {
         return;
       }
 
-      // 5️⃣ Continua o polling após 3 segundos
-      if (!parar) {
-        setTimeout(verificarStatus, 3000);
-      }
+      if (!parar) setTimeout(verificarStatus, 3000);
     }
 
     verificarStatus();
-
-    // Cleanup
     return () => {
       parar = true;
     };
   }, [paymentId, externalReference]);
 
-  // Funções auxiliares de ícone e cor
   const getStatusIcon = () => {
     if (tipo === "sucesso") return "bi-check-circle-fill";
     if (tipo === "erro") return "bi-x-circle-fill";
@@ -140,59 +132,52 @@ export default function CheckoutRetorno() {
     <div className="checkout-retorno-page">
       <div className="checkout-retorno-wrapper">
         <div className="checkout-retorno-box">
-          {/* Ícone de status */}
           <div className={`status-icon-wrapper ${getStatusClass()}`}>
             <i className={`bi ${getStatusIcon()}`}></i>
           </div>
 
-          {/* Mensagem principal */}
           <h2 className="status-title">{msg}</h2>
 
-          {/* Descrições por estado */}
           {tipo === "info" && (
-            <p className="status-description">
-              Estamos verificando seu pagamento com o Mercado Pago.
-              <br />
-              Isso pode levar alguns segundos...
-            </p>
+            <>
+              <p className="status-description">
+                Estamos verificando seu pagamento com o Mercado Pago.
+                <br />
+                Isso pode levar alguns segundos...
+              </p>
+              <div className="loading-spinner-large"></div>
+            </>
           )}
 
           {tipo === "sucesso" && (
-            <p className="status-description">
-              Você será redirecionado automaticamente para seus contratos.
-            </p>
+            <>
+              <p className="status-description">
+                Você será redirecionado automaticamente para seus contratos.
+              </p>
+              <div className="redirect-indicator">
+                <div className="redirect-spinner"></div>
+                <span>Redirecionando...</span>
+              </div>
+            </>
           )}
 
           {tipo === "erro" && (
-            <p className="status-description">
-              Caso tenha realizado o pagamento, ele pode estar sendo processado.
-              <br />
-              Verifique seus contratos em alguns minutos.
-            </p>
-          )}
-
-          {/* Spinner de carregamento (somente quando info) */}
-          {tipo === "info" && <div className="loading-spinner-large"></div>}
-
-          {/* Botão de ação em caso de erro */}
-          {tipo === "erro" && (
-            <div className="action-buttons">
-              <button
-                className="btn-voltar-contratos"
-                onClick={() => navigate("/contratos")}
-              >
-                <i className="bi bi-arrow-left-circle"></i>
-                Ir para contratos
-              </button>
-            </div>
-          )}
-
-          {/* Indicador de redirecionamento (sucesso) */}
-          {tipo === "sucesso" && (
-            <div className="redirect-indicator">
-              <div className="redirect-spinner"></div>
-              <span>Redirecionando...</span>
-            </div>
+            <>
+              <p className="status-description">
+                Caso tenha realizado o pagamento, ele pode estar sendo processado.
+                <br />
+                Verifique seus contratos em alguns minutos.
+              </p>
+              <div className="action-buttons">
+                <button
+                  className="btn-voltar-contratos"
+                  onClick={() => navigate("/contratos")}
+                >
+                  <i className="bi bi-arrow-left-circle"></i>
+                  Ir para contratos
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
