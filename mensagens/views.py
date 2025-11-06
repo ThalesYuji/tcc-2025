@@ -71,9 +71,9 @@ class MensagemViewSet(viewsets.ModelViewSet):
             enviar_notificacao(
                 usuario=mensagem.destinatario,
                 mensagem=texto_notificacao[:255],
-                link=f"/chat/{mensagem.contrato.id}",  # ✅ Agora leva direto ao chat
+                link=f"/contratos/{mensagem.contrato.id}/chat",  # ✅ Corrigido para rota real do React
             )
-
+            
         # Guarda o ID do contrato para o retorno pós-criação
         self._last_contrato = mensagem.contrato.id
 
