@@ -1,3 +1,4 @@
+// src/Componentes/Navbar.jsx
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -18,9 +19,11 @@ export default function Navbar() {
   const { usuarioLogado } = useContext(UsuarioContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const [menuAberto, setMenuAberto] = useState(false);
-  const menuRef = useRef();
 
+  const [menuAberto, setMenuAberto] = useState(false);
+  const menuRef = useRef(null);
+
+  // Fecha menu usuário ao clicar fora
   useEffect(() => {
     function handleClickFora(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -33,10 +36,8 @@ export default function Navbar() {
 
   if (!usuarioLogado) return null;
 
-  const rotaAtiva = (rota) =>
-    location.pathname === rota ? "nav-btn active" : "nav-btn";
+  const rotaAtiva = (rota) => (location.pathname === rota ? "nav-btn active" : "nav-btn");
 
-  // ✅ Foto de perfil (com fallback)
   const fotoPerfil =
     usuarioLogado?.foto_perfil && usuarioLogado.foto_perfil.trim() !== ""
       ? usuarioLogado.foto_perfil
@@ -47,7 +48,6 @@ export default function Navbar() {
     setMenuAberto(false);
   };
 
-  // ===================== JSX =====================
   return (
     <nav className="navbar">
       {/* Logo */}
@@ -58,11 +58,7 @@ export default function Navbar() {
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && navegarPara("/home")}
       >
-        <img
-          src="/profreelabr.png"
-          alt="Logo do ProFreelaBR"
-          className="logo-img"
-        />
+        <img src="/profreelabr.png" alt="Logo do ProFreelaBR" className="logo-img" />
       </div>
 
       {/* LINKS DE NAVEGAÇÃO */}
@@ -77,26 +73,18 @@ export default function Navbar() {
             <span>Trabalhos</span>
           </button>
 
-          {/* Propostas */}
-          {(usuarioLogado.tipo === "freelancer" ||
-            usuarioLogado.tipo === "contratante") && (
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/propostas")}
               className={rotaAtiva("/propostas")}
-              title={
-                usuarioLogado.tipo === "freelancer"
-                  ? "Minhas Propostas"
-                  : "Propostas Recebidas"
-              }
+              title={usuarioLogado.tipo === "freelancer" ? "Minhas Propostas" : "Propostas Recebidas"}
             >
               <FaFileAlt />
               <span>Propostas</span>
             </button>
           )}
 
-          {/* Contratos */}
-          {(usuarioLogado.tipo === "freelancer" ||
-            usuarioLogado.tipo === "contratante") && (
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/contratos")}
               className={rotaAtiva("/contratos")}
@@ -107,9 +95,7 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* Avaliações */}
-          {(usuarioLogado.tipo === "freelancer" ||
-            usuarioLogado.tipo === "contratante") && (
+          {(usuarioLogado.tipo === "freelancer" || usuarioLogado.tipo === "contratante") && (
             <button
               onClick={() => navegarPara("/avaliacoes")}
               className={rotaAtiva("/avaliacoes")}
@@ -120,7 +106,6 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* Denúncias */}
           {usuarioLogado.is_superuser ? (
             <button
               onClick={() => navegarPara("/painel-denuncias")}
@@ -158,9 +143,7 @@ export default function Navbar() {
               role="button"
               tabIndex={0}
               onClick={() => setMenuAberto(!menuAberto)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && setMenuAberto(!menuAberto)
-              }
+              onKeyDown={(e) => e.key === "Enter" && setMenuAberto(!menuAberto)}
             />
           ) : (
             <div
@@ -168,9 +151,7 @@ export default function Navbar() {
               role="button"
               tabIndex={0}
               onClick={() => setMenuAberto(!menuAberto)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && setMenuAberto(!menuAberto)
-              }
+              onKeyDown={(e) => e.key === "Enter" && setMenuAberto(!menuAberto)}
               title={usuarioLogado?.nome || usuarioLogado?.username}
             >
               {usuarioLogado?.nome
@@ -183,13 +164,7 @@ export default function Navbar() {
             <div className="menu-dropdown">
               <div className="usuario-nome">
                 {usuarioLogado?.nome || usuarioLogado?.username}
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    opacity: "0.7",
-                    fontWeight: "400",
-                  }}
-                >
+                <div style={{ fontSize: "0.8rem", opacity: 0.7, fontWeight: 400 }}>
                   {usuarioLogado?.tipo === "freelancer"
                     ? "Freelancer"
                     : usuarioLogado?.tipo === "contratante"

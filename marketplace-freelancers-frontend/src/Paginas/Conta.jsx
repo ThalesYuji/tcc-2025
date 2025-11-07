@@ -1,4 +1,10 @@
-// src/Paginas/Conta.jsx - Redesign Moderno e Limpo
+// src/Paginas/Conta.jsx
+// Versão simplificada: sem "Modo Foco" (removido), mantendo:
+// - Perfil (editar nome/telefone/bio/foto)
+// - Avaliações recebidas (freelancer)
+// - Segurança (alterar senha)
+// - Zona de perigo (excluir conta + modal acessível)
+
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -6,6 +12,8 @@ import "../styles/Conta.css";
 
 export default function Conta() {
   const { usuarioLogado, setUsuarioLogado } = useContext(UsuarioContext);
+
+  // ------------------------ Estado do Perfil ------------------------
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
     nome: usuarioLogado?.nome || "",
@@ -17,17 +25,20 @@ export default function Conta() {
   const [feedback, setFeedback] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  // Avaliações (somente para freelancer)
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(usuarioLogado?.nota_media);
 
-  // Exclusão de conta
+  // --------------------- Exclusão de Conta (Modal) ------------------
   const [showModalExcluir, setShowModalExcluir] = useState(false);
   const [senhaExcluir, setSenhaExcluir] = useState("");
   const [excluindo, setExcluindo] = useState(false);
   const [feedbackExcluir, setFeedbackExcluir] = useState("");
   const [erroExcluir, setErroExcluir] = useState("");
+  const modalRef = useRef(null); // acessibilidade do modal
 
-  // Troca de senha
+  // ---------------------- Troca de Senha ----------------------------
   const [exibirTrocaSenha, setExibirTrocaSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -35,45 +46,16 @@ export default function Conta() {
   const [erroSenha, setErroSenha] = useState("");
   const [carregandoSenha, setCarregandoSenha] = useState(false);
 
+  // Arquivo de foto
   const fileInputRef = useRef(null);
 
-  function formatarTelefone(valor) {
-    if (!valor) return "";
-    let numeros = valor.replace(/\D/g, "");
-    if (numeros.length > 11) numeros = numeros.slice(0, 11);
-    if (numeros.length > 10) return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
-    if (numeros.length > 6) return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
-    if (numeros.length > 2) return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-    return numeros.replace(/^(\d*)/, "($1");
-  }
-
-  // eslint-disable-next-line no-unused-vars
-  function formatarCPF(valor) {
-    if (!valor) return "";
-    let numeros = valor.replace(/\D/g, "");
-    if (numeros.length <= 11) {
-      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    }
-    return valor;
-  }
-
-  // eslint-disable-next-line no-unused-vars
-  function formatarCNPJ(valor) {
-    if (!valor) return "";
-    let numeros = valor.replace(/\D/g, "");
-    if (numeros.length <= 14) {
-      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-    }
-    return valor;
-  }
-
+  // ---------------------- Buscar Avaliações -------------------------
   useEffect(() => {
     async function buscarAvaliacoes() {
       try {
-        // ✅ Usa o endpoint certo: somente avaliações RECEBIDAS por este usuário
+        // Endpoint específico (se existir)
         const resp = await api.get(`/usuarios/${usuarioLogado.id}/avaliacoes_publicas/`);
         const recebidas = Array.isArray(resp.data) ? resp.data : [];
-
         setAvaliacoes(recebidas);
 
         if (recebidas.length > 0) {
@@ -84,8 +66,8 @@ export default function Conta() {
         } else {
           setNotaMedia(null);
         }
-      } catch (e) {
-        // fallback defensivo em caso de serializer que retorne apenas IDs
+      } catch {
+        // Fallback: busca geral e filtra
         try {
           const respAll = await api.get("/avaliacoes/");
           const recebidas2 = (Array.isArray(respAll.data) ? respAll.data : []).filter(
@@ -112,6 +94,46 @@ export default function Conta() {
     if (usuarioLogado) buscarAvaliacoes();
   }, [usuarioLogado]);
 
+  // --------------- Travar rolagem ao abrir o modal ------------------
+  useEffect(() => {
+    if (showModalExcluir) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [showModalExcluir]);
+
+  // --------- Acessibilidade: trap de foco dentro do modal -----------
+  useEffect(() => {
+    if (!showModalExcluir || !modalRef.current) return;
+
+    const focusables = modalRef.current.querySelectorAll(
+      'button, [href], input, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+
+    first?.focus();
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        setShowModalExcluir(false);
+      }
+      if (e.key === "Tab" && focusables.length) {
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showModalExcluir]);
+
+  // ------------------------- Handlers Perfil ------------------------
   function handleEditar() {
     setEditando(true);
     setForm({
@@ -151,13 +173,6 @@ export default function Conta() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function getPreviewFoto(usuario) {
-    const foto = usuario?.foto_perfil;
-    // Agora a API devolve URL absoluta (Cloudinary). Se não houver, usa ícone local.
-    if (foto && typeof foto === "string" && foto.trim() !== "") return foto;
-    return "/icone-usuario.png";
-  }
-
   async function handleSalvar(e) {
     e.preventDefault();
     setCarregando(true);
@@ -178,7 +193,7 @@ export default function Conta() {
         nome: resp.data.nome,
         telefone: resp.data.telefone,
         bio: resp.data.bio,
-        foto_perfil: resp.data.foto_perfil, // já é absoluta
+        foto_perfil: resp.data.foto_perfil,
       }));
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
@@ -201,6 +216,7 @@ export default function Conta() {
     setCarregando(false);
   }
 
+  // ------------------------- Troca de Senha -------------------------
   async function handleTrocarSenha(e) {
     e.preventDefault();
     setCarregandoSenha(true);
@@ -237,13 +253,13 @@ export default function Conta() {
     setCarregandoSenha(false);
   }
 
+  // -------------------------- Excluir Conta -------------------------
   async function handleExcluirConta(e) {
     e.preventDefault();
     setExcluindo(true);
     setErroExcluir("");
     setFeedbackExcluir("");
     try {
-
       const resp = await api.post('/usuarios/me/excluir_conta/', { senha: senhaExcluir });
       setFeedbackExcluir(resp.data.mensagem || "Conta excluída com sucesso.");
       setTimeout(() => {
@@ -269,6 +285,7 @@ export default function Conta() {
 
   if (!usuarioLogado) return null;
 
+  // ----------------------------- JSX -------------------------------
   return (
     <div className="conta-page">
       <div className="conta-container">
@@ -277,15 +294,16 @@ export default function Conta() {
           <div className="profile-banner">
             <div className="banner-gradient"></div>
           </div>
-          
+
           <div className="profile-header-content">
+            {/* Avatar + botão alterar foto */}
             <div className="profile-avatar-wrapper">
               <div className="avatar-ring">
                 <img src={previewFoto} alt="Foto de perfil" className="profile-avatar-large" />
               </div>
               {editando && (
-                <button 
-                  className="avatar-edit-btn" 
+                <button
+                  className="avatar-edit-btn"
                   onClick={() => fileInputRef.current?.click()}
                   title="Alterar foto"
                 >
@@ -302,6 +320,7 @@ export default function Conta() {
               />
             </div>
 
+            {/* Nome, e-mail e badges */}
             <div className="profile-info-header">
               <h1 className="profile-name">{usuarioLogado.nome}</h1>
               <p className="profile-email">{usuarioLogado.email}</p>
@@ -319,6 +338,7 @@ export default function Conta() {
               </div>
             </div>
 
+            {/* Ação rápida: abrir perfil público em nova aba */}
             <div className="profile-actions-header">
               <button
                 className="btn-secondary-outline"
@@ -338,7 +358,7 @@ export default function Conta() {
             <span>{feedback}</span>
           </div>
         )}
-        
+
         {erro && (
           <div className="alert alert-error">
             <i className="bi bi-exclamation-circle-fill"></i>
@@ -346,7 +366,7 @@ export default function Conta() {
           </div>
         )}
 
-        {/* Layout em grid */}
+        {/* Grid principal */}
         <div className="conta-grid">
           {/* Coluna Esquerda - Informações principais */}
           <div className="conta-main-column">
@@ -379,7 +399,7 @@ export default function Conta() {
                           required
                         />
                       </div>
-                      
+
                       <div className="form-field">
                         <label>Telefone</label>
                         <input
@@ -445,7 +465,7 @@ export default function Conta() {
                         <i className="bi bi-phone"></i>
                         Telefone
                       </span>
-                      <span className="info-value">{formatarTelefone(usuarioLogado.telefone)}</span>
+                      <span className="info-value">{formatarTelefone(usuarioLogado.telefone || "")}</span>
                     </div>
                     <div className="info-row">
                       <span className="info-label">
@@ -477,7 +497,7 @@ export default function Conta() {
               </div>
             </div>
 
-            {/* Card de Avaliações */}
+            {/* Card de Avaliações (só para freelancer) */}
             {usuarioLogado.tipo === 'freelancer' && (
               <div className="card">
                 <div className="card-header-simple">
@@ -521,10 +541,9 @@ export default function Conta() {
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* Coluna Direita - Configurações e ações */}
+          {/* Coluna Direita - Segurança e Zona de Perigo */}
           <div className="conta-sidebar-column">
             {/* Card de Segurança */}
             <div className="card">
@@ -626,22 +645,37 @@ export default function Conta() {
                 </button>
               </div>
             </div>
-
           </div>
         </div>
 
         {/* Modal de Exclusão */}
         {showModalExcluir && (
-          <div className="modal-overlay" onClick={() => setShowModalExcluir(false)}>
-            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-overlay"
+            aria-hidden="false"
+            onClick={() => setShowModalExcluir(false)}
+          >
+            <div
+              className="modal-box"
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="excluirTitulo"
+              aria-describedby="excluirDescricao"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="modal-header">
-                <h3>Confirmar Exclusão</h3>
-                <button className="modal-close-btn" onClick={() => setShowModalExcluir(false)}>
+                <h3 id="excluirTitulo">Confirmar Exclusão</h3>
+                <button
+                  className="modal-close-btn"
+                  aria-label="Fechar modal"
+                  onClick={() => setShowModalExcluir(false)}
+                >
                   <i className="bi bi-x-lg"></i>
                 </button>
               </div>
               <div className="modal-content">
-                <div className="warning-box">
+                <div className="warning-box" id="excluirDescricao">
                   <i className="bi bi-exclamation-triangle-fill"></i>
                   <p>Esta ação é <strong>irreversível</strong>. Todos os seus dados serão permanentemente excluídos.</p>
                 </div>
@@ -701,4 +735,44 @@ export default function Conta() {
       </div>
     </div>
   );
+}
+
+/* ===================== Helpers locais ===================== */
+
+// Foto de perfil ou placeholder
+function getPreviewFoto(usuario) {
+  const foto = usuario?.foto_perfil;
+  if (foto && typeof foto === "string" && foto.trim() !== "") return foto;
+  return "/icone-usuario.png";
+}
+
+// Formata telefone (BR)
+function formatarTelefone(valor) {
+  if (!valor) return "";
+  let numeros = valor.replace(/\D/g, "");
+  if (numeros.length > 11) numeros = numeros.slice(0, 11);
+  if (numeros.length > 10) return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+  if (numeros.length > 6)  return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+  if (numeros.length > 2)  return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+  return numeros.replace(/^(\d*)/, "($1");
+}
+
+// Formata CPF (###.###.###-##)
+function formatarCPF(valor) {
+  if (!valor) return "";
+  let numeros = String(valor).replace(/\D/g, "");
+  if (numeros.length <= 11) {
+    return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+  return valor;
+}
+
+// Formata CNPJ (##.###.###/####-##)
+function formatarCNPJ(valor) {
+  if (!valor) return "";
+  let numeros = String(valor).replace(/\D/g, "");
+  if (numeros.length <= 14) {
+    return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  }
+  return valor;
 }

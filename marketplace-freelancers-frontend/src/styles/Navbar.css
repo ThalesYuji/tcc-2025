@@ -31,7 +31,7 @@
 
 .nav-brand:hover {
   transform: scale(1.02);
-  background: var(--superficie-hover);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .logo-img {
@@ -58,14 +58,8 @@
 }
 
 /* ==============================
-   ÁREA DIREITA - NOTIFICAÇÕES E USUÁRIO
+   BOTÕES DE NAVEGAÇÃO
    ============================== */
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
 .nav-btn {
   display: flex;
   align-items: center;
@@ -127,14 +121,60 @@
 }
 
 /* ==============================
-   MENU USUÁRIO
+   CHIP DO MODO FOCO
    ============================== */
-.menu-usuario {
-  position: relative;
+.focus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+  color: #60A5FA;
+  box-shadow: var(--sombra-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+  white-space: nowrap;
+}
+
+.focus-chip:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+
+.focus-chip i {
+  font-size: 1rem;
+}
+
+.focus-timer {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.focus-manage-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: 0.25rem;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  color: #60A5FA;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.focus-manage-btn:hover {
+  opacity: 0.8;
 }
 
 /* ==============================
-   COMPONENTE NOTIFICAÇÕES - ALINHAMENTO
+   BOTÕES DE AÇÃO (NOTIFICAÇÕES)
    ============================== */
 .nav-actions .notificacoes-dropdown {
   display: flex;
@@ -143,7 +183,7 @@
 }
 
 .nav-actions .notificacoes-btn,
-.nav-actions button {
+.nav-actions button:not(.focus-manage-btn):not(.menu-dropdown button) {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -160,7 +200,7 @@
 }
 
 .nav-actions .notificacoes-btn:hover,
-.nav-actions button:hover {
+.nav-actions button:not(.focus-manage-btn):not(.menu-dropdown button):hover {
   background: rgba(255, 255, 255, 0.1);
   color: white;
   transform: scale(1.05);
@@ -171,7 +211,7 @@
   height: 48px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
-  border: 2px solid var(--borda-light);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   object-fit: cover;
   transition: all var(--transition-normal);
@@ -374,7 +414,7 @@
   }
   
   .menu-usuario {
-    margin-left: var(--space-md);
+    margin-left: var(--space-sm);
   }
   
   .menu-dropdown {
@@ -417,16 +457,6 @@
    ESTADOS ESPECIAIS
    ============================== */
 .navbar.scrolled {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(30, 41, 59, 0.95);
   backdrop-filter: blur(10px);
-}
-
-.nav-btn:focus {
-  outline: 2px solid var(--cor-primaria);
-  outline-offset: 2px;
-}
-
-.avatar:focus {
-  outline: 2px solid var(--cor-primaria);
-  outline-offset: 4px;
 }
