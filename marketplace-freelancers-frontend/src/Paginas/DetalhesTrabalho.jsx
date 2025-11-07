@@ -1,4 +1,4 @@
-// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA COM REENVIO (até 3 envios)
+// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA COM MODAL REDESENHADO
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
@@ -71,11 +71,9 @@ export default function DetalhesTrabalho() {
 
         // Busca propostas do usuário e filtra por este trabalho
         if (user) {
-          // Preferir filtro server-side (?trabalho=ID)
           const propsResp = await api
             .get(`/propostas/`, { params: { trabalho: id } })
             .catch(async () => {
-              // fallback: pega todas e filtra no front
               const all = await api.get(`/propostas/`);
               return { data: all.data };
             });
@@ -86,7 +84,6 @@ export default function DetalhesTrabalho() {
             (p) => p.trabalho === Number(id) || p.trabalho?.id === Number(id)
           );
 
-          // Ordena por data_envio desc
           somenteEsteTrabalho.sort(
             (a, b) => new Date(b.data_envio) - new Date(a.data_envio)
           );
@@ -123,20 +120,16 @@ export default function DetalhesTrabalho() {
     };
   }, [minhasPropostas]);
 
-  // Permissões de ação do usuário
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
     (usuarioLogado.id === trabalho.contratante_id || usuarioLogado.is_superuser);
 
-  // Regra de enviar proposta com limite + status do trabalho
   const podeEnviarProposta = useMemo(() => {
     if (!usuarioLogado || usuarioLogado.tipo !== "freelancer") return false;
     if (!trabalho || trabalho.status !== "aberto" || trabalho.is_privado) return false;
     if (existePendenteOuAceita) return false;
-    // Primeira proposta:
     if (totalEnvios === 0) return true;
-    // Reenvio: só se última foi recusada e sobrar tentativa
     return isReenvioElegivel;
   }, [usuarioLogado, trabalho, existePendenteOuAceita, totalEnvios, isReenvioElegivel]);
 
@@ -168,7 +161,6 @@ export default function DetalhesTrabalho() {
   }
 
   // =================== AÇÕES ===================
-  // Excluir trabalho
   const handleDelete = async () => {
     setExcluindo(true);
     try {
@@ -182,7 +174,6 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // Abrir modal de proposta
   const abrirFormProposta = () => {
     setForm({ descricao: "", valor: "", prazo_estimado: "" });
     setMotivoRevisao("");
@@ -190,7 +181,6 @@ export default function DetalhesTrabalho() {
     setShowForm(true);
   };
 
-  // Enviar proposta (com suporte a reenvio e motivo_revisao)
   const enviarProposta = async (e) => {
     e.preventDefault();
     setFormErro("");
@@ -236,7 +226,6 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // Aceitar / Recusar (trabalhos privados)
   const aceitarTrabalho = async () => {
     try {
       await api.post(`/trabalhos/${trabalho.id}/aceitar/`);
@@ -300,7 +289,6 @@ export default function DetalhesTrabalho() {
     );
   }
 
-  // Ícone do alerta
   const getAlertaIcon = () => {
     if (!alerta) return "bi-info-circle-fill";
     if (alerta.tipo === "sucesso") return "bi-check-circle-fill";
@@ -367,7 +355,7 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* MODAL DE PROPOSTA (com motivo de revisão em reenvio) */}
+      {/* MODAL DE PROPOSTA - DESIGN COMPACTO */}
       {showForm && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
@@ -412,7 +400,7 @@ export default function DetalhesTrabalho() {
                 </div>
               )}
 
-              {/* Grid 2 colunas - Descrição */}
+              {/* Descrição - ocupa toda largura */}
               <div className="form-group-full">
                 <label htmlFor="descricao">
                   <i className="bi bi-file-text"></i>
@@ -429,7 +417,7 @@ export default function DetalhesTrabalho() {
                 />
               </div>
 
-              {/* Grid 2 colunas - Valor e Prazo */}
+              {/* Grid 2 colunas - Valor e Prazo lado a lado */}
               <div className="proposta-form-grid">
                 <div className="form-group-compact">
                   <label htmlFor="valor">
