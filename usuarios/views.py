@@ -1,3 +1,5 @@
+# usuarios/views.py
+
 # 🔹 Bibliotecas padrão Python
 import threading
 import time
@@ -52,11 +54,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - /usuarios/me/alterar_senha/ (POST)
     - /usuarios/me/excluir_conta/ (POST)
     - /usuarios/me/resumo/ (GET)
-    - /usuarios/me/modo_foco/ativar (POST)
-    - /usuarios/me/modo_foco/desativar (POST)
     """
     serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.all().order_by("-id")  # ✅ ordenação global adicionada
+    queryset = Usuario.objects.all().order_by("-id")  # ✅ ordenação global
 
     def get_permissions(self):
         if self.action == "create":
@@ -68,7 +68,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         elif self.action in [
             "update", "partial_update", "destroy",
             "alterar_senha_me", "excluir_conta_me", "resumo",
-            "modo_foco_ativar", "modo_foco_desativar",
         ]:
             return [IsAuthenticated(), PermissaoUsuario()]
         return [IsAuthenticated()]
@@ -216,9 +215,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     # ------------------ ALTERAR SENHA (ME) ------------------
     @action(detail=False, methods=["post"], url_path="me/alterar_senha", permission_classes=[IsAuthenticated])
     def alterar_senha_me(self, request):
-        """
-        Troca a senha do usuário logado (não depende de {id} nem de get_queryset()).
-        """
+        """Troca a senha do usuário logado (não depende de {id})."""
         serializer = TrocaSenhaSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -245,10 +242,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if not user.check_password(senha):
             return Response({"erro": "Senha incorreta."}, status=400)
 
-        # (Opcional) verificação de vínculos críticos antes de excluir
-        # Ex.: contratos ativos, propostas pendentes etc. -> retornar 409 com motivo.
-
-        # Notifica e exclui
         enviar_notificacao(usuario=user, mensagem="Sua conta foi excluída com sucesso.", link="/")
         user.delete()
         return Response({"mensagem": "Conta excluída com sucesso!"}, status=200)
@@ -267,77 +260,36 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         # 🔹 Importa localmente para evitar dependências circulares
         from denuncias.models import Denuncia
 
-        # ================================
-        # 🔸 PROPOSTAS
-        # ================================
+        # ----- PROPOSTAS -----
         if user.tipo == "freelancer":
             propostas = Proposta.objects.filter(freelancer=user)
             resumo["enviadas"] = propostas.count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
             resumo["recusadas"] = propostas.filter(status="recusada").count()
-
         elif user.tipo == "contratante":
             propostas = Proposta.objects.filter(trabalho__contratante=user)
             resumo["recebidas"] = propostas.count()
             resumo["pendentes"] = propostas.filter(status="pendente").count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
 
-        # ================================
-        # 🔸 AVALIAÇÕES
-        # ================================
+        # ----- AVALIAÇÕES -----
         avaliacoes_recebidas = Avaliacao.objects.filter(avaliado=user)
         avaliacoes_enviadas = Avaliacao.objects.filter(avaliador=user)
 
         resumo["avaliacoesRecebidas"] = avaliacoes_recebidas.count()
         resumo["avaliacoesEnviadas"] = avaliacoes_enviadas.count()
 
-        # Média apenas das avaliações recebidas
         resumo["mediaAvaliacao"] = (
             round(sum(a.nota for a in avaliacoes_recebidas) / avaliacoes_recebidas.count(), 2)
             if avaliacoes_recebidas.exists()
             else None
         )
 
-        # ================================
-        # 🔸 DENÚNCIAS
-        # ================================
+        # ----- DENÚNCIAS -----
         resumo["denunciasEnviadas"] = Denuncia.objects.filter(denunciante=user).count()
         resumo["denunciasRecebidas"] = Denuncia.objects.filter(denunciado=user).count()
 
-        # 🔕 Estado atual do Modo Foco (derivado do flag de e-mail)
-        resumo["modoFocoAtivo"] = (user.notificacao_email is False)
-
         return Response(resumo)
-
-    # ------------------ MODO FOCO (silenciar notificações por e-mail) ------------------
-    @action(detail=False, methods=["post"], url_path="me/modo_foco/ativar", permission_classes=[IsAuthenticated])
-    def modo_foco_ativar(self, request):
-        """
-        Ativa o Modo Foco para o usuário logado.
-        Implementação: desativa notificações por e-mail (notificacao_email=False).
-        """
-        user = request.user
-        if user.notificacao_email is False:
-            return Response({"mensagem": "Modo Foco já estava ativo.", "modoFocoAtivo": True}, status=200)
-
-        user.notificacao_email = False
-        user.save(update_fields=["notificacao_email"])
-        # ⚠️ Não envia notificação por e-mail propositadamente (evitar ruído)
-        return Response({"mensagem": "Modo Foco ativado. Você não receberá e-mails de notificação.", "modoFocoAtivo": True}, status=200)
-
-    @action(detail=False, methods=["post"], url_path="me/modo_foco/desativar", permission_classes=[IsAuthenticated])
-    def modo_foco_desativar(self, request):
-        """
-        Desativa o Modo Foco para o usuário logado.
-        Implementação: reativa notificações por e-mail (notificacao_email=True).
-        """
-        user = request.user
-        if user.notificacao_email is True:
-            return Response({"mensagem": "Modo Foco já estava desativado.", "modoFocoAtivo": False}, status=200)
-
-        user.notificacao_email = True
-        user.save(update_fields=["notificacao_email"])
-        return Response({"mensagem": "Modo Foco desativado. Você voltará a receber e-mails de notificação.", "modoFocoAtivo": False}, status=200)
 
 
 # ------------------ USUÁRIO LOGADO ------------------
@@ -358,8 +310,7 @@ class UsuarioMeAPIView(APIView):
         return Response(serializer.errors, status=400)
 
 
-# ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA E OTIMIZADA) ------------------
-# 🔹 Função auxiliar: executa o envio em segundo plano
+# ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA) ------------------
 def enviar_email_async(destinatario, assunto, corpo_texto, corpo_html):
     """Executa o envio do e-mail de redefinição em uma thread separada."""
     try:
@@ -387,13 +338,11 @@ class PasswordResetRequestView(APIView):
             user = None
 
         if user:
-            # 🔹 Gera link seguro com token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
             reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
 
-            # 🔹 Prepara contexto e renderiza templates
             context = {
                 "user": user,
                 "reset_link": reset_link,
@@ -404,11 +353,9 @@ class PasswordResetRequestView(APIView):
             text_body = render_to_string("emails/password_reset.txt", context)
             html_body = render_to_string("emails/password_reset.html", context)
 
-            # 🔹 Logs no console
             print("📧 Iniciando envio de e-mail para:", user.email)
             print("🔗 Link de redefinição:", reset_link)
 
-            # 🔹 Executa envio assíncrono via SendGrid API
             threading.Thread(
                 target=enviar_email_async,
                 args=(user.email, subject, text_body, html_body),
@@ -418,9 +365,7 @@ class PasswordResetRequestView(APIView):
             print(f"⚠️ E-mail {email} não encontrado — nenhuma ação tomada.")
 
         return Response(
-            {
-                "detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."
-            },
+            {"detail": "Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha."},
             status=status.HTTP_200_OK,
         )
 
@@ -442,23 +387,14 @@ class PasswordResetConfirmView(APIView):
             user = Usuario.objects.get(pk=uid_int)
         except Exception:
             print("❌ [ERRO] UID inválido ou não encontrado.")
-            return Response(
-                {"detail": "Link inválido ou expirado."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Link inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not default_token_generator.check_token(user, token):
             print("❌ [ERRO] Token inválido ou expirado.")
-            return Response(
-                {"detail": "Token inválido ou expirado."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Token inválido ou expirado."}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(new_password)
         user.save()
         print(f"🔑 Senha redefinida com sucesso para o usuário {user.email}")
 
-        return Response(
-            {"detail": "Senha redefinida com sucesso."},
-            status=status.HTTP_200_OK
-        )
+        return Response({"detail": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)

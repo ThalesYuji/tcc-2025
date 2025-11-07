@@ -1,14 +1,11 @@
+# usuarios/serializers.py
 from rest_framework import serializers
 import re
 from django.conf import settings
-from django.utils.encoding import force_str, force_bytes
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.contrib.auth.tokens import default_token_generator
 
 from .models import Usuario
 from notificacoes.models import Notificacao
 from avaliacoes.models import Avaliacao
-from trabalhos.models import Trabalho
 from contratos.models import Contrato
 
 # 🔹 Service real para CPF/CNPJ
@@ -22,7 +19,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
     - Valida unicidade e formato
     - Força senha forte
     - Retorna foto_perfil com URL absoluta
-    - 🔒 Torna 'status' (Modo Foco) somente leitura — controlado por endpoints próprios
     """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
@@ -40,7 +36,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = '__all__'
         # 🔒 Evita alterar campos sensíveis por PATCH genérico
-        read_only_fields = ('status', 'is_active', 'is_staff', 'is_superuser', 'last_login')
+        read_only_fields = ('is_active', 'is_staff', 'is_superuser', 'last_login')
 
     # --------------------- Representação (saída) ---------------------
     def to_representation(self, instance):
@@ -128,7 +124,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
     # --------------------- Criação / Atualização ---------------------
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        # Não permitimos setar estes campos via payload
         validated_data.pop('groups', None)
         validated_data.pop('user_permissions', None)
         validated_data['is_active'] = True
@@ -212,7 +207,7 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 
 class UsuarioPublicoSerializer(serializers.ModelSerializer):
     """
-    Dados públicos do perfil — agora com estatísticas adicionais.
+    Dados públicos do perfil — com estatísticas adicionais.
     """
     nota_media = serializers.SerializerMethodField()
     trabalhos_publicados = serializers.SerializerMethodField()
@@ -231,7 +226,7 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
             "denuncias_enviadas", "denuncias_recebidas"
         ]
 
-    # Garante URL absoluta da foto
+    # URL absoluta da foto
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')

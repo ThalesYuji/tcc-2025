@@ -1,3 +1,4 @@
+# usuarios/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from cloudinary_storage.storage import MediaCloudinaryStorage
@@ -34,19 +35,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     """
     Modelo de usuário unificado do sistema.
     Tipos possíveis: freelancer, contratante.
-    Agora com suporte ao Modo Foco via campo 'status'.
     """
+
     # ---- Tipos de usuário
     TIPO_USUARIO = (
         ('freelancer', 'Freelancer'),
         ('contratante', 'Contratante'),
-    )
-
-    # ---- Status de disponibilidade/visibilidade
-    STATUS_USUARIO = (
-        ('ativo', 'Ativo'),          # funcionamento completo
-        ('foco', 'Modo Foco'),       # oculta em buscas, bloqueia novas propostas, mantém chat em contratos ativos
-        ('desativado', 'Desativado') # reservado para futura “desativação de conta”
     )
 
     # ========= Dados principais =========
@@ -71,19 +65,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     notificacao_email = models.BooleanField(default=True)
     bio = models.TextField(blank=True, null=True)
 
-    # ========= Disponibilidade / visibilidade =========
-    # ⚠️ Não confundir com is_active do Django.
-    # Este 'status' controla regras de negócio (busca, propostas, notificações).
-    status = models.CharField(
-        max_length=12,
-        choices=STATUS_USUARIO,
-        default='ativo',
-        db_index=True,  # ajuda nos filtros frequentes
-    )
-
     # ========= Permissões do Django =========
-    is_active = models.BooleanField(default=True)  # controla login pelo Django
-    is_staff = models.BooleanField(default=False)  # acesso ao admin
+    is_active = models.BooleanField(default=True)   # controla login pelo Django
+    is_staff = models.BooleanField(default=False)   # acesso ao admin
 
     # ========= Gerenciador customizado =========
     objects = UsuarioManager()
@@ -91,22 +75,6 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     # ========= Campos obrigatórios =========
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nome', 'tipo', 'cpf', 'telefone']
-
-    # ========= Helpers de domínio (qualidade de vida) =========
-    @property
-    def is_ativo(self) -> bool:
-        """Retorna True se o usuário está em operação completa."""
-        return self.status == 'ativo'
-
-    @property
-    def em_foco(self) -> bool:
-        """Retorna True se o usuário está em Modo Foco."""
-        return self.status == 'foco'
-
-    @property
-    def desativado(self) -> bool:
-        """Retorna True se o usuário está desativado (uso futuro)."""
-        return self.status == 'desativado'
 
     # ========= Representações =========
     def __str__(self):
