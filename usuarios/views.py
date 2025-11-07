@@ -53,6 +53,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - /usuarios/{id}/metricas_performance/
     - /usuarios/me/alterar_senha/ (POST)
     - /usuarios/me/excluir_conta/ (POST)
+    - /usuarios/me/desativar/ (POST)   ← novo
+    - /usuarios/me/reativar/  (POST)   ← novo
     - /usuarios/me/resumo/ (GET)
     """
     serializer_class = UsuarioSerializer
@@ -68,15 +70,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         elif self.action in [
             "update", "partial_update", "destroy",
             "alterar_senha_me", "excluir_conta_me", "resumo",
+            "desativar_me", "reativar_me",   # ← novos endpoints "me"
         ]:
-            return [IsAuthenticated(), PermissaoUsuario()]
+            # Para ações "me/*", não precisamos checar PermissaoUsuario por ID.
+            # Mantemos PermissaoUsuario para update/destroy por ID.
+            if self.action in ["update", "partial_update", "destroy"]:
+                return [IsAuthenticated(), PermissaoUsuario()]
+            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
         """
         Regras de visibilidade de usuários conforme tipo:
         - superuser: todos (com filtro opcional ?tipo=)
-        - contratante: vê apenas freelancers
+        - contratante: vê apenas freelancers **ativos** (não desativados)
         - freelancer: vê apenas a si mesmo
         """
         user = self.request.user
@@ -89,7 +96,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return queryset
 
         if getattr(user, "tipo", None) == "contratante":
-            return Usuario.objects.filter(tipo="freelancer").order_by("-id")
+            # Oculta perfis em modo leitura (desativados) das listagens públicas
+            return Usuario.objects.filter(tipo="freelancer", is_suspended_self=False).order_by("-id")
 
         if getattr(user, "tipo", None) == "freelancer":
             return Usuario.objects.filter(id=user.id).order_by("-id")
@@ -246,6 +254,43 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         user.delete()
         return Response({"mensagem": "Conta excluída com sucesso!"}, status=200)
 
+    # ------------------ DESATIVAR CONTA (ME) — modo leitura ------------------
+    @action(detail=False, methods=["post"], url_path="me/desativar", permission_classes=[IsAuthenticated])
+    def desativar_me(self, request):
+        """
+        Desativa a conta do usuário logado (modo leitura).
+        - Mantém login funcionando
+        - Bloqueia ações de escrita (via middleware e validações)
+        """
+        motivo = request.data.get("motivo") or None
+        user: Usuario = request.user
+        if user.is_suspended_self:
+            return Response({"mensagem": "Sua conta já está desativada."}, status=200)
+
+        user.desativar(motivo=motivo)
+        enviar_notificacao(
+            usuario=user,
+            mensagem="Sua conta foi desativada. Você pode navegar normalmente, porém não poderá realizar ações até reativar.",
+            link="/minha-conta",
+        )
+        return Response({"mensagem": "Conta desativada. Você está em modo leitura."}, status=200)
+
+    # ------------------ REATIVAR CONTA (ME) ------------------
+    @action(detail=False, methods=["post"], url_path="me/reativar", permission_classes=[IsAuthenticated])
+    def reativar_me(self, request):
+        """Reativa a conta do usuário logado (sai do modo leitura)."""
+        user: Usuario = request.user
+        if not user.is_suspended_self:
+            return Response({"mensagem": "Sua conta já está ativa."}, status=200)
+
+        user.reativar()
+        enviar_notificacao(
+            usuario=user,
+            mensagem="Sua conta foi reativada com sucesso.",
+            link="/minha-conta",
+        )
+        return Response({"mensagem": "Conta reativada com sucesso."}, status=200)
+
     # ------------------ RESUMO ------------------
     @action(detail=False, methods=["get"], url_path="me/resumo")
     def resumo(self, request):
@@ -312,7 +357,7 @@ class UsuarioMeAPIView(APIView):
 
 # ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA) ------------------
 def enviar_email_async(destinatario, assunto, corpo_texto, corpo_html):
-    """Executa o envio do e-mail de redefinição em uma thread separada."""
+    """Executa o envio de e-mail de redefinição em uma thread separada."""
     try:
         print("🚀 [THREAD] Iniciando envio de e-mail de redefinição...")
         inicio = time.time()

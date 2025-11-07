@@ -19,6 +19,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     - Valida unicidade e formato
     - Força senha forte
     - Retorna foto_perfil com URL absoluta
+    - Exponde status de desativação (somente leitura)
     """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
@@ -32,21 +33,33 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
+    # 🔎 Conveniência: flag derivada para o front (true quando em modo leitura)
+    modo_leitura = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Usuario
         fields = '__all__'
-        # 🔒 Evita alterar campos sensíveis por PATCH genérico
-        read_only_fields = ('is_active', 'is_staff', 'is_superuser', 'last_login')
+        # 🔒 Campos que nunca devem ser alterados via PATCH/PUT genérico
+        read_only_fields = (
+            'is_active', 'is_staff', 'is_superuser', 'last_login',
+            # 🔒 Desativação voluntária é controlada por endpoints próprios
+            'is_suspended_self', 'deactivated_at', 'deactivated_reason',
+            # 🔒 Permissões e grupos (se existirem no model base)
+            'groups', 'user_permissions',
+        )
 
     # --------------------- Representação (saída) ---------------------
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')
         foto = data.get('foto_perfil')
-        if foto and not (foto.startswith('http://') or foto.startswith('https://')):
+        if foto and not (str(foto).startswith('http://') or str(foto).startswith('https://')):
             if request is not None:
                 data['foto_perfil'] = request.build_absolute_uri(foto)
         return data
+
+    def get_modo_leitura(self, obj):
+        return bool(getattr(obj, "is_suspended_self", False))
 
     # --------------------- Normalização (entrada) ---------------------
     def to_internal_value(self, data):
@@ -124,8 +137,13 @@ class UsuarioSerializer(serializers.ModelSerializer):
     # --------------------- Criação / Atualização ---------------------
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        # Campos protegidos (se vierem por engano no payload)
         validated_data.pop('groups', None)
         validated_data.pop('user_permissions', None)
+        validated_data.pop('is_suspended_self', None)
+        validated_data.pop('deactivated_at', None)
+        validated_data.pop('deactivated_reason', None)
+
         validated_data['is_active'] = True
 
         user = Usuario(**validated_data)
@@ -138,14 +156,27 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
+        # Impede alteração direta dos campos de desativação (usamos endpoints próprios)
+        for field in ('is_suspended_self', 'deactivated_at', 'deactivated_reason'):
+            validated_data.pop(field, None)
+
         if 'password' in validated_data:
             senha = validated_data.pop('password')
             self.validate_password(senha)
             instance.set_password(senha)
+
         return super().update(instance, validated_data)
 
-    # --------------------- Regras por tipo ---------------------
+    # --------------------- Regras por tipo + bloqueio em modo leitura ---------------------
     def validate(self, data):
+        request = self.context.get('request')
+        # Bloqueio amigável extra no serializer (o middleware também protege)
+        if request and request.method in ('POST', 'PUT', 'PATCH'):
+            user = getattr(request, 'user', None)
+            if getattr(user, 'is_authenticated', False) and not getattr(user, 'is_superuser', False):
+                if getattr(user, 'is_suspended_self', False):
+                    raise serializers.ValidationError("Sua conta está desativada (modo leitura). Reative para alterar dados.")
+
         tipo = data.get('tipo') or (self.instance.tipo if self.instance else None)
         cpf = data.get('cpf') or (self.instance.cpf if self.instance else None)
         cnpj = data.get('cnpj') or (self.instance.cnpj if self.instance else None)
@@ -231,7 +262,7 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         request = self.context.get('request')
         foto = data.get('foto_perfil')
-        if foto and not (foto.startswith('http://') or foto.startswith('https://')):
+        if foto and not (str(foto).startswith('http://') or str(foto).startswith('https://')):
             if request is not None:
                 data['foto_perfil'] = request.build_absolute_uri(foto)
         return data

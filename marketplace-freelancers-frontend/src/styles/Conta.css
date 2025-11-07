@@ -862,6 +862,128 @@ button:disabled {
 }
 
 /* ==============================
+   STATUS DA CONTA (Desativar/Reativar)
+   ============================== */
+.account-status-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--borda-light);
+  border-radius: var(--radius-md);
+  background: var(--superficie-hover);
+  transition: all var(--transition-fast);
+}
+
+.account-status-box:hover {
+  border-color: var(--cor-primaria);
+}
+
+.account-status-box.inactive:hover {
+  border-color: #f59e0b;
+}
+
+.account-status-box i {
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--cor-primaria);
+  flex-shrink: 0;
+}
+
+.account-status-box.inactive i {
+  color: #f59e0b;
+}
+
+.status-content {
+  flex: 1;
+}
+
+.status-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.status-desc {
+  color: var(--cor-texto-light);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Badge de conta desativada ao lado do nome */
+.badge-inactive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.12);
+  color: #9a3412;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: .75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ==============================
+   BOTÕES EXTRA (warning / full)
+   ============================== */
+.btn-full { 
+  width: 100%; 
+}
+
+/* Botão "Desativar Conta" com borda âmbar */
+.btn-warning-outline {
+  background: var(--superficie-card);
+  color: #b45309;
+  border: 2px solid #f59e0b;
+  box-shadow: none;
+}
+
+.btn-warning-outline:hover:not(:disabled) {
+  background: #f59e0b;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-sm);
+}
+
+/* Caso use algum botão de confirmação em âmbar */
+.btn-warning {
+  background: #f59e0b;
+  color: white;
+  border: none;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+
+/* Garantir ícones centralizados nos botões/textos */
+.btn-primary i,
+.btn-secondary-outline i,
+.btn-warning-outline i,
+.btn-warning i,
+.btn-danger i,
+.btn-danger-outline i,
+.btn-ghost i,
+.btn-text i {
+  font-size: 1rem;
+  line-height: 0;
+}
+
+/* Deixar o botão "Desativar Conta" com respiro do card */
+.card .btn-full + .btn-full,
+.card .btn-warning-outline,
+.card .btn-primary {
+  margin-top: var(--space-sm);
+}
+
+/* ==============================
    RESPONSIVIDADE
    ============================== */
 @media (max-width: 1200px) {

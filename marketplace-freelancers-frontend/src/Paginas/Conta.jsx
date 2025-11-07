@@ -1,9 +1,13 @@
 // src/Paginas/Conta.jsx
-// Versão simplificada: sem "Modo Foco" (removido), mantendo:
-// - Perfil (editar nome/telefone/bio/foto)
-// - Avaliações recebidas (freelancer)
-// - Segurança (alterar senha)
-// - Zona de perigo (excluir conta + modal acessível)
+// Redesign Moderno e Limpo + Acessibilidade no modal + Desativação/Reativação/Exclusão de conta
+// Observações importantes:
+// - Desativar: POST /usuarios/me/desativar_conta/  (envia { senha })
+//   -> Ao desativar, fazemos logout imediato.
+// - Reativar:  POST /usuarios/me/reativar_conta/   (envia { senha })
+//   -> Após reativar, recarrega os dados do usuário e mantém sessão.
+// - Excluir:   POST /usuarios/me/excluir_conta/    (envia { senha })
+//   -> Ao excluir, logout imediato.
+// - Caso seus endpoints usem nomes diferentes, ajuste as URLs abaixo.
 
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -13,7 +17,7 @@ import "../styles/Conta.css";
 export default function Conta() {
   const { usuarioLogado, setUsuarioLogado } = useContext(UsuarioContext);
 
-  // ------------------------ Estado do Perfil ------------------------
+  // ========================= Estado da página / perfil =========================
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
     nome: usuarioLogado?.nome || "",
@@ -25,20 +29,25 @@ export default function Conta() {
   const [feedback, setFeedback] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
-
-  // Avaliações (somente para freelancer)
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(usuarioLogado?.nota_media);
 
-  // --------------------- Exclusão de Conta (Modal) ------------------
+  // ========================= Exclusão de conta (modal) ========================
   const [showModalExcluir, setShowModalExcluir] = useState(false);
   const [senhaExcluir, setSenhaExcluir] = useState("");
   const [excluindo, setExcluindo] = useState(false);
   const [feedbackExcluir, setFeedbackExcluir] = useState("");
   const [erroExcluir, setErroExcluir] = useState("");
-  const modalRef = useRef(null); // acessibilidade do modal
 
-  // ---------------------- Troca de Senha ----------------------------
+  // ========================= Desativação de conta (modal) =====================
+  const [showModalDesativar, setShowModalDesativar] = useState(false);
+  const [senhaDesativar, setSenhaDesativar] = useState("");
+  const [desativando, setDesativando] = useState(false);
+  const [reativando, setReativando] = useState(false);
+  const [feedbackDesativar, setFeedbackDesativar] = useState("");
+  const [erroDesativar, setErroDesativar] = useState("");
+
+  // ========================= Troca de senha ===================================
   const [exibirTrocaSenha, setExibirTrocaSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -46,14 +55,14 @@ export default function Conta() {
   const [erroSenha, setErroSenha] = useState("");
   const [carregandoSenha, setCarregandoSenha] = useState(false);
 
-  // Arquivo de foto
   const fileInputRef = useRef(null);
+  const modalRefExcluir = useRef(null);   // A11y do modal excluir
+  const modalRefDesativar = useRef(null); // A11y do modal desativar
 
-  // ---------------------- Buscar Avaliações -------------------------
+  // ========================= Buscar avaliações públicas =======================
   useEffect(() => {
     async function buscarAvaliacoes() {
       try {
-        // Endpoint específico (se existir)
         const resp = await api.get(`/usuarios/${usuarioLogado.id}/avaliacoes_publicas/`);
         const recebidas = Array.isArray(resp.data) ? resp.data : [];
         setAvaliacoes(recebidas);
@@ -67,7 +76,7 @@ export default function Conta() {
           setNotaMedia(null);
         }
       } catch {
-        // Fallback: busca geral e filtra
+        // Fallback: busca geral e filtra pelo usuário
         try {
           const respAll = await api.get("/avaliacoes/");
           const recebidas2 = (Array.isArray(respAll.data) ? respAll.data : []).filter(
@@ -94,46 +103,18 @@ export default function Conta() {
     if (usuarioLogado) buscarAvaliacoes();
   }, [usuarioLogado]);
 
-  // --------------- Travar rolagem ao abrir o modal ------------------
+  // ========================= Travar rolagem ao abrir modais ===================
   useEffect(() => {
-    if (showModalExcluir) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    const aberto = showModalExcluir || showModalDesativar;
+    document.body.style.overflow = aberto ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [showModalExcluir]);
+  }, [showModalExcluir, showModalDesativar]);
 
-  // --------- Acessibilidade: trap de foco dentro do modal -----------
-  useEffect(() => {
-    if (!showModalExcluir || !modalRef.current) return;
+  // ========================= A11y: trap de foco nos modais ====================
+  useEffect(() => trapFocus(showModalExcluir, modalRefExcluir, () => setShowModalExcluir(false)), [showModalExcluir]);
+  useEffect(() => trapFocus(showModalDesativar, modalRefDesativar, () => setShowModalDesativar(false)), [showModalDesativar]);
 
-    const focusables = modalRef.current.querySelectorAll(
-      'button, [href], input, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-
-    first?.focus();
-
-    function onKeyDown(e) {
-      if (e.key === "Escape") {
-        setShowModalExcluir(false);
-      }
-      if (e.key === "Tab" && focusables.length) {
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault(); last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault(); first.focus();
-        }
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [showModalExcluir]);
-
-  // ------------------------- Handlers Perfil ------------------------
+  // ========================= Handlers de perfil ===============================
   function handleEditar() {
     setEditando(true);
     setForm({
@@ -173,6 +154,40 @@ export default function Conta() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function getPreviewFoto(usuario) {
+    const foto = usuario?.foto_perfil;
+    if (foto && typeof foto === "string" && foto.trim() !== "") return foto;
+    return "/icone-usuario.png";
+  }
+
+  function formatarTelefone(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length > 11) numeros = numeros.slice(0, 11);
+    if (numeros.length > 10) return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    if (numeros.length > 6)  return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    if (numeros.length > 2)  return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    return numeros.replace(/^(\d*)/, "($1");
+  }
+
+  function formatarCPF(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length <= 11) {
+      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    return valor;
+  }
+
+  function formatarCNPJ(valor) {
+    if (!valor) return "";
+    let numeros = valor.replace(/\D/g, "");
+    if (numeros.length <= 14) {
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return valor;
+  }
+
   async function handleSalvar(e) {
     e.preventDefault();
     setCarregando(true);
@@ -194,6 +209,7 @@ export default function Conta() {
         telefone: resp.data.telefone,
         bio: resp.data.bio,
         foto_perfil: resp.data.foto_perfil,
+        is_active: typeof resp.data.is_active !== "undefined" ? resp.data.is_active : user.is_active,
       }));
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
@@ -216,7 +232,6 @@ export default function Conta() {
     setCarregando(false);
   }
 
-  // ------------------------- Troca de Senha -------------------------
   async function handleTrocarSenha(e) {
     e.preventDefault();
     setCarregandoSenha(true);
@@ -253,7 +268,6 @@ export default function Conta() {
     setCarregandoSenha(false);
   }
 
-  // -------------------------- Excluir Conta -------------------------
   async function handleExcluirConta(e) {
     e.preventDefault();
     setExcluindo(true);
@@ -265,7 +279,7 @@ export default function Conta() {
       setTimeout(() => {
         localStorage.removeItem("token");
         window.location.href = "/login";
-      }, 1500);
+      }, 1200);
     } catch (err) {
       let msg = "Erro ao excluir conta.";
       if (err.response?.data) {
@@ -283,9 +297,66 @@ export default function Conta() {
     setExcluindo(false);
   }
 
+  async function handleDesativarConta(e) {
+    e.preventDefault();
+    setDesativando(true);
+    setErroDesativar("");
+    setFeedbackDesativar("");
+    try {
+      const resp = await api.post('/usuarios/me/desativar_conta/', { senha: senhaDesativar });
+      setFeedbackDesativar(resp.data?.mensagem || "Conta desativada com sucesso.");
+      // Logout imediato ao desativar
+      setTimeout(() => {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }, 1000);
+    } catch (err) {
+      let msg = "Erro ao desativar conta.";
+      if (err.response?.data) {
+        const backendErros = err.response.data;
+        if (backendErros.erro) msg = backendErros.erro;
+        if (typeof backendErros === "object") {
+          msg =
+            Object.values(backendErros)
+              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+              .join(" ") || msg;
+        }
+      }
+      setErroDesativar(msg);
+    }
+    setDesativando(false);
+  }
+
+  async function handleReativarConta() {
+    setReativando(true);
+    try {
+      await api.post('/usuarios/me/reativar_conta/', {});
+      // Após reativar, recarrega os dados do usuário
+      const me = await api.get('/usuarios/me/');
+      setUsuarioLogado(me.data);
+      setFeedback("Conta reativada com sucesso!");
+      setTimeout(() => setFeedback(""), 4000);
+    } catch (err) {
+      let msg = "Erro ao reativar conta.";
+      if (err.response?.data) {
+        const backendErros = err.response.data;
+        if (typeof backendErros === "object") {
+          msg =
+            Object.values(backendErros)
+              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+              .join(" ") || msg;
+        } else if (typeof backendErros === "string") {
+          msg = backendErros;
+        }
+      }
+      setErro(msg);
+    }
+    setReativando(false);
+  }
+
   if (!usuarioLogado) return null;
 
-  // ----------------------------- JSX -------------------------------
+  // ========================= JSX =========================
   return (
     <div className="conta-page">
       <div className="conta-container">
@@ -296,7 +367,6 @@ export default function Conta() {
           </div>
 
           <div className="profile-header-content">
-            {/* Avatar + botão alterar foto */}
             <div className="profile-avatar-wrapper">
               <div className="avatar-ring">
                 <img src={previewFoto} alt="Foto de perfil" className="profile-avatar-large" />
@@ -320,9 +390,15 @@ export default function Conta() {
               />
             </div>
 
-            {/* Nome, e-mail e badges */}
             <div className="profile-info-header">
-              <h1 className="profile-name">{usuarioLogado.nome}</h1>
+              <h1 className="profile-name">
+                {usuarioLogado.nome}
+                {!usuarioLogado.is_active && (
+                  <span className="badge-inactive" title="Conta desativada">
+                    <i className="bi bi-pause-circle-fill"></i> Desativada
+                  </span>
+                )}
+              </h1>
               <p className="profile-email">{usuarioLogado.email}</p>
               <div className="profile-meta">
                 <span className={`user-badge ${usuarioLogado.tipo}`}>
@@ -338,7 +414,6 @@ export default function Conta() {
               </div>
             </div>
 
-            {/* Ação rápida: abrir perfil público em nova aba */}
             <div className="profile-actions-header">
               <button
                 className="btn-secondary-outline"
@@ -347,6 +422,27 @@ export default function Conta() {
                 <i className="bi bi-eye"></i>
                 Ver Perfil Público
               </button>
+              {!usuarioLogado.is_active ? (
+                <button
+                  className="btn-primary"
+                  onClick={handleReativarConta}
+                  disabled={reativando}
+                  title="Reativar conta"
+                  style={{ marginLeft: 8 }}
+                >
+                  {reativando ? (
+                    <>
+                      <div className="spinner-small"></div>
+                      Reativando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-play-circle"></i>
+                      Reativar Conta
+                    </>
+                  )}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -366,7 +462,7 @@ export default function Conta() {
           </div>
         )}
 
-        {/* Grid principal */}
+        {/* Layout em grid */}
         <div className="conta-grid">
           {/* Coluna Esquerda - Informações principais */}
           <div className="conta-main-column">
@@ -543,7 +639,7 @@ export default function Conta() {
             )}
           </div>
 
-          {/* Coluna Direita - Segurança e Zona de Perigo */}
+          {/* Coluna Direita - Configurações e ações */}
           <div className="conta-sidebar-column">
             {/* Card de Segurança */}
             <div className="card">
@@ -622,6 +718,63 @@ export default function Conta() {
               </div>
             </div>
 
+            {/* Card de Status da Conta */}
+            <div className="card">
+              <div className="card-header-simple">
+                <h2>
+                  <i className="bi bi-person-gear"></i>
+                  Status da Conta
+                </h2>
+              </div>
+              <div className="card-body">
+                <div className={`account-status-box ${usuarioLogado.is_active ? "active" : "inactive"}`}>
+                  <i className={`bi ${usuarioLogado.is_active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`}></i>
+                  <div className="status-content">
+                    <div className="status-title">
+                      {usuarioLogado.is_active ? "Conta Ativa" : "Conta Desativada"}
+                    </div>
+                    <div className="status-desc">
+                      {usuarioLogado.is_active
+                        ? "Sua conta está ativa. Você pode desativá-la temporariamente quando quiser."
+                        : "Sua conta está desativada. Reative para voltar a usar todos os recursos."}
+                    </div>
+                  </div>
+                </div>
+
+                {usuarioLogado.is_active ? (
+                  <button
+                    className="btn-warning-outline btn-full"
+                    onClick={() => setShowModalDesativar(true)}
+                    title="Desativar temporariamente a conta"
+                    style={{ marginTop: 12 }}
+                  >
+                    <i className="bi bi-pause-circle"></i>
+                    Desativar Conta
+                  </button>
+                ) : (
+                  <button
+                    className="btn-primary btn-full"
+                    onClick={handleReativarConta}
+                    disabled={reativando}
+                    title="Reativar conta"
+                    style={{ marginTop: 12 }}
+                  >
+                    {reativando ? (
+                      <>
+                        <div className="spinner-small"></div>
+                        Reativando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-play-circle"></i>
+                        Reativar Conta
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Card de Zona de Perigo */}
             <div className="card card-danger">
               <div className="card-header-simple">
@@ -657,7 +810,7 @@ export default function Conta() {
           >
             <div
               className="modal-box"
-              ref={modalRef}
+              ref={modalRefExcluir}
               role="dialog"
               aria-modal="true"
               aria-labelledby="excluirTitulo"
@@ -732,47 +885,119 @@ export default function Conta() {
           </div>
         )}
 
+        {/* Modal de Desativação */}
+        {showModalDesativar && (
+          <div
+            className="modal-overlay"
+            aria-hidden="false"
+            onClick={() => setShowModalDesativar(false)}
+          >
+            <div
+              className="modal-box"
+              ref={modalRefDesativar}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="desativarTitulo"
+              aria-describedby="desativarDescricao"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 id="desativarTitulo">Desativar Conta</h3>
+                <button
+                  className="modal-close-btn"
+                  aria-label="Fechar modal"
+                  onClick={() => setShowModalDesativar(false)}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <div className="modal-content">
+                <div className="warning-box" id="desativarDescricao">
+                  <i className="bi bi-pause-circle-fill"></i>
+                  <p>Sua conta ficará <strong>inativa</strong> até que você a reative. Você pode voltar quando quiser.</p>
+                </div>
+                <form onSubmit={handleDesativarConta}>
+                  <div className="form-field">
+                    <label>Digite sua senha para confirmar:</label>
+                    <input
+                      type="password"
+                      value={senhaDesativar}
+                      onChange={(e) => setSenhaDesativar(e.target.value)}
+                      className="input-field"
+                      placeholder="Senha atual"
+                      required
+                    />
+                  </div>
+                  {erroDesativar && (
+                    <div className="alert-mini alert-error">
+                      <i className="bi bi-exclamation-circle"></i>
+                      {erroDesativar}
+                    </div>
+                  )}
+                  {feedbackDesativar && (
+                    <div className="alert-mini alert-success">
+                      <i className="bi bi-check-circle"></i>
+                      {feedbackDesativar}
+                    </div>
+                  )}
+                  <div className="modal-actions">
+                    <button type="submit" className="btn-warning" disabled={desativando}>
+                      {desativando ? (
+                        <>
+                          <div className="spinner-small"></div>
+                          Desativando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-pause-circle"></i>
+                          Confirmar Desativação
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => setShowModalDesativar(false)}
+                      disabled={desativando}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
 
-/* ===================== Helpers locais ===================== */
+/* ========================= Ajudantes locais ========================= */
 
-// Foto de perfil ou placeholder
-function getPreviewFoto(usuario) {
-  const foto = usuario?.foto_perfil;
-  if (foto && typeof foto === "string" && foto.trim() !== "") return foto;
-  return "/icone-usuario.png";
-}
+function trapFocus(ativo, modalRef, onClose) {
+  if (!ativo || !modalRef.current) return () => {};
+  const el = modalRef.current;
+  const focusables = el.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
 
-// Formata telefone (BR)
-function formatarTelefone(valor) {
-  if (!valor) return "";
-  let numeros = valor.replace(/\D/g, "");
-  if (numeros.length > 11) numeros = numeros.slice(0, 11);
-  if (numeros.length > 10) return numeros.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
-  if (numeros.length > 6)  return numeros.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
-  if (numeros.length > 2)  return numeros.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-  return numeros.replace(/^(\d*)/, "($1");
-}
+  first?.focus();
 
-// Formata CPF (###.###.###-##)
-function formatarCPF(valor) {
-  if (!valor) return "";
-  let numeros = String(valor).replace(/\D/g, "");
-  if (numeros.length <= 11) {
-    return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  function onKeyDown(e) {
+    if (e.key === "Escape") onClose?.();
+    if (e.key === "Tab" && focusables.length) {
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   }
-  return valor;
-}
 
-// Formata CNPJ (##.###.###/####-##)
-function formatarCNPJ(valor) {
-  if (!valor) return "";
-  let numeros = String(valor).replace(/\D/g, "");
-  if (numeros.length <= 14) {
-    return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-  }
-  return valor;
+  document.addEventListener("keydown", onKeyDown);
+  return () => document.removeEventListener("keydown", onKeyDown);
 }

@@ -107,6 +107,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'usuarios.middleware.ModoLeituraMiddleware',
 ]
 
 # ------------------------
@@ -215,6 +216,14 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
+# ------------------------
+# ⚙️ Modo leitura (desativação voluntária)
+# ------------------------
+# Estes valores serão usados pelo ModoLeituraMiddleware
+SUSPENSION_BLOCKED_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
+SUSPENSION_RESPONSE_HEADER = 'X-Blocked-By-Suspension'
+SUSPENSION_MESSAGE = "Sua conta está desativada (modo leitura). Reative para realizar esta ação."
 
 # ------------------------
 # CORS (✅ CORRIGIDO PARA MERCADO PAGO)

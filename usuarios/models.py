@@ -1,5 +1,6 @@
 # usuarios/models.py
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from cloudinary_storage.storage import MediaCloudinaryStorage
 
@@ -35,6 +36,11 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     """
     Modelo de usuário unificado do sistema.
     Tipos possíveis: freelancer, contratante.
+
+    🔒 Desativação voluntária (modo leitura):
+    - is_suspended_self=True => usuário pode autenticar, mas fica em read-only.
+    - deactivated_at => quando desativou.
+    - deactivated_reason => motivo opcional informado pelo próprio usuário.
     """
 
     # ---- Tipos de usuário
@@ -65,6 +71,23 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     notificacao_email = models.BooleanField(default=True)
     bio = models.TextField(blank=True, null=True)
 
+    # ========= Desativação voluntária (modo leitura) =========
+    is_suspended_self = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Se verdadeiro, o usuário está em modo leitura (sem criar/editar ações)."
+    )
+    deactivated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Momento em que o usuário desativou a conta."
+    )
+    deactivated_reason = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Motivo opcional informado pelo usuário ao desativar."
+    )
+
     # ========= Permissões do Django =========
     is_active = models.BooleanField(default=True)   # controla login pelo Django
     is_staff = models.BooleanField(default=False)   # acesso ao admin
@@ -85,3 +108,27 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.nome.split()[0] if self.nome else self.email
+
+    # ========= Helpers de status =========
+    @property
+    def is_read_only(self) -> bool:
+        """Retorna True quando o usuário está em modo leitura (desativado por si)."""
+        return bool(self.is_suspended_self)
+
+    def desativar(self, motivo: str | None = None):
+        """Coloca o usuário em modo leitura."""
+        self.is_suspended_self = True
+        self.deactivated_at = timezone.now()
+        if motivo:
+            self.deactivated_reason = motivo
+        self.save(update_fields=["is_suspended_self", "deactivated_at", "deactivated_reason"])
+
+    def reativar(self, limpar_motivo: bool = False):
+        """Sai do modo leitura."""
+        self.is_suspended_self = False
+        self.deactivated_at = None
+        if limpar_motivo:
+            self.deactivated_reason = None
+            self.save(update_fields=["is_suspended_self", "deactivated_at", "deactivated_reason"])
+        else:
+            self.save(update_fields=["is_suspended_self", "deactivated_at"])
