@@ -40,6 +40,7 @@ from avaliacoes.serializers import AvaliacaoSerializer
 from propostas.models import Proposta
 from contratos.models import Contrato
 
+
 class UsuarioViewSet(viewsets.ModelViewSet):
     """
     CRUD de usuários + endpoints adicionais.
@@ -48,7 +49,11 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - /usuarios/{id}/perfil_publico/
     - /usuarios/{id}/avaliacoes_publicas/
     - /usuarios/{id}/metricas_performance/
-    - /usuarios/me/resumo/
+    - /usuarios/me/alterar_senha/ (POST)
+    - /usuarios/me/excluir_conta/ (POST)
+    - /usuarios/me/resumo/ (GET)
+    - /usuarios/me/modo_foco/ativar (POST)
+    - /usuarios/me/modo_foco/desativar (POST)
     """
     serializer_class = UsuarioSerializer
     queryset = Usuario.objects.all().order_by("-id")  # ✅ ordenação global adicionada
@@ -61,7 +66,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         elif self.action in ["retrieve", "list"]:
             return [IsAuthenticated()]
         elif self.action in [
-            "update", "partial_update", "destroy", "alterar_senha", "excluir_conta", "resumo"
+            "update", "partial_update", "destroy",
+            "alterar_senha_me", "excluir_conta_me", "resumo",
+            "modo_foco_ativar", "modo_foco_desativar",
         ]:
             return [IsAuthenticated(), PermissaoUsuario()]
         return [IsAuthenticated()]
@@ -77,16 +84,16 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         tipo = self.request.query_params.get("tipo")
 
         if user.is_superuser:
-            queryset = Usuario.objects.all().order_by("-id")  # ✅ garante ordenação
+            queryset = Usuario.objects.all().order_by("-id")
             if tipo:
                 queryset = queryset.filter(tipo=tipo)
             return queryset
 
-        if hasattr(user, "tipo") and user.tipo == "contratante":
-            return Usuario.objects.filter(tipo="freelancer").order_by("-id")  # ✅ ordenado
+        if getattr(user, "tipo", None) == "contratante":
+            return Usuario.objects.filter(tipo="freelancer").order_by("-id")
 
-        if hasattr(user, "tipo") and user.tipo == "freelancer":
-            return Usuario.objects.filter(id=user.id).order_by("-id")  # ✅ ordenado
+        if getattr(user, "tipo", None) == "freelancer":
+            return Usuario.objects.filter(id=user.id).order_by("-id")
 
         return Usuario.objects.none()
 
@@ -135,7 +142,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         except Usuario.DoesNotExist:
             return Response({"detail": "Usuário não encontrado."}, status=404)
 
-        avaliacoes = Avaliacao.objects.filter(avaliado=usuario).select_related("avaliador").order_by("-id")
+        avaliacoes = (
+            Avaliacao.objects
+            .filter(avaliado=usuario)
+            .select_related("avaliador")
+            .order_by("-id")
+        )
         serializer = AvaliacaoSerializer(avaliacoes, many=True, context={"request": request})
         return Response(serializer.data)
 
@@ -292,7 +304,41 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         resumo["denunciasEnviadas"] = Denuncia.objects.filter(denunciante=user).count()
         resumo["denunciasRecebidas"] = Denuncia.objects.filter(denunciado=user).count()
 
+        # 🔕 Estado atual do Modo Foco (derivado do flag de e-mail)
+        resumo["modoFocoAtivo"] = (user.notificacao_email is False)
+
         return Response(resumo)
+
+    # ------------------ MODO FOCO (silenciar notificações por e-mail) ------------------
+    @action(detail=False, methods=["post"], url_path="me/modo_foco/ativar", permission_classes=[IsAuthenticated])
+    def modo_foco_ativar(self, request):
+        """
+        Ativa o Modo Foco para o usuário logado.
+        Implementação: desativa notificações por e-mail (notificacao_email=False).
+        """
+        user = request.user
+        if user.notificacao_email is False:
+            return Response({"mensagem": "Modo Foco já estava ativo.", "modoFocoAtivo": True}, status=200)
+
+        user.notificacao_email = False
+        user.save(update_fields=["notificacao_email"])
+        # ⚠️ Não envia notificação por e-mail propositadamente (evitar ruído)
+        return Response({"mensagem": "Modo Foco ativado. Você não receberá e-mails de notificação.", "modoFocoAtivo": True}, status=200)
+
+    @action(detail=False, methods=["post"], url_path="me/modo_foco/desativar", permission_classes=[IsAuthenticated])
+    def modo_foco_desativar(self, request):
+        """
+        Desativa o Modo Foco para o usuário logado.
+        Implementação: reativa notificações por e-mail (notificacao_email=True).
+        """
+        user = request.user
+        if user.notificacao_email is True:
+            return Response({"mensagem": "Modo Foco já estava desativado.", "modoFocoAtivo": False}, status=200)
+
+        user.notificacao_email = True
+        user.save(update_fields=["notificacao_email"])
+        return Response({"mensagem": "Modo Foco desativado. Você voltará a receber e-mails de notificação.", "modoFocoAtivo": False}, status=200)
+
 
 # ------------------ USUÁRIO LOGADO ------------------
 class UsuarioMeAPIView(APIView):
@@ -416,4 +462,3 @@ class PasswordResetConfirmView(APIView):
             {"detail": "Senha redefinida com sucesso."},
             status=status.HTTP_200_OK
         )
-

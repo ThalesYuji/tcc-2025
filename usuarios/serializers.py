@@ -22,12 +22,13 @@ class UsuarioSerializer(serializers.ModelSerializer):
     - Valida unicidade e formato
     - Força senha forte
     - Retorna foto_perfil com URL absoluta
+    - 🔒 Torna 'status' (Modo Foco) somente leitura — controlado por endpoints próprios
     """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
     cnpj = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     telefone = serializers.CharField(required=True)
-    sou_empresa = serializers.BooleanField(required=False, default=False)  # ✅ Novo campo
+    sou_empresa = serializers.BooleanField(required=False, default=False)
 
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
     foto_perfil = serializers.ImageField(use_url=True, required=False, allow_null=True)
@@ -38,6 +39,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = '__all__'
+        # 🔒 Evita alterar campos sensíveis por PATCH genérico
+        read_only_fields = ('status', 'is_active', 'is_staff', 'is_superuser', 'last_login')
 
     # --------------------- Representação (saída) ---------------------
     def to_representation(self, instance):
@@ -125,8 +128,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
     # --------------------- Criação / Atualização ---------------------
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        validated_data.pop('groups', None, )
-        validated_data.pop('user_permissions', None, )
+        # Não permitimos setar estes campos via payload
+        validated_data.pop('groups', None)
+        validated_data.pop('user_permissions', None)
         validated_data['is_active'] = True
 
         user = Usuario(**validated_data)
@@ -270,6 +274,7 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
     def get_denuncias_recebidas(self, obj):
         from denuncias.models import Denuncia
         return Denuncia.objects.filter(denunciado=obj).count()
+
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Recebe apenas o e-mail para iniciar o reset de senha."""

@@ -1,3 +1,5 @@
+# propostas/views.py
+
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -8,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 from .models import Proposta
 from .serializers import PropostaSerializer, AlterarStatusSerializer
 from .permissoes import PermissaoProposta
-from notificacoes.utils import enviar_notificacao  # 🔹 Função central de notificações
+from notificacoes.utils import enviar_notificacao
 
 
 class PropostaViewSet(viewsets.ModelViewSet):
@@ -34,6 +36,10 @@ class PropostaViewSet(viewsets.ModelViewSet):
     # ======================= LISTAGEM / FILTROS =======================
 
     def get_queryset(self):
+        """
+        Filtra o queryset conforme o tipo de usuário logado e, opcionalmente,
+        pelo trabalho via query param (?trabalho=ID).
+        """
         user = self.request.user
         qs = (
             Proposta.objects
@@ -57,7 +63,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
                 trabalho_id_int = int(trabalho_id)
                 qs = qs.filter(trabalho_id=trabalho_id_int)
             except (TypeError, ValueError):
-                # ignora filtro inválido sem quebrar a listagem
+                # ignora filtro inválido sem quebrar
                 pass
 
         return qs
@@ -67,29 +73,51 @@ class PropostaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Ao criar proposta:
-        - Vincula ao freelancer logado.
-        - Define 'numero_envio' e 'revisao_de' automaticamente com base nas anteriores.
-        - Notifica o contratante do trabalho.
+        - Apenas FREELANCER pode criar.
+        - Bloqueia proposta do contratante no próprio trabalho.
+        - Em trabalho privado, só o freelancer convidado pode propor.
+        - Trabalho precisa estar 'aberto'.
+        - Define 'numero_envio' e 'revisao_de' com base em propostas anteriores do mesmo freelancer para o mesmo trabalho.
+        - Notifica o contratante.
         """
         user = self.request.user
-        trabalho = serializer.validated_data["trabalho"]
 
+        # 🔐 Permissão de criação
+        if not user.is_superuser and getattr(user, "tipo", None) != "freelancer":
+            raise ValidationError("Apenas freelancers podem enviar propostas.")
+
+        trabalho = serializer.validated_data.get("trabalho")
+
+        # 🚫 Contratante não pode propor no próprio trabalho
+        if trabalho.contratante_id == user.id and not user.is_superuser:
+            raise ValidationError("Você não pode enviar proposta para o seu próprio trabalho.")
+
+        # 📌 Em trabalho privado, só o freelancer convidado pode enviar proposta
+        if trabalho.is_privado and not user.is_superuser:
+            if trabalho.freelancer_id != user.id:
+                raise ValidationError("Este trabalho é privado e não está direcionado a você.")
+
+        # ⛔ Verifica status do trabalho
+        if trabalho.status not in ("aberto",):
+            raise ValidationError(f"Não é possível enviar proposta — status atual do trabalho: {trabalho.status}.")
+
+        # 📈 Número de envio e encadeamento de revisão
         anteriores = (
             Proposta.objects
             .filter(trabalho=trabalho, freelancer=user)
             .order_by("-data_envio")
         )
-
         numero_envio = anteriores.count() + 1
         revisao_de = anteriores.first() if anteriores.exists() else None
 
+        # 💾 Salva
         proposta = serializer.save(
             freelancer=user,
             numero_envio=numero_envio,
             revisao_de=revisao_de,
         )
 
-        # Mensagem diferenciada quando for reenvio
+        # 🔔 Notificação ao contratante com mensagem diferenciada em reenvio
         if numero_envio > 1:
             msg = f"Você recebeu uma nova proposta (revisada #{numero_envio}) para o trabalho '{trabalho.titulo}'."
         else:
@@ -138,64 +166,67 @@ class PropostaViewSet(viewsets.ModelViewSet):
         """
         proposta = self.get_object()
 
+        # 🔒 Só mexe em pendentes
         if proposta.status != "pendente":
             return Response(
                 {"erro": "Status já definido. Não é possível alterar novamente."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # 🔐 Permissão (contratante dono do trabalho ou admin)
         if request.user != proposta.trabalho.contratante and not request.user.is_superuser:
             return Response(
                 {"erro": "Apenas o contratante do trabalho ou admin pode alterar o status."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # 📥 Validação da entrada
         serializer = AlterarStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         novo_status = serializer.validated_data["status"]
 
-        # ✅ Aceitar proposta (transação para evitar condição de corrida)
+        # ✅ Aceitar proposta (com transação para evitar corrida)
         if novo_status == "aceita":
             from contratos.models import Contrato
 
             with transaction.atomic():
-                # Recarrega com lock
+                # Recarrega lockando a linha
                 proposta_ref = (
                     Proposta.objects.select_for_update()
                     .select_related("trabalho", "freelancer")
                     .get(pk=proposta.pk)
                 )
 
-                # Se alguém já aceitou outra no meio do caminho:
+                # Alguém já mexeu no meio do caminho?
                 if proposta_ref.status != "pendente":
                     return Response(
                         {"erro": "Esta proposta não está mais pendente."},
                         status=status.HTTP_409_CONFLICT,
                     )
 
-                # Evita duplicidade de contrato
+                # Evita contrato duplicado
                 if Contrato.objects.filter(proposta=proposta_ref).exists():
                     return Response(
                         {"erro": "Já existe um contrato para esta proposta."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                # Atualiza status da proposta
+                # Atualiza status desta proposta
                 proposta_ref.status = "aceita"
-                proposta_ref.save()
+                proposta_ref.save(update_fields=["status"])
 
-                # ❌ Recusa todas as outras propostas pendentes do mesmo trabalho
+                # Recusa todas as outras pendentes do mesmo trabalho
                 Proposta.objects.filter(
                     trabalho=proposta_ref.trabalho,
                     status="pendente",
                 ).exclude(id=proposta_ref.id).update(status="recusada")
 
-                # 📌 Atualiza status do trabalho
+                # Atualiza status do trabalho
                 trabalho = proposta_ref.trabalho
                 trabalho.status = "em_andamento"
-                trabalho.save()
+                trabalho.save(update_fields=["status"])
 
-                # 📄 Cria contrato com valor da proposta
+                # Cria contrato com valor da proposta
                 contrato = Contrato.objects.create(
                     proposta=proposta_ref,
                     trabalho=trabalho,
@@ -222,24 +253,24 @@ class PropostaViewSet(viewsets.ModelViewSet):
 
         # ❌ Recusar proposta
         elif novo_status == "recusada":
-            motivo_recusa = serializer.validated_data.get('motivo_recusa', '').strip()
-            
+            motivo_recusa = (serializer.validated_data.get('motivo_recusa') or '').strip()
+
             proposta.status = "recusada"
-            proposta.motivo_recusa = motivo_recusa  # 🆕 Salva o motivo
-            proposta.save()
+            proposta.motivo_recusa = motivo_recusa
+            proposta.save(update_fields=["status", "motivo_recusa"])
 
             trabalho = proposta.trabalho
 
-            # 🔁 Reabre o trabalho se não houver nenhuma proposta aceita
+            # 🔁 Reabre o trabalho se não houver nenhuma aceita
             if not Proposta.objects.filter(trabalho=trabalho, status="aceita").exists():
                 trabalho.status = "aberto"
-                trabalho.save()
+                trabalho.save(update_fields=["status"])
 
-            # 🔔 Notifica freelancer com o motivo
+            # 🔔 Notifica freelancer com (preview do) motivo
             mensagem_notif = f"Sua proposta para o trabalho '{trabalho.titulo}' foi recusada."
             if motivo_recusa:
-                mensagem_notif += f" Motivo: {motivo_recusa[:100]}..."  # Preview do motivo
-            
+                mensagem_notif += f" Motivo: {motivo_recusa[:100]}..."
+
             enviar_notificacao(
                 usuario=proposta.freelancer,
                 mensagem=mensagem_notif,
@@ -248,7 +279,7 @@ class PropostaViewSet(viewsets.ModelViewSet):
 
             return Response(
                 {
-                    "mensagem": f"Status alterado para '{proposta.status}' com sucesso.",
+                    "mensagem": "Status alterado para 'recusada' com sucesso.",
                     "motivo_recusa": motivo_recusa
                 },
                 status=status.HTTP_200_OK,
