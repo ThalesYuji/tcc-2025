@@ -217,7 +217,7 @@ SIMPLE_JWT = {
 }
 
 # ------------------------
-# CORS
+# CORS (✅ CORRIGIDO PARA MERCADO PAGO)
 # ------------------------
 if DEBUG:
     # Ambiente local - tudo liberado
@@ -226,28 +226,54 @@ if DEBUG:
     CORS_ALLOW_HEADERS = ['*']
     CORS_ALLOW_METHODS = ['*']
 else:
-    # Ambiente Railway - libera origens locais e a pública
-    _cors_env = [o for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o]
+    # Ambiente Railway - libera origens específicas + Mercado Pago
+    _cors_env = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
     CORS_ALLOWED_ORIGINS = _cors_env or [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://web-production-385bb.up.railway.app",
+        # ✅ Domínios do Mercado Pago
+        "https://www.mercadopago.com.br",
+        "https://www.mercadopago.com",
+        "https://http2.mlstatic.com",
+        "https://secure.mlstatic.com",
     ]
     CORS_ALLOW_CREDENTIALS = True
+    # ✅ Headers necessários para o Mercado Pago
+    CORS_ALLOW_HEADERS = [
+        'accept',
+        'accept-encoding',
+        'authorization',
+        'content-type',
+        'dnt',
+        'origin',
+        'user-agent',
+        'x-csrftoken',
+        'x-requested-with',
+        'x-trackingid',
+    ]
 
 # ------------------------
-# CSRF
+# CSRF (✅ CORRIGIDO PARA MERCADO PAGO)
 # ------------------------
 _csrf_default = ['http://localhost:8000']
 _front_origin = _origin(FRONTEND_URL)
 _site_origin = _origin(SITE_URL)
-CSRF_TRUSTED_ORIGINS = list({
-    *(_csrf_default),
-    *([_front_origin] if _front_origin else []),
-    *([_site_origin] if _site_origin else []),
-    *[o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o],
-})
+_csrf_env = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+
+CSRF_TRUSTED_ORIGINS = list(set(
+    _csrf_default +
+    ([_front_origin] if _front_origin else []) +
+    ([_site_origin] if _site_origin else []) +
+    _csrf_env +
+    # ✅ Domínios do Mercado Pago
+    [
+        "https://www.mercadopago.com.br",
+        "https://www.mercadopago.com",
+    ]
+))
 
 # ------------------------
 # E-MAIL (SendGrid API)
@@ -267,7 +293,6 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 # ⚙️ Função auxiliar (fallback opcional)
-# Caso você ainda use send_mail() em outro ponto, isso garante compatibilidade.
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # ------------------------
@@ -288,13 +313,16 @@ MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET")
 MP_INCLUDE_PAYER = False
 
 # ------------------------
-# HTTPS / SEGURANÇA
+# HTTPS / SEGURANÇA (✅ CORRIGIDO PARA MERCADO PAGO)
 # ------------------------
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # ✅ Permite redirects e iframes do Mercado Pago
+    SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
+    X_FRAME_OPTIONS = 'SAMEORIGIN'
 else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False

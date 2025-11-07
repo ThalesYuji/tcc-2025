@@ -41,7 +41,6 @@ def _extrair_msg_erro_mp(resp: object) -> str:
     msg = resp.get("message") or resp.get("error") or resp.get("status_detail") or str(resp)
     cause = resp.get("cause")
     if isinstance(cause, list) and cause:
-        # pega a primeira descrição detalhada, se existir
         desc = cause[0].get("description") or cause[0].get("message")
         if desc:
             msg = desc
@@ -110,6 +109,7 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
     - Garante first_name/last_name (mesmo que mínimos)
     - Limpa CPF para apenas dígitos
     - Só mantém identification se CPF tiver 11 dígitos
+    - Normaliza endereço para boleto
     Retorna um novo dict normalizado, ou None se payer vier vazio.
     """
     if not payer or not isinstance(payer, dict):
@@ -135,17 +135,60 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
     id_type = (ident.get("type") or "").upper().strip()
     id_num = _only_digits(ident.get("number"))
     identification = None
+    tem_cpf_valido = False
+    
     if id_type in {"CPF", "CPF_TAXPAYER"} and len(id_num) == 11:
         identification = {"type": "CPF", "number": id_num}
+        tem_cpf_valido = True
 
     normalized = {
         "first_name": first,
         "last_name": last or ".",
     }
+    
     if email:
         normalized["email"] = email
     if identification:
         normalized["identification"] = identification
+
+    # ✅ CORREÇÃO PARA BOLETO: Normaliza endereço
+    # O Mercado Pago exige endereço completo para boleto
+    if tem_cpf_valido and payer.get("address"):
+        addr = payer["address"]
+        normalized_addr = {}
+        
+        # CEP (obrigatório para boleto)
+        zip_code = _only_digits(addr.get("zip_code"))
+        if len(zip_code) == 8:
+            normalized_addr["zip_code"] = zip_code
+        
+        # Rua
+        if addr.get("street_name"):
+            normalized_addr["street_name"] = str(addr["street_name"]).strip()
+        
+        # Número
+        if addr.get("street_number"):
+            normalized_addr["street_number"] = str(addr["street_number"]).strip()
+        
+        # Bairro
+        if addr.get("neighborhood"):
+            normalized_addr["neighborhood"] = str(addr["neighborhood"]).strip()
+        
+        # Cidade
+        if addr.get("city"):
+            normalized_addr["city"] = str(addr["city"]).strip()
+        
+        # Estado (UF) - apenas 2 caracteres
+        if addr.get("federal_unit"):
+            uf = str(addr["federal_unit"]).strip().upper()
+            if len(uf) == 2:
+                normalized_addr["federal_unit"] = uf
+        
+        # Só adiciona endereço se tiver os campos mínimos
+        if (normalized_addr.get("zip_code") and 
+            normalized_addr.get("street_name") and 
+            normalized_addr.get("street_number")):
+            normalized["address"] = normalized_addr
 
     return normalized
 
@@ -173,8 +216,6 @@ class MercadoPagoService:
         Cria uma 'preference' do Checkout Pro.
         back_urls: {"success": URL, "pending": URL, "failure": URL}
         notification_url só é enviada se pública/válida (construída via _build_notification_url).
-        - Se 'payer' vier com CPF válido, apenas priorizamos o boleto como método padrão
-          (default_payment_method_id = "bolbradesco"), SEM bloquear os demais.
         """
         try:
             preference = {
@@ -197,18 +238,36 @@ class MercadoPagoService:
             if notif:
                 preference["notification_url"] = notif
 
-            # —— Normaliza o payer (se fornecido)
+            # ✅ CORREÇÃO: Normaliza o payer
             normalized_payer = _normalize_payer(payer)
             if normalized_payer:
                 preference["payer"] = normalized_payer
 
-                # Se tiver CPF válido, sugerimos boleto como default (não exclui cartões/PIX)
+                # ✅ CORREÇÃO CRÍTICA PARA BOLETO
+                # Se tiver CPF válido E endereço completo, habilita boleto
                 ident = normalized_payer.get("identification") or {}
-                if ident.get("type") == "CPF" and len(_only_digits(ident.get("number"))) == 11:
-                    preference["payment_methods"] = {
-                        "default_payment_method_id": "bolbradesco",
-                        "installments": 1,  # boleto não parcela; cartões seguem com 1 por padrão
+                has_cpf = (ident.get("type") == "CPF" and 
+                          len(_only_digits(ident.get("number"))) == 11)
+                
+                has_address = bool(normalized_payer.get("address"))
+                
+                if has_cpf:
+                    # Define métodos de pagamento permitidos
+                    payment_methods = {
+                        "excluded_payment_types": [],  # Não exclui nenhum tipo
+                        "installments": 1,  # Boleto não parcela
                     }
+                    
+                    # Se tiver endereço completo, prioriza boleto
+                    if has_address:
+                        payment_methods["default_payment_method_id"] = "bolbradesco"
+                        logger.info("✅ Boleto configurado com CPF e endereço completo")
+                    else:
+                        logger.warning("⚠️ CPF fornecido mas endereço incompleto - boleto pode não funcionar")
+                    
+                    preference["payment_methods"] = payment_methods
+                else:
+                    logger.warning("⚠️ CPF não fornecido ou inválido - boleto não será priorizado")
 
             logger.info("MP PREF → payload: %s", preference)
             res = self.sdk.preference().create(preference)
@@ -267,7 +326,6 @@ class MercadoPagoService:
             "rejected": "rejeitado",
             "refunded": "reembolsado",
             "cancelled": "rejeitado",
-            # 'charged_back' deve ir para 'reembolsado' (o model não tem 'estornado')
             "charged_back": "reembolsado",
         }
         return mapeamento.get(status_mp, "pendente")
