@@ -949,7 +949,7 @@
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.status-badge {
+.status-badge{
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -959,18 +959,31 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--cor-sucesso);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid transparent;
 }
 
-.status-badge::before {
+
+.status-badge::before{
   content: '';
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
-  background: var(--cor-sucesso);
 }
+
+.status-badge.active{
+  background: rgba(16,185,129,.15);
+  color: var(--cor-sucesso);
+  border-color: rgba(16,185,129,.3);
+}
+
+.status-badge.active::before{ background: #10b981; }
+
+.status-badge.inactive{
+  background: rgba(245,158,11,.15);   /* amarelo suave */
+  color: #b45309;                      /* âmbar escuro */
+  border-color: rgba(245,158,11,.35);
+}
+.status-badge.inactive::before{ background: #f59e0b; }
 
 /* ==============================
    PERFORMANCE
