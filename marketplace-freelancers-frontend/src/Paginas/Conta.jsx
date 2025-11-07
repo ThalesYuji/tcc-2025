@@ -1,14 +1,4 @@
 // src/Paginas/Conta.jsx
-// Redesign Moderno e Limpo + Acessibilidade no modal + Desativação/Reativação/Exclusão de conta
-// Observações importantes:
-// - Desativar: POST /usuarios/me/desativar_conta/  (envia { senha })
-//   -> Ao desativar, fazemos logout imediato.
-// - Reativar:  POST /usuarios/me/reativar_conta/   (envia { senha })
-//   -> Após reativar, recarrega os dados do usuário e mantém sessão.
-// - Excluir:   POST /usuarios/me/excluir_conta/    (envia { senha })
-//   -> Ao excluir, logout imediato.
-// - Caso seus endpoints usem nomes diferentes, ajuste as URLs abaixo.
-
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -297,62 +287,68 @@ export default function Conta() {
     setExcluindo(false);
   }
 
-  async function handleDesativarConta(e) {
-    e.preventDefault();
-    setDesativando(true);
-    setErroDesativar("");
-    setFeedbackDesativar("");
-    try {
-      const resp = await api.post('/usuarios/me/desativar_conta/', { senha: senhaDesativar });
-      setFeedbackDesativar(resp.data?.mensagem || "Conta desativada com sucesso.");
-      // Logout imediato ao desativar
-      setTimeout(() => {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }, 1000);
-    } catch (err) {
-      let msg = "Erro ao desativar conta.";
-      if (err.response?.data) {
-        const backendErros = err.response.data;
-        if (backendErros.erro) msg = backendErros.erro;
-        if (typeof backendErros === "object") {
-          msg =
-            Object.values(backendErros)
-              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-              .join(" ") || msg;
-        }
+// ✅ DESATIVAR (usa a rota correta e não envia senha; você pode manter o campo no UI só como confirmação visual)
+async function handleDesativarConta(e) {
+  e.preventDefault();
+  setDesativando(true);
+  setErroDesativar("");
+  setFeedbackDesativar("");
+
+  try {
+    // Se quiser registrar um motivo opcional no backend:
+    await api.post('/usuarios/me/desativar/', { motivo: 'Solicitação do usuário' });
+    setFeedbackDesativar("Conta desativada com sucesso.");
+
+    // ⬇️ Se preferir manter logout imediato ao desativar, deixe este bloco.
+    //    Se quiser “modo leitura” sem sair da conta, remova o setTimeout abaixo.
+    setTimeout(() => {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }, 1000);
+  } catch (err) {
+    let msg = "Erro ao desativar conta.";
+    if (err.response?.data) {
+      const backendErros = err.response.data;
+      if (backendErros.erro) msg = backendErros.erro;
+      if (typeof backendErros === "object") {
+        msg = Object.values(backendErros)
+          .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+          .join(" ") || msg;
+      } else if (typeof backendErros === "string") {
+        msg = backendErros;
       }
-      setErroDesativar(msg);
     }
-    setDesativando(false);
+    setErroDesativar(msg);
   }
 
-  async function handleReativarConta() {
-    setReativando(true);
-    try {
-      await api.post('/usuarios/me/reativar_conta/', {});
-      // Após reativar, recarrega os dados do usuário
-      const me = await api.get('/usuarios/me/');
-      setUsuarioLogado(me.data);
-      setFeedback("Conta reativada com sucesso!");
-      setTimeout(() => setFeedback(""), 4000);
-    } catch (err) {
-      let msg = "Erro ao reativar conta.";
-      if (err.response?.data) {
-        const backendErros = err.response.data;
-        if (typeof backendErros === "object") {
-          msg =
-            Object.values(backendErros)
-              .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-              .join(" ") || msg;
-        } else if (typeof backendErros === "string") {
-          msg = backendErros;
-        }
+  setDesativando(false);
+}
+
+// ✅ REATIVAR (rota correta) — depois recarrega o /me para refletir o estado
+async function handleReativarConta() {
+  setReativando(true);
+  try {
+    await api.post('/usuarios/me/reativar/', {});
+    const me = await api.get('/usuarios/me/');
+    setUsuarioLogado(me.data);
+    setFeedback("Conta reativada com sucesso!");
+    setTimeout(() => setFeedback(""), 4000);
+  } catch (err) {
+    let msg = "Erro ao reativar conta.";
+    if (err.response?.data) {
+      const backendErros = err.response.data;
+      if (typeof backendErros === "object") {
+        msg = Object.values(backendErros)
+          .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+          .join(" ") || msg;
+      } else if (typeof backendErros === "string") {
+        msg = backendErros;
       }
-      setErro(msg);
     }
-    setReativando(false);
+    setErro(msg);
   }
+  setReativando(false);
+}
 
   if (!usuarioLogado) return null;
 
@@ -727,54 +723,57 @@ export default function Conta() {
                 </h2>
               </div>
               <div className="card-body">
-                <div className={`account-status-box ${usuarioLogado.is_active ? "active" : "inactive"}`}>
-                  <i className={`bi ${usuarioLogado.is_active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`}></i>
-                  <div className="status-content">
-                    <div className="status-title">
-                      {usuarioLogado.is_active ? "Conta Ativa" : "Conta Desativada"}
+                <div className="account-status-box">
+                  <div className={`status-info-wrapper ${usuarioLogado.is_active ? "active" : "inactive"}`}>
+                    <div className="status-icon-circle">
+                      <i className={`bi ${usuarioLogado.is_active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`}></i>
                     </div>
-                    <div className="status-desc">
-                      {usuarioLogado.is_active
-                        ? "Sua conta está ativa. Você pode desativá-la temporariamente quando quiser."
-                        : "Sua conta está desativada. Reative para voltar a usar todos os recursos."}
+                    <div className="status-content">
+                      <div className="status-title">
+                        {usuarioLogado.is_active ? "Conta Ativa" : "Conta Desativada"}
+                      </div>
+                      <div className="status-desc">
+                        {usuarioLogado.is_active
+                          ? "Sua conta está ativa e funcionando normalmente."
+                          : "Sua conta está desativada. Reative para voltar a usar todos os recursos."}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {usuarioLogado.is_active ? (
-                  <button
-                    className="btn-warning-outline btn-full"
-                    onClick={() => setShowModalDesativar(true)}
-                    title="Desativar temporariamente a conta"
-                    style={{ marginTop: 12 }}
-                  >
-                    <i className="bi bi-pause-circle"></i>
-                    Desativar Conta
-                  </button>
-                ) : (
-                  <button
-                    className="btn-primary btn-full"
-                    onClick={handleReativarConta}
-                    disabled={reativando}
-                    title="Reativar conta"
-                    style={{ marginTop: 12 }}
-                  >
-                    {reativando ? (
-                      <>
-                        <div className="spinner-small"></div>
-                        Reativando...
-                      </>
+                  <div className="status-actions">
+                    {usuarioLogado.is_active ? (
+                      <button
+                        className="btn-warning-outline btn-full"
+                        onClick={() => setShowModalDesativar(true)}
+                        title="Desativar temporariamente a conta"
+                      >
+                        <i className="bi bi-pause-circle"></i>
+                        Desativar Conta Temporariamente
+                      </button>
                     ) : (
-                      <>
-                        <i className="bi bi-play-circle"></i>
-                        Reativar Conta
-                      </>
+                      <button
+                        className="btn-primary btn-full"
+                        onClick={handleReativarConta}
+                        disabled={reativando}
+                        title="Reativar conta"
+                      >
+                        {reativando ? (
+                          <>
+                            <div className="spinner-small"></div>
+                            Reativando...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-play-circle"></i>
+                            Reativar Minha Conta
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
+                  </div>
+                </div>
               </div>
             </div>
-
             {/* Card de Zona de Perigo */}
             <div className="card card-danger">
               <div className="card-header-simple">

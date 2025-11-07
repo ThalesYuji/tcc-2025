@@ -862,36 +862,54 @@ button:disabled {
 }
 
 /* ==============================
-   STATUS DA CONTA (Desativar/Reativar)
+   STATUS DA CONTA (Desativar/Reativar) - REDESIGN MELHORADO
    ============================== */
 .account-status-box {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.status-info-wrapper {
+  display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-md);
+  padding: var(--space-lg);
   border: 1px solid var(--borda-light);
   border-radius: var(--radius-md);
   background: var(--superficie-hover);
   transition: all var(--transition-fast);
 }
 
-.account-status-box:hover {
+.status-info-wrapper:hover {
   border-color: var(--cor-primaria);
 }
 
-.account-status-box.inactive:hover {
-  border-color: #f59e0b;
+.status-info-wrapper.inactive {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
-.account-status-box i {
-  font-size: 2.5rem;
-  line-height: 1;
-  color: var(--cor-primaria);
-  flex-shrink: 0;
+.status-info-wrapper.inactive:hover {
+  border-color: var(--cor-primaria);
 }
 
-.account-status-box.inactive i {
-  color: #f59e0b;
+.status-icon-circle {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-dark));
+  color: white;
+  box-shadow: var(--sombra-md);
+}
+
+.status-info-wrapper.inactive .status-icon-circle {
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-dark));
 }
 
 .status-content {
@@ -903,6 +921,9 @@ button:disabled {
   font-weight: 600;
   color: var(--cor-secundaria);
   margin: 0 0 var(--space-xs) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .status-desc {
@@ -910,6 +931,12 @@ button:disabled {
   font-size: 0.875rem;
   line-height: 1.5;
   margin: 0;
+}
+
+.status-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 /* Badge de conta desativada ao lado do nome */
@@ -920,45 +947,70 @@ button:disabled {
   margin-left: 10px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: rgba(245, 158, 11, 0.12);
-  color: #9a3412;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(59, 130, 246, 0.12);
+  color: #1e40af;
+  border: 1px solid rgba(59, 130, 246, 0.35);
   font-size: .75rem;
   font-weight: 700;
   vertical-align: middle;
 }
 
 /* ==============================
-   BOTÕES EXTRA (warning / full)
+   BOTÕES EXTRA - TUDO AZUL
    ============================== */
 .btn-full { 
   width: 100%; 
 }
 
-/* Botão "Desativar Conta" com borda âmbar */
+/* Botão "Desativar Conta" - Agora azul */
 .btn-warning-outline {
   background: var(--superficie-card);
-  color: #b45309;
-  border: 2px solid #f59e0b;
-  box-shadow: none;
+  color: var(--cor-primaria);
+  border: 2px solid var(--cor-primaria);
+  box-shadow: var(--sombra-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .btn-warning-outline:hover:not(:disabled) {
-  background: #f59e0b;
+  background: var(--cor-primaria);
   color: white;
   transform: translateY(-1px);
-  box-shadow: var(--sombra-sm);
+  box-shadow: var(--sombra-md);
 }
 
-/* Caso use algum botão de confirmação em âmbar */
+/* Botão de confirmação no modal - Agora azul */
 .btn-warning {
-  background: #f59e0b;
+  background: var(--cor-primaria);
   color: white;
   border: none;
+  box-shadow: var(--sombra-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: #d97706;
+  background: var(--cor-primaria-dark);
   transform: translateY(-1px);
   box-shadow: var(--sombra-md);
 }
@@ -974,6 +1026,12 @@ button:disabled {
 .btn-text i {
   font-size: 1rem;
   line-height: 0;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Deixar o botão "Desativar Conta" com respiro do card */
