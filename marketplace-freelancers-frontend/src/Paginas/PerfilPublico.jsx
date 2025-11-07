@@ -29,9 +29,7 @@ function formatarDataBR(dataStr) {
 }
 
 function formatarNumero(num) {
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + "k";
-  }
+  if (num >= 1000) return (num / 1000).toFixed(1) + "k";
   return (num ?? 0).toString();
 }
 
@@ -87,11 +85,8 @@ export default function PerfilPublico() {
         setAvaliacoes(avs.data);
       } catch (err) {
         const status = err?.response?.status;
-        if (status === 404) {
-          setErro("Perfil não encontrado.");
-        } else {
-          setErro("Erro ao carregar o perfil.");
-        }
+        if (status === 404) setErro("Perfil não encontrado.");
+        else setErro("Erro ao carregar o perfil.");
       } finally {
         setCarregando(false);
       }
@@ -171,11 +166,23 @@ export default function PerfilPublico() {
     new Date() - new Date(usuario.date_joined || usuario.created_at) <
     30 * 24 * 60 * 60 * 1000;
 
+  // 🔎 Status robusto vindo do backend (aceita vários nomes)
+  const suspensoPublico = Boolean(
+    // nomes novos
+    usuario?.status_publico === "desativado" ||
+    usuario?.modo_leitura_publico === true ||
+    // nomes já existentes em outros serializers
+    usuario?.is_active === false ||
+    usuario?.is_suspended_self === true ||
+    usuario?.modo_leitura === true
+  );
+
   return (
     <>
       <Navbar />
 
       <div className="perfil-redesign-container">
+        {/* Toast de link copiado */}
         {mostrarAlerta && (
           <div className="toast-alert success">
             <div className="toast-icon">
@@ -190,6 +197,21 @@ export default function PerfilPublico() {
             <button className="toast-close" onClick={() => setMostrarAlerta(false)}>
               <i className="bi bi-x"></i>
             </button>
+          </div>
+        )}
+
+        {/* Aviso quando a conta do perfil estiver desativada */}
+        {suspensoPublico && (
+          <div className="toast-alert info">
+            <div className="toast-icon">
+              <i className="bi bi-pause-circle-fill"></i>
+            </div>
+            <div className="toast-content">
+              <div className="toast-title">Conta desativada</div>
+              <div className="toast-message">
+                Este usuário está em modo leitura no momento.
+              </div>
+            </div>
           </div>
         )}
 
@@ -377,41 +399,6 @@ export default function PerfilPublico() {
                         <div className="stat-detail-info">
                           <span className="stat-detail-value">
                             {formatarNumero(usuario.avaliacoes_recebidas ?? 0)}
-                          </span>
-                          <span className="stat-detail-label">Recebidas</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* DENÚNCIAS */}
-                  <div className="stats-section-profile">
-                    <div className="section-header-profile">
-                      <div className="section-icon-profile danger">
-                        <i className="bi bi-shield-fill-exclamation"></i>
-                      </div>
-                      <h2 className="section-title-profile">Denúncias</h2>
-                    </div>
-                    <div className="stats-detailed-grid">
-                      <div className="stat-detail-card">
-                        <div className="stat-detail-icon danger">
-                          <i className="bi bi-flag-fill"></i>
-                        </div>
-                        <div className="stat-detail-info">
-                          <span className="stat-detail-value">
-                            {formatarNumero(usuario.denuncias_enviadas ?? 0)}
-                          </span>
-                          <span className="stat-detail-label">Enviadas</span>
-                        </div>
-                      </div>
-
-                      <div className="stat-detail-card">
-                        <div className="stat-detail-icon warning">
-                          <i className="bi bi-exclamation-triangle-fill"></i>
-                        </div>
-                        <div className="stat-detail-info">
-                          <span className="stat-detail-value">
-                            {formatarNumero(usuario.denuncias_recebidas ?? 0)}
                           </span>
                           <span className="stat-detail-label">Recebidas</span>
                         </div>
@@ -636,13 +623,17 @@ export default function PerfilPublico() {
                       <div className="info-content">
                         <div className="info-label">Status</div>
                         <div className="info-value">
-                          <span className="status-badge">Ativo</span>
+                          <span className={`status-badge ${suspensoPublico ? "inactive" : "active"}`}>
+                            <span className="status-dot"></span>
+                            {suspensoPublico ? "Desativado" : "Ativo"}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>

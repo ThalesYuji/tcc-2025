@@ -245,6 +245,7 @@ class NotificacaoSerializer(serializers.ModelSerializer):
 class UsuarioPublicoSerializer(serializers.ModelSerializer):
     """
     Dados públicos do perfil — com estatísticas adicionais.
+    Também expõe o status básico da conta para exibição (sem revelar nada sensível).
     """
     nota_media = serializers.SerializerMethodField()
     trabalhos_publicados = serializers.SerializerMethodField()
@@ -254,13 +255,19 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
     denuncias_enviadas = serializers.SerializerMethodField()
     denuncias_recebidas = serializers.SerializerMethodField()
 
+    # 🔹 Novos campos públicos de status
+    status_publico = serializers.SerializerMethodField()
+    modo_leitura_publico = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
         fields = [
             "id", "nome", "tipo", "foto_perfil", "bio",
             "nota_media", "trabalhos_publicados", "trabalhos_concluidos",
             "avaliacoes_enviadas", "avaliacoes_recebidas",
-            "denuncias_enviadas", "denuncias_recebidas"
+            "denuncias_enviadas", "denuncias_recebidas",
+            # 👇 novos
+            "status_publico", "modo_leitura_publico"
         ]
 
     # URL absoluta da foto
@@ -273,6 +280,17 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
                 data['foto_perfil'] = request.build_absolute_uri(foto)
         return data
 
+    # ---------- status público ----------
+    def get_status_publico(self, obj):
+        # "desativado" se a conta está em modo leitura ou inativa no Django
+        suspenso = bool(getattr(obj, "is_suspended_self", False))
+        ativo = bool(getattr(obj, "is_active", True))
+        return "desativado" if (suspenso or not ativo) else "ativo"
+
+    def get_modo_leitura_publico(self, obj):
+        return bool(getattr(obj, "is_suspended_self", False))
+
+    # ---------- métricas ----------
     def get_nota_media(self, obj):
         avaliacoes = Avaliacao.objects.filter(avaliado=obj)
         if not avaliacoes.exists():
@@ -306,7 +324,6 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
     def get_denuncias_recebidas(self, obj):
         from denuncias.models import Denuncia
         return Denuncia.objects.filter(denunciado=obj).count()
-
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Recebe apenas o e-mail para iniciar o reset de senha."""
