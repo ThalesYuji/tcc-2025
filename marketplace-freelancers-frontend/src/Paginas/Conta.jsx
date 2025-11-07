@@ -7,6 +7,11 @@ import "../styles/Conta.css";
 export default function Conta() {
   const { usuarioLogado, setUsuarioLogado } = useContext(UsuarioContext);
 
+  // ===== Flags derivadas =====
+  const suspenso = Boolean(
+    usuarioLogado?.modo_leitura || usuarioLogado?.is_suspended_self
+  );
+
   // ========================= Estado da página / perfil =========================
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
@@ -31,7 +36,8 @@ export default function Conta() {
 
   // ========================= Desativação de conta (modal) =====================
   const [showModalDesativar, setShowModalDesativar] = useState(false);
-  const [senhaDesativar, setSenhaDesativar] = useState("");
+  const [senhaDesativar, setSenhaDesativar] = useState(""); // opcional (apenas confirmação visual)
+  const [motivoDesativar, setMotivoDesativar] = useState("");
   const [desativando, setDesativando] = useState(false);
   const [reativando, setReativando] = useState(false);
   const [feedbackDesativar, setFeedbackDesativar] = useState("");
@@ -66,7 +72,6 @@ export default function Conta() {
           setNotaMedia(null);
         }
       } catch {
-        // Fallback: busca geral e filtra pelo usuário
         try {
           const respAll = await api.get("/avaliacoes/");
           const recebidas2 = (Array.isArray(respAll.data) ? respAll.data : []).filter(
@@ -106,6 +111,10 @@ export default function Conta() {
 
   // ========================= Handlers de perfil ===============================
   function handleEditar() {
+    if (suspenso) {
+      setErro("Sua conta está desativada (modo leitura). Reative para alterar dados.");
+      return;
+    }
     setEditando(true);
     setForm({
       nome: usuarioLogado.nome,
@@ -180,6 +189,10 @@ export default function Conta() {
 
   async function handleSalvar(e) {
     e.preventDefault();
+    if (suspenso) {
+      setErro("Sua conta está desativada (modo leitura). Reative para alterar dados.");
+      return;
+    }
     setCarregando(true);
     setErro("");
     setFeedback("");
@@ -200,6 +213,8 @@ export default function Conta() {
         bio: resp.data.bio,
         foto_perfil: resp.data.foto_perfil,
         is_active: typeof resp.data.is_active !== "undefined" ? resp.data.is_active : user.is_active,
+        modo_leitura: resp.data.modo_leitura,
+        is_suspended_self: resp.data.is_suspended_self,
       }));
       setPreviewFoto(getPreviewFoto(resp.data));
       setEditando(false);
@@ -224,6 +239,10 @@ export default function Conta() {
 
   async function handleTrocarSenha(e) {
     e.preventDefault();
+    if (suspenso) {
+      setErroSenha("Sua conta está desativada (modo leitura). Reative para alterar dados.");
+      return;
+    }
     setCarregandoSenha(true);
     setErroSenha("");
 
@@ -287,68 +306,70 @@ export default function Conta() {
     setExcluindo(false);
   }
 
-// ✅ DESATIVAR (usa a rota correta e não envia senha; você pode manter o campo no UI só como confirmação visual)
-async function handleDesativarConta(e) {
-  e.preventDefault();
-  setDesativando(true);
-  setErroDesativar("");
-  setFeedbackDesativar("");
+  // ✅ DESATIVAR — sem logout; atualiza /me e fecha o modal
+  async function handleDesativarConta(e) {
+    e.preventDefault();
+    setDesativando(true);
+    setErroDesativar("");
+    setFeedbackDesativar("");
 
-  try {
-    // Se quiser registrar um motivo opcional no backend:
-    await api.post('/usuarios/me/desativar/', { motivo: 'Solicitação do usuário' });
-    setFeedbackDesativar("Conta desativada com sucesso.");
+    try {
+      await api.post('/usuarios/me/desativar/', {
+        motivo: motivoDesativar?.trim() || null,
+      });
 
-    // ⬇️ Se preferir manter logout imediato ao desativar, deixe este bloco.
-    //    Se quiser “modo leitura” sem sair da conta, remova o setTimeout abaixo.
-    setTimeout(() => {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }, 1000);
-  } catch (err) {
-    let msg = "Erro ao desativar conta.";
-    if (err.response?.data) {
-      const backendErros = err.response.data;
-      if (backendErros.erro) msg = backendErros.erro;
-      if (typeof backendErros === "object") {
-        msg = Object.values(backendErros)
-          .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-          .join(" ") || msg;
-      } else if (typeof backendErros === "string") {
-        msg = backendErros;
+      const me = await api.get('/usuarios/me/');
+      setUsuarioLogado(me.data);
+      setFeedbackDesativar("Conta desativada com sucesso. Você está em modo leitura.");
+      // fecha modal depois de um breve feedback
+      setTimeout(() => {
+        setShowModalDesativar(false);
+        setFeedbackDesativar("");
+      }, 1200);
+    } catch (err) {
+      let msg = "Erro ao desativar conta.";
+      if (err.response?.data) {
+        const backendErros = err.response.data;
+        if (backendErros.erro) msg = backendErros.erro;
+        if (typeof backendErros === "object") {
+          msg = Object.values(backendErros)
+            .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+            .join(" ") || msg;
+        } else if (typeof backendErros === "string") {
+          msg = backendErros;
+        }
       }
+      setErroDesativar(msg);
     }
-    setErroDesativar(msg);
+
+    setDesativando(false);
   }
 
-  setDesativando(false);
-}
-
-// ✅ REATIVAR (rota correta) — depois recarrega o /me para refletir o estado
-async function handleReativarConta() {
-  setReativando(true);
-  try {
-    await api.post('/usuarios/me/reativar/', {});
-    const me = await api.get('/usuarios/me/');
-    setUsuarioLogado(me.data);
-    setFeedback("Conta reativada com sucesso!");
-    setTimeout(() => setFeedback(""), 4000);
-  } catch (err) {
-    let msg = "Erro ao reativar conta.";
-    if (err.response?.data) {
-      const backendErros = err.response.data;
-      if (typeof backendErros === "object") {
-        msg = Object.values(backendErros)
-          .map((m) => (Array.isArray(m) ? m.join(" ") : m))
-          .join(" ") || msg;
-      } else if (typeof backendErros === "string") {
-        msg = backendErros;
+  // ✅ REATIVAR — atualiza /me
+  async function handleReativarConta() {
+    setReativando(true);
+    try {
+      await api.post('/usuarios/me/reativar/', {});
+      const me = await api.get('/usuarios/me/');
+      setUsuarioLogado(me.data);
+      setFeedback("Conta reativada com sucesso!");
+      setTimeout(() => setFeedback(""), 4000);
+    } catch (err) {
+      let msg = "Erro ao reativar conta.";
+      if (err.response?.data) {
+        const backendErros = err.response.data;
+        if (typeof backendErros === "object") {
+          msg = Object.values(backendErros)
+            .map((m) => (Array.isArray(m) ? m.join(" ") : m))
+            .join(" ") || msg;
+        } else if (typeof backendErros === "string") {
+          msg = backendErros;
+        }
       }
+      setErro(msg);
     }
-    setErro(msg);
+    setReativando(false);
   }
-  setReativando(false);
-}
 
   if (!usuarioLogado) return null;
 
@@ -356,6 +377,18 @@ async function handleReativarConta() {
   return (
     <div className="conta-page">
       <div className="conta-container">
+
+        {/* 🔵 Banner de modo leitura */}
+        {suspenso && (
+          <div className="alert alert-info" style={{ marginBottom: 16 }}>
+            <i className="bi bi-pause-circle"></i>
+            <span>
+              Sua conta está <strong>desativada</strong> (modo leitura). Você pode navegar,
+              mas ações (criar/editar/excluir) serão bloqueadas até reativar.
+            </span>
+          </div>
+        )}
+
         {/* Header com avatar e info básica */}
         <div className="conta-header-profile">
           <div className="profile-banner">
@@ -367,7 +400,7 @@ async function handleReativarConta() {
               <div className="avatar-ring">
                 <img src={previewFoto} alt="Foto de perfil" className="profile-avatar-large" />
               </div>
-              {editando && (
+              {editando && !suspenso && (
                 <button
                   className="avatar-edit-btn"
                   onClick={() => fileInputRef.current?.click()}
@@ -383,13 +416,14 @@ async function handleReativarConta() {
                 ref={fileInputRef}
                 onChange={handleChange}
                 style={{ display: 'none' }}
+                disabled={suspenso}
               />
             </div>
 
             <div className="profile-info-header">
               <h1 className="profile-name">
                 {usuarioLogado.nome}
-                {!usuarioLogado.is_active && (
+                {suspenso && (
                   <span className="badge-inactive" title="Conta desativada">
                     <i className="bi bi-pause-circle-fill"></i> Desativada
                   </span>
@@ -418,7 +452,7 @@ async function handleReativarConta() {
                 <i className="bi bi-eye"></i>
                 Ver Perfil Público
               </button>
-              {!usuarioLogado.is_active ? (
+              {suspenso && (
                 <button
                   className="btn-primary"
                   onClick={handleReativarConta}
@@ -438,7 +472,7 @@ async function handleReativarConta() {
                     </>
                   )}
                 </button>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
@@ -470,7 +504,12 @@ async function handleReativarConta() {
                   Informações Pessoais
                 </h2>
                 {!editando && (
-                  <button className="btn-icon-header" onClick={handleEditar}>
+                  <button
+                    className="btn-icon-header"
+                    onClick={handleEditar}
+                    disabled={suspenso}
+                    title={suspenso ? "Modo leitura. Reative para editar." : "Editar"}
+                  >
                     <i className="bi bi-pencil"></i>
                   </button>
                 )}
@@ -489,6 +528,7 @@ async function handleReativarConta() {
                           onChange={handleChange}
                           className="input-field"
                           required
+                          disabled={suspenso}
                         />
                       </div>
 
@@ -501,6 +541,7 @@ async function handleReativarConta() {
                           onChange={handleChange}
                           className="input-field"
                           required
+                          disabled={suspenso}
                         />
                       </div>
                     </div>
@@ -514,11 +555,12 @@ async function handleReativarConta() {
                         className="input-field"
                         placeholder="Conte um pouco sobre você..."
                         rows="4"
+                        disabled={suspenso}
                       />
                     </div>
 
                     <div className="form-actions-inline">
-                      <button type="submit" className="btn-primary" disabled={carregando}>
+                      <button type="submit" className="btn-primary" disabled={carregando || suspenso}>
                         {carregando ? (
                           <>
                             <div className="spinner-small"></div>
@@ -651,6 +693,8 @@ async function handleReativarConta() {
                   <button
                     className="btn-text-full"
                     onClick={() => setExibirTrocaSenha(!exibirTrocaSenha)}
+                    disabled={suspenso}
+                    title={suspenso ? "Modo leitura. Reative para alterar senha." : "Alterar senha"}
                   >
                     <i className="bi bi-key"></i>
                     <span>{exibirTrocaSenha ? "Cancelar Alteração" : "Alterar Senha"}</span>
@@ -667,6 +711,7 @@ async function handleReativarConta() {
                           onChange={(e) => setSenhaAtual(e.target.value)}
                           className="input-field"
                           required
+                          disabled={suspenso}
                         />
                       </div>
                       <div className="form-field">
@@ -677,6 +722,7 @@ async function handleReativarConta() {
                           onChange={(e) => setNovaSenha(e.target.value)}
                           className="input-field"
                           required
+                          disabled={suspenso}
                         />
                       </div>
                       <div className="form-field">
@@ -687,6 +733,7 @@ async function handleReativarConta() {
                           onChange={(e) => setConfirmarNovaSenha(e.target.value)}
                           className="input-field"
                           required
+                          disabled={suspenso}
                         />
                       </div>
                       {erroSenha && (
@@ -695,7 +742,7 @@ async function handleReativarConta() {
                           {erroSenha}
                         </div>
                       )}
-                      <button type="submit" className="btn-primary btn-full" disabled={carregandoSenha}>
+                      <button type="submit" className="btn-primary btn-full" disabled={carregandoSenha || suspenso}>
                         {carregandoSenha ? (
                           <>
                             <div className="spinner-small"></div>
@@ -724,16 +771,16 @@ async function handleReativarConta() {
               </div>
               <div className="card-body">
                 <div className="account-status-box">
-                  <div className={`status-info-wrapper ${usuarioLogado.is_active ? "active" : "inactive"}`}>
+                  <div className={`status-info-wrapper ${!suspenso ? "active" : "inactive"}`}>
                     <div className="status-icon-circle">
-                      <i className={`bi ${usuarioLogado.is_active ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`}></i>
+                      <i className={`bi ${!suspenso ? "bi-check-circle-fill" : "bi-pause-circle-fill"}`}></i>
                     </div>
                     <div className="status-content">
                       <div className="status-title">
-                        {usuarioLogado.is_active ? "Conta Ativa" : "Conta Desativada"}
+                        {!suspenso ? "Conta Ativa" : "Conta Desativada"}
                       </div>
                       <div className="status-desc">
-                        {usuarioLogado.is_active
+                        {!suspenso
                           ? "Sua conta está ativa e funcionando normalmente."
                           : "Sua conta está desativada. Reative para voltar a usar todos os recursos."}
                       </div>
@@ -741,7 +788,7 @@ async function handleReativarConta() {
                   </div>
 
                   <div className="status-actions">
-                    {usuarioLogado.is_active ? (
+                    {!suspenso ? (
                       <button
                         className="btn-warning-outline btn-full"
                         onClick={() => setShowModalDesativar(true)}
@@ -774,6 +821,7 @@ async function handleReativarConta() {
                 </div>
               </div>
             </div>
+
             {/* Card de Zona de Perigo */}
             <div className="card card-danger">
               <div className="card-header-simple">
@@ -916,17 +964,29 @@ async function handleReativarConta() {
                   <p>Sua conta ficará <strong>inativa</strong> até que você a reative. Você pode voltar quando quiser.</p>
                 </div>
                 <form onSubmit={handleDesativarConta}>
+                  {/* Campo de senha é apenas confirmação visual (não é usado no backend) */}
                   <div className="form-field">
-                    <label>Digite sua senha para confirmar:</label>
+                    <label>Digite sua senha para confirmar (opcional):</label>
                     <input
                       type="password"
                       value={senhaDesativar}
                       onChange={(e) => setSenhaDesativar(e.target.value)}
                       className="input-field"
                       placeholder="Senha atual"
-                      required
                     />
                   </div>
+
+                  <div className="form-field">
+                    <label>Motivo (opcional):</label>
+                    <input
+                      type="text"
+                      value={motivoDesativar}
+                      onChange={(e) => setMotivoDesativar(e.target.value)}
+                      className="input-field"
+                      placeholder="Ex.: Pausa de fim de ano"
+                    />
+                  </div>
+
                   {erroDesativar && (
                     <div className="alert-mini alert-error">
                       <i className="bi bi-exclamation-circle"></i>

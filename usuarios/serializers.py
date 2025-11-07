@@ -15,11 +15,11 @@ from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
 class UsuarioSerializer(serializers.ModelSerializer):
     """
     Serializer principal do usuário (CRUD + /me).
-    - Normaliza CPF/CNPJ/telefone (remove não dígitos)
+    - Normaliza CPF/CNPJ/telefone
     - Valida unicidade e formato
     - Força senha forte
     - Retorna foto_perfil com URL absoluta
-    - Exponde status de desativação (somente leitura)
+    - Expõe status de desativação (modo leitura)
     """
     email = serializers.EmailField(required=True)
     cpf = serializers.CharField(required=True)
@@ -33,18 +33,19 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
-    # 🔎 Conveniência: flag derivada para o front (true quando em modo leitura)
+    # ✅ Flags para a UI
     modo_leitura = serializers.SerializerMethodField(read_only=True)
+    status_conta = serializers.SerializerMethodField(read_only=True)
+
+    # ✅ Expõe explicitamente como read-only (já estaria em __all__, mas assim fica claro)
+    is_suspended_self = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Usuario
         fields = '__all__'
-        # 🔒 Campos que nunca devem ser alterados via PATCH/PUT genérico
         read_only_fields = (
             'is_active', 'is_staff', 'is_superuser', 'last_login',
-            # 🔒 Desativação voluntária é controlada por endpoints próprios
             'is_suspended_self', 'deactivated_at', 'deactivated_reason',
-            # 🔒 Permissões e grupos (se existirem no model base)
             'groups', 'user_permissions',
         )
 
@@ -60,6 +61,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     def get_modo_leitura(self, obj):
         return bool(getattr(obj, "is_suspended_self", False))
+
+    def get_status_conta(self, obj):
+        return "desativada" if getattr(obj, "is_suspended_self", False) else "ativa"
 
     # --------------------- Normalização (entrada) ---------------------
     def to_internal_value(self, data):
@@ -144,7 +148,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
         validated_data.pop('deactivated_at', None)
         validated_data.pop('deactivated_reason', None)
 
+        # Defaults seguros
         validated_data['is_active'] = True
+        validated_data.setdefault('is_suspended_self', False)
 
         user = Usuario(**validated_data)
         if password:
@@ -156,7 +162,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        # Impede alteração direta dos campos de desativação (usamos endpoints próprios)
+        # Impede alteração direta dos campos de desativação
         for field in ('is_suspended_self', 'deactivated_at', 'deactivated_reason'):
             validated_data.pop(field, None)
 
@@ -167,10 +173,10 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
-    # --------------------- Regras por tipo + bloqueio em modo leitura ---------------------
+    # --------------------- Regras por tipo + bloqueio amigável ---------------------
     def validate(self, data):
         request = self.context.get('request')
-        # Bloqueio amigável extra no serializer (o middleware também protege)
+        # Reforço ao middleware (mensagem amigável na própria validação)
         if request and request.method in ('POST', 'PUT', 'PATCH'):
             user = getattr(request, 'user', None)
             if getattr(user, 'is_authenticated', False) and not getattr(user, 'is_superuser', False):
