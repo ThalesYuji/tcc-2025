@@ -1,4 +1,4 @@
-// src/Paginas/Trabalhos.jsx - VERSÃO COMPLETA CORRIGIDA
+// src/Paginas/Trabalhos.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ export default function Trabalhos() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
   const [numPages, setNumPages] = useState(1);
+  const [loadingGrid, setLoadingGrid] = useState(false);
   const navigate = useNavigate();
 
   const { usuarioLogado, carregando } = useContext(UsuarioContext);
@@ -34,12 +35,13 @@ export default function Trabalhos() {
       .catch(() => setTodasHabilidades([]));
 
     buscarTrabalhos({ page: 1 });
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function buscarTrabalhos(filtros = {}) {
+    setLoadingGrid(true);
     let url = "/trabalhos/";
-    let params = [];
+    const params = [];
     if (filtros.busca?.trim())
       params.push(`busca=${encodeURIComponent(filtros.busca)}`);
     if (filtros.habilidade)
@@ -56,46 +58,60 @@ export default function Trabalhos() {
         setNumPages(response.data.num_pages || 1);
         setErro("");
       })
-      .catch(() => setErro("Erro ao buscar trabalhos."));
+      .catch(() => setErro("Erro ao buscar trabalhos."))
+      .finally(() => setLoadingGrid(false));
   }
 
   function formatarData(dataStr) {
     if (!dataStr) return "Não definido";
-    const [ano, mes, dia] = dataStr.split("-");
+    // espera "YYYY-MM-DD"
+    const [ano, mes, dia] = String(dataStr).split("-");
+    if (!ano || !mes || !dia) return dataStr;
     return `${dia}/${mes}/${ano}`;
   }
 
   function formatarOrcamento(valor) {
+    const n = Number(valor || 0);
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(valor);
+    }).format(n);
   }
 
   function getStatusClass(status) {
-    switch (status?.toLowerCase()) {
+    switch ((status || "").toLowerCase()) {
       case "concluido":
       case "concluído":
-        return "status-concluido";
+        return "status-concluido"; // verde
       case "cancelado":
       case "recusado":
-        return "status-recusado";
+        return "status-recusado"; // vermelho
+      case "aberto":
+        return "status-aberto"; // azul
+      case "aguardando_aceitacao":
+      case "aguardando aceitação":
+        return "status-aguardando"; // amarelo
       case "em_andamento":
       case "em andamento":
       case "andamento":
       default:
-        return "status-em-andamento";
+        return "status-em-andamento"; // laranja
     }
   }
 
   function getStatusIcon(status) {
-    switch (status?.toLowerCase()) {
+    switch ((status || "").toLowerCase()) {
       case "concluido":
       case "concluído":
         return "bi-check-circle-fill";
       case "cancelado":
       case "recusado":
         return "bi-x-circle-fill";
+      case "aberto":
+        return "bi-circle";
+      case "aguardando_aceitacao":
+      case "aguardando aceitação":
+        return "bi-hourglass-split";
       case "em_andamento":
       case "em andamento":
       case "andamento":
@@ -104,30 +120,29 @@ export default function Trabalhos() {
     }
   }
 
+  // respeita visibilidade do backend
   function podeVerTrabalhoPrivado(trabalho) {
-    if (!trabalho.is_privado) return true;
+    if (!trabalho?.is_privado) return true;
     if (!usuarioLogado) return false;
-
     if (usuarioLogado.is_superuser) return true;
-
     if (trabalho.contratante_id === usuarioLogado.id) return true;
-
-    if (trabalho.freelancer === usuarioLogado.id) return true;
-
+    if (trabalho.freelancer === usuarioLogado.id) return true; // serializer expõe id no campo "freelancer"
     return false;
   }
 
   function filtrar(e) {
     e.preventDefault();
-    setPage(1);
-    buscarTrabalhos({ busca, habilidade, page: 1 });
+    const first = 1;
+    setPage(first);
+    buscarTrabalhos({ busca, habilidade, page: first });
   }
 
   function limpar() {
     setBusca("");
     setHabilidade("");
-    setPage(1);
-    buscarTrabalhos({ page: 1 });
+    const first = 1;
+    setPage(first);
+    buscarTrabalhos({ page: first });
   }
 
   function anterior() {
@@ -154,9 +169,7 @@ export default function Trabalhos() {
           <h3 style={{ color: "var(--cor-texto-light)" }}>
             Carregando trabalhos...
           </h3>
-          <p
-            style={{ color: "var(--cor-texto-light)", textAlign: "center" }}
-          >
+          <p style={{ color: "var(--cor-texto-light)", textAlign: "center" }}>
             Buscando as melhores oportunidades para você
           </p>
         </div>
@@ -187,7 +200,7 @@ export default function Trabalhos() {
           <div className="trabalhos-title-icon">
             <i className="bi bi-briefcase"></i>
           </div>
-          Trabalhos Disponíveis
+        Trabalhos Disponíveis
         </h1>
         <p className="trabalhos-subtitle">
           Encontre oportunidades incríveis ou publique novos projetos com
@@ -234,18 +247,22 @@ export default function Trabalhos() {
           </div>
 
           <div className="filtros-botoes">
-            <button type="submit" className="btn-filtrar">
+            <button type="submit" className="btn-filtrar" disabled={loadingGrid}>
               <i className="bi bi-search"></i>
-              Filtrar
+              {loadingGrid ? "Filtrando..." : "Filtrar"}
             </button>
 
-            <button type="button" className="btn-limpar" onClick={limpar}>
+            <button
+              type="button"
+              className="btn-limpar"
+              onClick={limpar}
+              disabled={loadingGrid}
+            >
               <i className="bi bi-eraser-fill"></i>
               Limpar
             </button>
 
-            {(usuarioLogado.tipo === "contratante" ||
-              usuarioLogado.is_superuser) && (
+            {(usuarioLogado.tipo === "contratante" || usuarioLogado.is_superuser) && (
               <button
                 type="button"
                 className="btn-novo-trabalho"
@@ -274,7 +291,14 @@ export default function Trabalhos() {
         </div>
       )}
 
-      {trabalhosVisiveis.length === 0 && !erro ? (
+      {!erro && loadingGrid && (
+        <div className="trabalhos-loading-inline">
+          <div className="loading-spinner small"></div>
+          <span>Atualizando lista…</span>
+        </div>
+      )}
+
+      {trabalhosVisiveis.length === 0 && !erro && !loadingGrid ? (
         <div className="trabalhos-empty">
           <div className="empty-icon">
             <i className="bi bi-briefcase"></i>
@@ -303,9 +327,7 @@ export default function Trabalhos() {
                     {trabalho.titulo}
                   </h3>
                 </div>
-                <div
-                  className={`trabalho-status ${getStatusClass(trabalho.status)}`}
-                >
+                <div className={`trabalho-status ${getStatusClass(trabalho.status)}`}>
                   <i className={`bi ${getStatusIcon(trabalho.status)}`}></i>
                   {trabalho.status}
                 </div>
@@ -338,10 +360,11 @@ export default function Trabalhos() {
                   <span
                     className="trabalho-info-value trabalho-cliente"
                     onClick={() =>
-                      navigate(`/perfil/${trabalho.contratante_id}`)
+                      trabalho.contratante_id && navigate(`/perfil/${trabalho.contratante_id}`)
                     }
+                    role="button"
                   >
-                    {trabalho.nome_contratante}
+                    {trabalho.nome_contratante || "—"}
                   </span>
                 </div>
 
@@ -352,23 +375,24 @@ export default function Trabalhos() {
                   </div>
                 )}
 
-                {trabalho.habilidades_detalhes?.length > 0 && (
-                  <div>
-                    <div className="trabalho-info-item">
-                      <i className="bi bi-tools trabalho-info-icon"></i>
-                      <span>Habilidades necessárias:</span>
+                {Array.isArray(trabalho.habilidades_detalhes) &&
+                  trabalho.habilidades_detalhes.length > 0 && (
+                    <div>
+                      <div className="trabalho-info-item">
+                        <i className="bi bi-tools trabalho-info-icon"></i>
+                        <span>Habilidades necessárias:</span>
+                      </div>
+                      <div className="trabalho-habilidades">
+                        {trabalho.habilidades_detalhes.map((hab) => (
+                          <span key={hab.id || hab.nome} className="habilidade-tag">
+                            {hab.nome}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="trabalho-habilidades">
-                      {trabalho.habilidades_detalhes.map((hab, index) => (
-                        <span key={index} className="habilidade-tag">
-                          {hab.nome}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {trabalho.anexo_url && (
+                {trabalho.anexo_url && trabalho.anexo_url !== "null" && (
                   <div className="trabalho-info-item">
                     <i className="bi bi-paperclip trabalho-info-icon"></i>
                     <a
@@ -376,12 +400,6 @@ export default function Trabalhos() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="trabalho-anexo"
-                      onClick={(e) => {
-                        if (!trabalho.anexo_url || trabalho.anexo_url === 'null') {
-                          e.preventDefault();
-                          alert('Arquivo não disponível');
-                        }
-                      }}
                     >
                       <i className="bi bi-download"></i>
                       Ver Anexo
@@ -406,11 +424,7 @@ export default function Trabalhos() {
 
       {numPages > 1 && (
         <div className="trabalhos-pagination">
-          <button
-            className="pagination-btn"
-            disabled={page <= 1}
-            onClick={anterior}
-          >
+          <button className="pagination-btn" disabled={page <= 1} onClick={anterior}>
             <i className="bi bi-chevron-left"></i>
             Anterior
           </button>
@@ -419,11 +433,7 @@ export default function Trabalhos() {
             Página <strong>{page}</strong> de <strong>{numPages}</strong>
           </div>
 
-          <button
-            className="pagination-btn"
-            disabled={page >= numPages}
-            onClick={proxima}
-          >
+          <button className="pagination-btn" disabled={page >= numPages} onClick={proxima}>
             Próxima
             <i className="bi bi-chevron-right"></i>
           </button>

@@ -16,7 +16,7 @@ from .serializers import TrabalhoSerializer
 
 # 🔔 Notificações e dependências externas
 from notificacoes.utils import enviar_notificacao
-from habilidades.models import Habilidade
+from habilidades.models import Habilidade, Ramo
 
 
 class TrabalhoAPIView(APIView):
@@ -31,14 +31,21 @@ class TrabalhoAPIView(APIView):
     def get(self, request):
         """
         Lista trabalhos com filtros e paginação.
-        - contratante: vê seus próprios trabalhos
-        - freelancer: vê públicos e os privados destinados a ele
-        - admin: vê todos
-        Filtros: ?busca=, ?habilidade= (id ou nome), ?page=, ?page_size=
+        Regra de visibilidade:
+          - contratante: por padrão vê apenas os próprios; se ?todos=1, vê também os públicos (útil em consultas gerais)
+          - freelancer: vê públicos e os privados destinados a ele
+          - admin: vê todos
+        Filtros: ?busca=, ?habilidade= (id ou nome), ?ramo= (id ou nome), ?status=,
+                 ?page=, ?page_size=, ?todos=1 (só tem efeito para contratante)
         """
         usuario = request.user
+
+        # ---------- Query params ----------
         busca = (request.query_params.get("busca") or "").strip()
         habilidade_param = (request.query_params.get("habilidade") or "").strip()
+        ramo_param = (request.query_params.get("ramo") or "").strip()
+        status_param = (request.query_params.get("status") or "").strip().lower()
+        ver_todos_contratante = (request.query_params.get("todos") or "").strip() in ("1", "true", "True")
 
         # paginação defensiva
         try:
@@ -50,12 +57,19 @@ class TrabalhoAPIView(APIView):
         except ValueError:
             page_size = 6
 
-        # 🔐 Base conforme o tipo do usuário
+        # ---------- Base conforme o tipo do usuário ----------
         if usuario.is_superuser:
             trabalhos = Trabalho.objects.all()
         elif getattr(usuario, "tipo", None) == "contratante":
-            # contratante vê apenas os trabalhos que ele mesmo publicou
-            trabalhos = Trabalho.objects.filter(contratante=usuario)
+            # Por padrão, contratante vê apenas os trabalhos que publicou.
+            # Se quiser ver também a vitrine pública, passe ?todos=1.
+            if ver_todos_contratante:
+                trabalhos = Trabalho.objects.filter(
+                    Q(contratante=usuario) |
+                    Q(is_privado=False)
+                )
+            else:
+                trabalhos = Trabalho.objects.filter(contratante=usuario)
         else:
             # freelancer vê:
             # - públicos
@@ -65,15 +79,16 @@ class TrabalhoAPIView(APIView):
                 Q(is_privado=True, freelancer=usuario)
             )
 
-        # 🔎 Busca por texto (título, descrição, nome de habilidade)
+        # ---------- Filtros: busca textual ----------
         if busca:
             trabalhos = trabalhos.filter(
                 Q(titulo__icontains=busca) |
                 Q(descricao__icontains=busca) |
-                Q(habilidades__nome__icontains=busca)
+                Q(habilidades__nome__icontains=busca) |
+                Q(ramo__nome__icontains=busca)
             ).distinct()
 
-        # 🎯 Filtro por habilidade: aceita id numérico OU nome exato (case-insensitive)
+        # ---------- Filtro por habilidade (id ou nome exato) ----------
         if habilidade_param:
             habilidade_obj = None
             try:
@@ -87,11 +102,28 @@ class TrabalhoAPIView(APIView):
                 # nada encontrado para o filtro → zera
                 trabalhos = trabalhos.none()
 
-        # 📌 Ordenação consistente (evita 500 e mantém ordem cronológica)
-        trabalhos = trabalhos.select_related("contratante", "freelancer").prefetch_related("habilidades")
+        # ---------- Filtro por ramo (id ou nome exato) ----------
+        if ramo_param:
+            ramo_obj = None
+            try:
+                ramo_obj = Ramo.objects.filter(id=int(ramo_param)).first()
+            except (ValueError, TypeError):
+                ramo_obj = Ramo.objects.filter(nome__iexact=ramo_param).first()
+
+            if ramo_obj:
+                trabalhos = trabalhos.filter(ramo=ramo_obj)
+            else:
+                trabalhos = trabalhos.none()
+
+        # ---------- Filtro por status ----------
+        if status_param:
+            trabalhos = trabalhos.filter(status=status_param)
+
+        # ---------- Otimização + Ordenação ----------
+        trabalhos = trabalhos.select_related("contratante", "freelancer", "ramo").prefetch_related("habilidades")
         trabalhos = trabalhos.order_by("-criado_em", "-id")
 
-        # 📄 Paginação manual simples
+        # ---------- Paginação manual ----------
         total = trabalhos.count()
         start = (page - 1) * page_size
         end = start + page_size
@@ -200,7 +232,7 @@ class TrabalhoDetalheAPIView(APIView):
         if trabalho_atualizado.is_privado and trabalho_atualizado.freelancer:
             enviar_notificacao(
                 usuario=trabalho_atualizado.freelancer,
-                mensagem=f"A proposta privada '{trabalho_atualizado.titulo}' foi atualizada.",
+                mensagem=f"O trabalho privado '{trabalho_atualizado.titulo}' foi atualizado.",
                 link=f"/trabalhos/detalhes/{trabalho_atualizado.id}",
             )
         else:
@@ -234,7 +266,7 @@ class TrabalhoDetalheAPIView(APIView):
         if trabalho_atualizado.is_privado and trabalho_atualizado.freelancer:
             enviar_notificacao(
                 usuario=trabalho_atualizado.freelancer,
-                mensagem=f"A proposta privada '{trabalho_atualizado.titulo}' foi atualizada.",
+                mensagem=f"O trabalho privado '{trabalho_atualizado.titulo}' foi atualizado.",
                 link=f"/trabalhos/detalhes/{trabalho_atualizado.id}",
             )
         else:
@@ -305,7 +337,7 @@ class TrabalhoAceitarAPIView(APIView):
 
         # Transação atômica: evita contratos duplicados sob concorrência
         with transaction.atomic():
-            # Se já estiver em andamento/recusado/concluído, bloqueia
+            # Se já estiver em andamento/recusado/concluído/cancelado, bloqueia
             if trabalho.status in ("em_andamento", "recusado", "concluido", "cancelado"):
                 return Response(
                     {"erro": f"Não é possível aceitar. Status atual: {trabalho.status}."},

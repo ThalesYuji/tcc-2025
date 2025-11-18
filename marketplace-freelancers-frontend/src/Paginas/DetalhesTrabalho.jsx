@@ -1,27 +1,35 @@
-// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA COM MODAL REDESENHADO
+// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA E AJUSTADA
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
 import { useParams, useNavigate } from "react-router-dom";
 import "../styles/DetalhesTrabalho.css";
 
-// Função para classe do status
+/* =========================
+   Helpers de Status (UI)
+   ========================= */
 function getStatusClass(status) {
-  switch (status?.toLowerCase()) {
-    case "aberto": return "status-aberto";
-    case "em_andamento": return "status-em-andamento";
+  switch ((status || "").toLowerCase()) {
+    case "aberto": return "status-aberto";                // azul
+    case "aguardando_aceitacao":
+    case "aguardando aceitação": return "status-aguardando"; // amarelo
+    case "em_andamento":
+    case "em andamento": return "status-em-andamento";    // laranja
     case "concluido":
-    case "concluído": return "status-concluido";
-    case "cancelado": return "status-cancelado";
-    case "recusado": return "status-recusado";
+    case "concluído": return "status-concluido";          // verde
+    case "cancelado": return "status-cancelado";          // cinza/vermelho
+    case "recusado": return "status-recusado";            // vermelho
     default: return "status-default";
   }
 }
 
 function getStatusIcon(status) {
-  switch (status?.toLowerCase()) {
+  switch ((status || "").toLowerCase()) {
     case "aberto": return "bi-unlock";
-    case "em_andamento": return "bi-clock";
+    case "aguardando_aceitacao":
+    case "aguardando aceitação": return "bi-hourglass-split";
+    case "em_andamento":
+    case "em andamento": return "bi-clock";
     case "concluido":
     case "concluído": return "bi-check-circle";
     case "cancelado": return "bi-x-circle";
@@ -34,7 +42,9 @@ export default function DetalhesTrabalho() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // =================== STATES PRINCIPAIS ===================
+  /* =========================
+     State principal
+     ========================= */
   const [trabalho, setTrabalho] = useState(null);
   const [erro, setErro] = useState("");
   const [usuarioLogado, setUsuarioLogado] = useState(null);
@@ -43,22 +53,29 @@ export default function DetalhesTrabalho() {
   // Modais/ações
   const [showForm, setShowForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRecusaPrivado, setShowRecusaPrivado] = useState(false);
   const [enviandoProposta, setEnviandoProposta] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [recusando, setRecusando] = useState(false);
 
   // Form proposta
   const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
   const [motivoRevisao, setMotivoRevisao] = useState("");
   const [formErro, setFormErro] = useState("");
 
-  // Alerta central
+  // Recusa de trabalho privado (motivo opcional — backend aceita)
+  const [motivoRecusaPrivado, setMotivoRecusaPrivado] = useState("");
+
+  // Alerta central (toast/overlay)
   const [alerta, setAlerta] = useState(null);
 
   // Propostas do usuário para ESTE trabalho
   const [minhasPropostas, setMinhasPropostas] = useState([]);
-  const MAX_ENVIOS = 3; // 1 original + até 2 reenvios (total 3)
+  const MAX_ENVIOS = 3; // 1 original + até 2 reenvios
 
-  // =================== BUSCAS INICIAIS ===================
+  /* =========================
+     Bootstrapping inicial
+     ========================= */
   useEffect(() => {
     (async () => {
       try {
@@ -69,8 +86,8 @@ export default function DetalhesTrabalho() {
         setTrabalho(trabalhoResp.data);
         setUsuarioLogado(user);
 
-        // Busca propostas do usuário e filtra por este trabalho
         if (user) {
+          // Busca propostas e filtra por este trabalho
           const propsResp = await api
             .get(`/propostas/`, { params: { trabalho: id } })
             .catch(async () => {
@@ -98,7 +115,9 @@ export default function DetalhesTrabalho() {
     })();
   }, [id]);
 
-  // =================== DERIVADOS / REGRAS DE NEGÓCIO ===================
+  /* =========================
+     Derivados de Propostas
+     ========================= */
   const {
     totalEnvios,
     ultimaProposta,
@@ -120,6 +139,9 @@ export default function DetalhesTrabalho() {
     };
   }, [minhasPropostas]);
 
+  /* =========================
+     Regras de permissão (UI)
+     ========================= */
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
@@ -127,7 +149,7 @@ export default function DetalhesTrabalho() {
 
   const podeEnviarProposta = useMemo(() => {
     if (!usuarioLogado || usuarioLogado.tipo !== "freelancer") return false;
-    if (!trabalho || trabalho.status !== "aberto" || trabalho.is_privado) return false;
+    if (!trabalho || (trabalho.status || "").toLowerCase() !== "aberto" || trabalho.is_privado) return false;
     if (existePendenteOuAceita) return false;
     if (totalEnvios === 0) return true;
     return isReenvioElegivel;
@@ -135,10 +157,13 @@ export default function DetalhesTrabalho() {
 
   const isReenvio = useMemo(() => totalEnvios >= 1 && isReenvioElegivel, [totalEnvios, isReenvioElegivel]);
 
-  // =================== UTILIDADES ===================
+  /* =========================
+     Utils
+     ========================= */
   function formatarData(dataStr) {
     if (!dataStr) return "Não definido";
-    const [ano, mes, dia] = dataStr.split("-");
+    const [ano, mes, dia] = String(dataStr).split("-");
+    if (!ano || !mes || !dia) return dataStr;
     return `${dia}/${mes}/${ano}`;
   }
 
@@ -149,7 +174,8 @@ export default function DetalhesTrabalho() {
   }
 
   function formatarOrcamento(valor) {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+    const n = Number(valor || 0);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
   }
 
   function mostrarAlerta(tipo, texto, destino = null) {
@@ -157,10 +183,12 @@ export default function DetalhesTrabalho() {
     setTimeout(() => {
       setAlerta(null);
       if (destino) navigate(destino);
-    }, 2500);
+    }, 2200);
   }
 
-  // =================== AÇÕES ===================
+  /* =========================
+     Ações (DELETE / ACEITAR / RECUSAR / PROPOSTA)
+     ========================= */
   const handleDelete = async () => {
     setExcluindo(true);
     try {
@@ -203,7 +231,6 @@ export default function DetalhesTrabalho() {
         prazo_estimado: form.prazo_estimado,
         ...(isReenvio ? { motivo_revisao: motivoRevisao.trim() } : {}),
       };
-
       await api.post("/propostas/", payload);
 
       setShowForm(false);
@@ -235,16 +262,30 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  const recusarTrabalho = async () => {
+  // Agora abre modal pedindo motivo (opcional) antes de recusar
+  const recusarTrabalhoAbrir = () => {
+    setMotivoRecusaPrivado("");
+    setShowRecusaPrivado(true);
+  };
+
+  const recusarTrabalhoConfirmar = async () => {
+    setRecusando(true);
     try {
-      await api.post(`/trabalhos/${trabalho.id}/recusar/`);
+      await api.post(`/trabalhos/${trabalho.id}/recusar/`, {
+        motivo: (motivoRecusaPrivado || "").trim(),
+      });
+      setShowRecusaPrivado(false);
       mostrarAlerta("info", "Você recusou o trabalho.", "/trabalhos");
     } catch {
       mostrarAlerta("erro", "Erro ao recusar o trabalho.");
+    } finally {
+      setRecusando(false);
     }
   };
 
-  // =================== ESTADOS DE TELA ===================
+  /* =========================
+     Estados de tela
+     ========================= */
   if (carregando) {
     return (
       <div className="detalhes-trabalho-page page-container">
@@ -296,6 +337,9 @@ export default function DetalhesTrabalho() {
     return "bi-info-circle-fill";
   };
 
+  /* =========================
+     Render
+     ========================= */
   return (
     <div className="detalhes-trabalho-page page-container fade-in">
       {/* ALERTA CENTRAL */}
@@ -355,7 +399,76 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* MODAL DE PROPOSTA - DESIGN COMPACTO */}
+      {/* MODAL DE RECUSAR TRABALHO PRIVADO (com motivo opcional) */}
+      {showRecusaPrivado && (
+        <div className="proposta-modal-overlay">
+          <div className="proposta-modal-content">
+            <div className="proposta-modal-header">
+              <div className="proposta-modal-title-wrapper">
+                <div className="proposta-modal-icon">
+                  <i className="bi bi-x-octagon-fill"></i>
+                </div>
+                <div>
+                  <h3 className="proposta-modal-title">Recusar Trabalho</h3>
+                  <p className="proposta-modal-subtitle">{trabalho.titulo}</p>
+                </div>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowRecusaPrivado(false)}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div className="proposta-form">
+              <div className="form-group-full">
+                <label htmlFor="motivo-recusa">
+                  <i className="bi bi-chat-left-text"></i>
+                  Motivo (opcional)
+                </label>
+                <textarea
+                  id="motivo-recusa"
+                  className="form-control-compact"
+                  placeholder="Deixe um feedback para o contratante (opcional)"
+                  value={motivoRecusaPrivado}
+                  onChange={(e) => setMotivoRecusaPrivado(e.target.value)}
+                  disabled={recusando}
+                />
+              </div>
+
+              <div className="proposta-form-actions">
+                <button
+                  type="button"
+                  className="btn-modal-action btn-modal-cancel"
+                  onClick={() => setShowRecusaPrivado(false)}
+                  disabled={recusando}
+                >
+                  <i className="bi bi-x-circle"></i>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-modal-action btn-danger-action"
+                  onClick={recusarTrabalhoConfirmar}
+                  disabled={recusando}
+                >
+                  {recusando ? (
+                    <>
+                      <span className="spinner-border"></span>
+                      Recusando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-x-octagon"></i>
+                      Confirmar Recusa
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PROPOSTA */}
       {showForm && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
@@ -369,9 +482,7 @@ export default function DetalhesTrabalho() {
                   <h3 className="proposta-modal-title">
                     {isReenvio ? "Nova Proposta (Revisada)" : "Enviar Proposta"}
                   </h3>
-                  <p className="proposta-modal-subtitle">
-                    {trabalho.titulo}
-                  </p>
+                  <p className="proposta-modal-subtitle">{trabalho.titulo}</p>
                 </div>
               </div>
               <button className="modal-close-btn" onClick={() => setShowForm(false)}>
@@ -381,18 +492,16 @@ export default function DetalhesTrabalho() {
 
             {/* Form */}
             <form className="proposta-form" onSubmit={enviarProposta}>
-              {/* Info Badge (quando é reenvio) */}
               {isReenvio && (
                 <div className="proposta-info-badge">
                   <i className="bi bi-arrow-repeat"></i>
                   <span>
-                    Você já enviou <strong>{totalEnvios} proposta(s)</strong>.
-                    Restam <strong>{tentativasRestantes} tentativa(s)</strong>.
+                    Você já enviou <strong>{totalEnvios} proposta(s)</strong>. Restam{" "}
+                    <strong>{tentativasRestantes} tentativa(s)</strong>.
                   </span>
                 </div>
               )}
 
-              {/* Mensagem de erro */}
               {formErro && (
                 <div className="proposta-form-error">
                   <i className="bi bi-exclamation-triangle-fill"></i>
@@ -400,7 +509,6 @@ export default function DetalhesTrabalho() {
                 </div>
               )}
 
-              {/* Descrição - ocupa toda largura */}
               <div className="form-group-full">
                 <label htmlFor="descricao">
                   <i className="bi bi-file-text"></i>
@@ -417,7 +525,6 @@ export default function DetalhesTrabalho() {
                 />
               </div>
 
-              {/* Grid 2 colunas - Valor e Prazo lado a lado */}
               <div className="proposta-form-grid">
                 <div className="form-group-compact">
                   <label htmlFor="valor">
@@ -455,7 +562,6 @@ export default function DetalhesTrabalho() {
                 </div>
               </div>
 
-              {/* Campo de motivo de revisão (só aparece em reenvio) */}
               {isReenvio && (
                 <div className="form-revisao-group">
                   <label htmlFor="motivo_revisao">
@@ -478,7 +584,6 @@ export default function DetalhesTrabalho() {
                 </div>
               )}
 
-              {/* Ações */}
               <div className="proposta-form-actions">
                 <button
                   type="button"
@@ -526,7 +631,7 @@ export default function DetalhesTrabalho() {
             </div>
           </div>
           <p className="detalhes-subtitle">
-            Publicado por {trabalho.nome_contratante} em {formatarDataHora(trabalho.criado_em)}
+            Publicado por {trabalho.nome_contratante || "—"} em {formatarDataHora(trabalho.criado_em)}
           </p>
         </div>
       </div>
@@ -584,9 +689,10 @@ export default function DetalhesTrabalho() {
                   <span className="info-label">Contratante</span>
                   <span
                     className="info-value cliente-link"
-                    onClick={() => navigate(`/perfil/${trabalho.contratante_id}`)}
+                    onClick={() => trabalho.contratante_id && navigate(`/perfil/${trabalho.contratante_id}`)}
+                    role="button"
                   >
-                    {trabalho.nome_contratante}
+                    {trabalho.nome_contratante || "—"}
                   </span>
                 </div>
               </div>
@@ -607,15 +713,15 @@ export default function DetalhesTrabalho() {
             </div>
 
             {/* HABILIDADES */}
-            {trabalho.habilidades_detalhes?.length > 0 && (
+            {Array.isArray(trabalho.habilidades_detalhes) && trabalho.habilidades_detalhes.length > 0 && (
               <div className="trabalho-habilidades-section">
                 <h3>
                   <i className="bi bi-tools"></i>
                   Habilidades Necessárias
                 </h3>
                 <div className="habilidades-list">
-                  {trabalho.habilidades_detalhes.map((hab, index) => (
-                    <span key={index} className="habilidade-tag">
+                  {trabalho.habilidades_detalhes.map((hab) => (
+                    <span key={hab.id || hab.nome} className="habilidade-tag">
                       {hab.nome}
                     </span>
                   ))}
@@ -624,7 +730,7 @@ export default function DetalhesTrabalho() {
             )}
 
             {/* ARQUIVO ANEXO */}
-            {trabalho.anexo_url && (
+            {trabalho.anexo_url && trabalho.anexo_url !== "null" && (
               <div className="trabalho-anexo-section">
                 <h3>
                   <i className="bi bi-paperclip"></i>
@@ -635,12 +741,6 @@ export default function DetalhesTrabalho() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="anexo-link"
-                  onClick={(e) => {
-                    if (!trabalho.anexo_url || trabalho.anexo_url === 'null') {
-                      e.preventDefault();
-                      alert('Arquivo não disponível');
-                    }
-                  }}
                 >
                   <i className="bi bi-download"></i>
                   Baixar Arquivo
@@ -697,24 +797,10 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {usuarioLogado && usuarioLogado.tipo === "freelancer" && !podeEnviarProposta && (
-              <div className="action-group">
-                <h4>Envios para este trabalho</h4>
-                <div className="text-muted small">
-                  {existePendenteOuAceita && "Você já possui uma proposta pendente/aceita para este trabalho."}
-                  {!existePendenteOuAceita && totalEnvios > 0 && ultimaProposta?.status !== "recusada" &&
-                    "Aguarde a decisão do contratante para enviar uma nova proposta."}
-                  {!existePendenteOuAceita && totalEnvios >= MAX_ENVIOS &&
-                    "Limite de envios atingido para este trabalho."}
-                  {!existePendenteOuAceita && trabalho.status !== "aberto" &&
-                    "Este trabalho não está aberto para novas propostas."}
-                </div>
-              </div>
-            )}
-
+            {/* Fluxo de privado para o freelancer convidado */}
             {usuarioLogado && trabalho?.is_privado &&
               trabalho.freelancer === usuarioLogado.id &&
-              trabalho.status === "aberto" && (
+              (trabalho.status || "").toLowerCase() === "aberto" && (
                 <div className="action-group">
                   <h4>Trabalho Privado</h4>
                   <p className="action-description">
@@ -730,7 +816,7 @@ export default function DetalhesTrabalho() {
                     </button>
                     <button
                       className="btn-action btn-danger-action"
-                      onClick={recusarTrabalho}
+                      onClick={recusarTrabalhoAbrir}
                     >
                       <i className="bi bi-x-circle"></i>
                       Recusar Trabalho
@@ -741,7 +827,7 @@ export default function DetalhesTrabalho() {
 
             {!podeEditarOuExcluir() &&
               !podeEnviarProposta &&
-              !(usuarioLogado && trabalho?.is_privado && trabalho.freelancer === usuarioLogado.id && trabalho.status === "aberto") && (
+              !(usuarioLogado && trabalho?.is_privado && trabalho.freelancer === usuarioLogado.id && (trabalho.status || "").toLowerCase() === "aberto") && (
                 <div className="no-actions">
                   <div className="no-actions-icon">
                     <i className="bi bi-info-circle"></i>

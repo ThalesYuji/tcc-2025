@@ -1,5 +1,10 @@
 /* src/styles/DetalhesTrabalho.css */
 
+:root {
+  /* ajuste único para posicionar overlays abaixo da navbar */
+  --navbar-height: 80px;
+}
+
 .detalhes-trabalho-page {
   background: var(--cor-fundo);
   min-height: 100vh;
@@ -116,6 +121,7 @@
   text-align: center;
   padding: var(--space-xl) 0;
   position: relative;
+  overflow: hidden; /* evita vazamento do gradiente */
 }
 
 .detalhes-title-section::before {
@@ -179,6 +185,13 @@
 }
 
 .status-em-andamento {
+  background: rgba(245, 158, 11, 0.15);
+  color: #92400E;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* compat: caso o backend envie com underscore */
+.status-em_andamento {
   background: rgba(245, 158, 11, 0.15);
   color: #92400E;
   border-color: rgba(245, 158, 11, 0.3);
@@ -505,6 +518,18 @@
   width: 100%;
 }
 
+/* foco visível/acessibilidade nos principais elementos clicáveis */
+.btn-voltar:focus-visible,
+.btn-action:focus-visible,
+.btn-modal:focus-visible,
+.btn-modal-action:focus-visible,
+.anexo-link:focus-visible,
+.cliente-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  transform: translateY(-1px);
+}
+
 /* ==============================
    MENSAGEM DE SUCESSO GLOBAL
    ============================== */
@@ -541,12 +566,12 @@
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* respeita navbar */
   justify-content: center;
   z-index: 9999;
   animation: fadeIn 0.3s ease-out;
   backdrop-filter: blur(4px);
-  padding: var(--space-md);
+  padding: calc(var(--navbar-height) + 24px) var(--space-md) var(--space-md);
 }
 
 /* Container do modal - mais largo e compacto */
@@ -558,6 +583,7 @@
   max-width: 900px;
   max-height: 85vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS momentum */
   animation: zoomIn 0.4s ease-out;
   position: relative;
 }
@@ -952,11 +978,12 @@
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* descola do topo */
   justify-content: center;
   z-index: 10000;
   animation: fadeIn 0.3s ease-out;
   backdrop-filter: blur(4px);
+  padding: calc(var(--navbar-height) + 24px) var(--space-md) var(--space-md);
 }
 
 .alerta-box {
@@ -1058,11 +1085,12 @@
   height: 100vh;
   background: rgba(0, 0, 0, 0.75);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* respeita navbar */
   justify-content: center;
   z-index: 10000;
   animation: fadeIn 0.3s ease-out;
   backdrop-filter: blur(8px);
+  padding: calc(var(--navbar-height) + 24px) var(--space-md) var(--space-md);
 }
 
 .delete-modal-content {
@@ -1230,7 +1258,7 @@
   .proposta-modal-content {
     width: 98%;
     max-width: 98%;
-    max-height: 92vh;
+    max-height: 88vh; /* um pouco menor para evitar teclado mobile */
   }
 
   .proposta-form {

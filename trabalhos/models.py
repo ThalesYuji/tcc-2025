@@ -1,3 +1,4 @@
+# trabalhos/models.py
 from django.db import models
 from django.conf import settings
 import unicodedata
@@ -26,11 +27,7 @@ class Trabalho(models.Model):
     descricao = models.TextField()
     prazo = models.DateField()
     orcamento = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(
-        max_length=25,
-        choices=STATUS_CHOICES,
-        default='aberto'
-    )
+    status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='aberto')
 
     # 🔹 Agora vincula ao contratante (antigo cliente)
     contratante = models.ForeignKey(
@@ -50,10 +47,16 @@ class Trabalho(models.Model):
 
     is_privado = models.BooleanField(default=False)
 
-    anexo = models.FileField(
-        upload_to=upload_to_anexos,
+    anexo = models.FileField(upload_to=upload_to_anexos, blank=True, null=True)
+
+    # 🔹 Ramo (macro-área) opcional para triagem rápida
+    ramo = models.ForeignKey(
+        'habilidades.Ramo',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        null=True
+        related_name='trabalhos',
+        help_text="Macro-área do trabalho (ex.: Backend, Frontend, Mobile...). Opcional."
     )
 
     habilidades = models.ManyToManyField(

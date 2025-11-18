@@ -1,5 +1,5 @@
 // src/Paginas/CadastroTrabalho.jsx
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -27,9 +27,11 @@ export default function CadastroTrabalho() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 🔗 Trabalho privado via query (?freelancer=ID)
   const params = new URLSearchParams(location.search);
   const freelancerId = params.get("freelancer");
 
+  // 📦 Estados
   const [freelancerNome, setFreelancerNome] = useState("");
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -45,49 +47,51 @@ export default function CadastroTrabalho() {
   const [sucesso, setSucesso] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // ⏱️ debounce para busca de sugestões
+  const debounceRef = useRef(null);
+
   const habilidadesPopulares = [
-    "React", "JavaScript", "Python", "Node.js", "Design Gráfico", 
+    "React", "JavaScript", "Python", "Node.js", "Design Gráfico",
     "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
-    "Vue.js", "Angular", "Django", "Laravel", "Copywriting"
+    "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
   ];
 
+  // 🧍 Nome do freelancer (trabalho privado)
   useEffect(() => {
     async function fetchFreelancer() {
-      if (freelancerId) {
-        try {
-          const resp = await api.get(`/usuarios/${freelancerId}/`);
-          setFreelancerNome(resp.data.nome || resp.data.email);
-        } catch {
-          setFreelancerNome("Freelancer não encontrado");
-        }
+      if (!freelancerId) return;
+      try {
+        const resp = await api.get(`/usuarios/${freelancerId}/`);
+        setFreelancerNome(resp.data.nome || resp.data.username || resp.data.email || `#${freelancerId}`);
+      } catch {
+        setFreelancerNome("Freelancer não encontrado");
       }
     }
     fetchFreelancer();
   }, [freelancerId]);
 
-  const buscarSugestoes = useCallback(
-    async (texto) => {
-      try {
-        const res = await api.get(`/habilidades/?search=${texto}`);
-        const nomes = res.data.map((h) => h.nome);
-        setSugestoes(
-          texto ? nomes.filter((nome) => !habilidades.includes(nome)) : []
-        );
-      } catch {
-        setSugestoes([]);
-      }
-    },
-    [habilidades]
-  );
+  // 🔎 Sugestões de habilidades (search server-side)
+  const buscarSugestoes = useCallback(async (texto) => {
+    try {
+      const res = await api.get(`/habilidades/?search=${encodeURIComponent(texto || "")}`);
+      const nomes = Array.isArray(res.data) ? res.data.map((h) => h.nome) : [];
+      setSugestoes(texto ? nomes.filter((n) => !habilidades.includes(n)) : []);
+    } catch {
+      setSugestoes([]);
+    }
+  }, [habilidades]);
 
+  // primeira carga
   useEffect(() => {
     buscarSugestoes("");
   }, [buscarSugestoes]);
 
+  // 🖊️ input de habilidade com debounce
   const handleHabilidadeInput = (e) => {
     const valor = e.target.value;
     setHabilidadeInput(valor);
-    buscarSugestoes(valor);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => buscarSugestoes(valor), 200);
   };
 
   const handleHabilidadeKeyDown = (e) => {
@@ -98,24 +102,40 @@ export default function CadastroTrabalho() {
   };
 
   const adicionarHabilidade = (nome) => {
-    if (!habilidades.includes(nome)) {
-      setHabilidades([...habilidades, nome]);
+    const limpo = nome.replace(/\s+/g, " ").trim();
+    if (!limpo) return;
+    if (!habilidades.includes(limpo)) {
+      setHabilidades((prev) => [...prev, limpo]);
     }
     setHabilidadeInput("");
     setSugestoes([]);
   };
 
   const removeHabilidade = (hab) => {
-    setHabilidades(habilidades.filter((h) => h !== hab));
+    setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
+  // 🛡️ Validações simples no cliente
   const validarCampos = () => {
-    let novosErros = {};
+    const novosErros = {};
     if (!titulo.trim()) novosErros.titulo = "Preencha o título.";
     if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
     if (!prazo) novosErros.prazo = "Escolha o prazo.";
     if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
       novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
+    }
+    // anexo: valida o tamanho (10MB) e tipo (mesma regra do backend)
+    if (anexo) {
+      const max = 10 * 1024 * 1024;
+      if (anexo.size > max) {
+        novosErros.anexo = "Arquivo muito grande. Tamanho máximo: 10MB.";
+      } else {
+        const ext = (anexo.name.split(".").pop() || "").toLowerCase();
+        const permitidos = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar"];
+        if (!permitidos.includes(ext)) {
+          novosErros.anexo = "Tipo de arquivo não permitido (PDF, DOC, DOCX, JPG, PNG, ZIP, RAR).";
+        }
+      }
     }
     return novosErros;
   };
@@ -125,42 +145,42 @@ export default function CadastroTrabalho() {
     setErros({});
     setErroGeral("");
     setSucesso("");
-    setIsLoading(true);
 
     const novosErros = validarCampos();
     if (Object.keys(novosErros).length > 0) {
       setErros(novosErros);
       setErroGeral("Corrija os campos destacados para prosseguir.");
-      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+
+    // 📨 Monta FormData (compatível com TrabalhoSerializer)
     const formData = new FormData();
-    formData.append("titulo", titulo);
-    formData.append("descricao", descricao);
+    formData.append("titulo", titulo.trim());
+    formData.append("descricao", descricao.trim());
     formData.append("prazo", prazo);
-    formData.append("orcamento", orcamento);
+    formData.append("orcamento", String(Number(orcamento)));
+
+    // habilidades: enviar repetido funciona com DRF (getlist)
     habilidades.forEach((hab) => formData.append("habilidades", hab));
     if (anexo) formData.append("anexo", anexo);
     if (freelancerId) formData.append("freelancer", freelancerId);
 
     try {
-      await api.post("/trabalhos/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.post("/trabalhos/", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setSucesso("Trabalho cadastrado com sucesso!");
-      setTimeout(() => navigate("/trabalhos"), 1500);
+      setTimeout(() => navigate("/trabalhos"), 1200);
     } catch (err) {
-      if (err.response?.data) {
-        const backendErros = err.response.data;
-        let novosErros = {};
-        Object.entries(backendErros).forEach(([campo, mensagem]) => {
-          novosErros[campo] = Array.isArray(mensagem)
-            ? mensagem.join(" ")
-            : mensagem;
+      // normaliza erros do backend (400/validações)
+      const payload = err?.response?.data;
+      if (payload && typeof payload === "object") {
+        const coletado = {};
+        Object.entries(payload).forEach(([campo, mensagem]) => {
+          coletado[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : String(mensagem);
         });
-        setErros(novosErros);
-        setErroGeral(backendErros.detail || "Erro ao cadastrar trabalho.");
+        setErros(coletado);
+        setErroGeral(coletado.detail || coletado.erro || "Erro ao cadastrar trabalho.");
       } else {
         setErroGeral("Erro ao cadastrar trabalho. Verifique os campos e tente novamente.");
       }
@@ -169,11 +189,8 @@ export default function CadastroTrabalho() {
     }
   };
 
-  // 🔒 Permissão de acesso
-  if (
-    !usuarioLogado ||
-    (usuarioLogado.tipo !== "contratante" && !usuarioLogado.is_superuser)
-  ) {
+  // 🔒 Permissão de acesso (apenas contratante ou admin)
+  if (!usuarioLogado || (usuarioLogado.tipo !== "contratante" && !usuarioLogado.is_superuser)) {
     return (
       <div className="cadastro-trabalho-page">
         <div className="page-container">
@@ -203,7 +220,7 @@ export default function CadastroTrabalho() {
             : "Publique seu projeto e encontre o freelancer ideal"}
         </div>
         {freelancerId && (
-          <div className="private-work-badge">
+          <div className="private-work-badge" title={`Direcionado para ${freelancerNome}`}>
             <FaUser />
             <span>Trabalho Privado</span>
           </div>
@@ -251,6 +268,7 @@ export default function CadastroTrabalho() {
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
                       maxLength={100}
+                      disabled={isLoading}
                     />
                     <div className="input-footer">
                       <span className="char-count">{titulo.length}/100</span>
@@ -269,6 +287,7 @@ export default function CadastroTrabalho() {
                       onChange={(e) => setDescricao(e.target.value)}
                       rows="6"
                       maxLength={1000}
+                      disabled={isLoading}
                     />
                     <div className="input-footer">
                       <span className="char-count">{descricao.length}/1000</span>
@@ -300,6 +319,7 @@ export default function CadastroTrabalho() {
                         value={prazo}
                         onChange={(e) => setPrazo(e.target.value)}
                         min={new Date().toISOString().split("T")[0]}
+                        disabled={isLoading}
                       />
                       {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
                     </div>
@@ -317,6 +337,7 @@ export default function CadastroTrabalho() {
                         onChange={(e) => setOrcamento(e.target.value)}
                         min="1"
                         step="0.01"
+                        disabled={isLoading}
                       />
                       {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
                     </div>
@@ -343,6 +364,7 @@ export default function CadastroTrabalho() {
                         value={habilidadeInput}
                         onChange={handleHabilidadeInput}
                         onKeyDown={handleHabilidadeKeyDown}
+                        disabled={isLoading}
                       />
                       <FaTag className="skills-input-icon" />
                     </div>
@@ -356,6 +378,7 @@ export default function CadastroTrabalho() {
                               type="button"
                               onClick={() => removeHabilidade(hab)}
                               className="skill-remove"
+                              disabled={isLoading}
                             >
                               <FaTimes />
                             </button>
@@ -377,6 +400,7 @@ export default function CadastroTrabalho() {
                               type="button"
                               className="suggestion-tag"
                               onClick={() => adicionarHabilidade(sug)}
+                              disabled={isLoading}
                             >
                               {sug}
                             </button>
@@ -400,6 +424,7 @@ export default function CadastroTrabalho() {
                               type="button"
                               className="popular-skill-tag"
                               onClick={() => adicionarHabilidade(skill)}
+                              disabled={isLoading}
                             >
                               {skill}
                             </button>
@@ -426,8 +451,9 @@ export default function CadastroTrabalho() {
                       id="file-input"
                       type="file"
                       className="file-input"
-                      onChange={(e) => setAnexo(e.target.files[0])}
+                      onChange={(e) => setAnexo(e.target.files?.[0] || null)}
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                      disabled={isLoading}
                     />
                     <label htmlFor="file-input" className="file-upload-label">
                       {anexo ? (
@@ -446,6 +472,7 @@ export default function CadastroTrabalho() {
                               e.preventDefault();
                               setAnexo(null);
                             }}
+                            disabled={isLoading}
                           >
                             <FaTimes />
                           </button>
@@ -508,28 +535,29 @@ export default function CadastroTrabalho() {
                     {titulo || "Título do seu projeto..."}
                   </div>
                   <div className="preview-description">
-                    {descricao.substring(0, 150) +
-                      (descricao.length > 150 ? "..." : "") ||
-                      "Descrição do seu projeto aparecerá aqui..."}
+                    {(descricao
+                      ? descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "")
+                      : "") || "Descrição do seu projeto aparecerá aqui..."}
                   </div>
                   <div className="preview-details">
                     <div className="preview-detail">
                       <FaCalendarAlt />
                       <span>
-                        {prazo
-                          ? new Date(prazo).toLocaleDateString()
-                          : "Prazo"}
+                        {prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Prazo"}
                       </span>
                     </div>
                     <div className="preview-detail">
                       <FaMoneyBillWave />
-                      <span>R$ {orcamento || "0,00"}</span>
+                      <span>
+                        {orcamento
+                          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
+                          : "R$ 0,00"}
+                      </span>
                     </div>
                     <div className="preview-detail">
                       <FaTools />
                       <span>
-                        {habilidades.length} habilidade
-                        {habilidades.length !== 1 ? "s" : ""}
+                        {habilidades.length} habilidade{habilidades.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                   </div>

@@ -14,6 +14,7 @@
   margin-bottom: var(--space-md);
   padding: var(--space-2xl) 0 var(--space-lg) 0;
   position: relative;
+  overflow: hidden; /* novo: evita scroll lateral por causa do ::before */
 }
 
 .cadastro-trabalho-header::before {
@@ -277,9 +278,9 @@
 .textarea-field {
   resize: vertical !important;
   min-height: 120px !important;
-  line-height: 0.3 !important;
+  line-height: 1.5 !important;           /* antes: 0.3 */
   padding: var(--space-md) var(--space-lg) !important;
-  font-size: 0.8rem !important;
+  font-size: 0.95rem !important;
 }
 
 .input-footer {
@@ -526,6 +527,13 @@
   color: var(--cor-texto-light) !important;
 }
 
+/* Estado de arrastar arquivo sobre a área */
+.file-upload-area.is-dragover {
+  border-color: var(--cor-primaria) !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08) inset !important;
+}
+
 /* ARQUIVO SELECIONADO - FORÇAR AZUL */
 .file-selected-info {
   display: flex !important;
@@ -658,7 +666,7 @@
 .preview-card,
 .tips-card {
   position: sticky !important;
-  top: var(--space-xl) !important;
+  top: calc(80px + var(--space-lg)) !important; /* antes: var(--space-xl) */
   max-height: 500px !important;
   height: fit-content !important;
 }

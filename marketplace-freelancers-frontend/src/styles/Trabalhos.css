@@ -1,4 +1,6 @@
-/* src/styles/Trabalhostrabalho-info-item {
+/* src/styles/Trabalhos.css */
+
+.trabalho-info-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -45,14 +47,23 @@
 }
 
 .habilidade-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   background: var(--cor-primaria);
-  color: white;
+  color: #fff;
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-full);
   font-size: 0.7rem;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  user-select: none;
 }
+.habilidade-tag:hover { filter: brightness(1.05); }
 
 .trabalho-anexo {
   display: inline-flex;
@@ -314,7 +325,7 @@
     font-size: 0.65rem;
     padding: 3px 8px;
   }
-}css */
+}
 
 .trabalhos-page {
   background: var(--cor-fundo);
@@ -330,6 +341,7 @@
   margin-bottom: var(--space-2xl);
   padding: var(--space-xl) 0;
   position: relative;
+  overflow: hidden; /* novo */
 }
 
 .trabalhos-header::before {
@@ -469,6 +481,13 @@
   align-items: center;
 }
 
+.pagination-btn:focus-visible,
+.btn-ver-detalhes:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  transform: translateY(-1px);
+}
+
 .btn-filtrar {
   display: flex;
   align-items: center;
@@ -561,6 +580,12 @@
   background: rgba(245, 158, 11, 0.15);
   color: #92400E;
   border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.status-aberto {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1E40AF;
+  border: 1px solid rgba(59, 130, 246, 0.25);
 }
 
 .status-concluido {
@@ -703,3 +728,7 @@
   margin-bottom: var(--space-md);
 }
 
+/* Fallback extra para navegadores sem -webkit-line-clamp */
+.trabalho-descricao {
+  max-height: 4.6em; /* ~3 linhas */
+}
