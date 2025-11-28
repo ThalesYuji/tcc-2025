@@ -658,6 +658,16 @@ export default function DetalhesTrabalho() {
               {trabalho.descricao || "Nenhuma descrição fornecida."}
             </div>
 
+            {trabalho.ramo_nome && (
+              <div className="trabalho-ramo-info">
+                <i className="bi bi-diagram-3-fill"></i>
+                <div>
+                  <div className="ramo-label">Área de Atuação</div>
+                  <div className="ramo-nome">{trabalho.ramo_nome}</div>
+                </div>
+              </div>
+            )}
+            
             <div className="trabalho-info-grid">
               <div className="info-item">
                 <div className="info-icon">

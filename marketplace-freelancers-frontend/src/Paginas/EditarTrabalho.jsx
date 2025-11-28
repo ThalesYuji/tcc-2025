@@ -1,84 +1,197 @@
-// src/Paginas/EditarTrabalho.jsx - VERSÃO COMPLETA CORRIGIDA
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useParams } from "react-router-dom";
+import { UsuarioContext } from "../Contextos/UsuarioContext";
+import { useFetchRamos } from "../hooks/useFetchRamos";
+import {
+  FaEdit,
+  FaFileAlt,
+  FaCalendarAlt,
+  FaMoneyBillWave,
+  FaTools,
+  FaCloudUploadAlt,
+  FaCheckCircle,
+  FaTimes,
+  FaEye,
+  FaLightbulb,
+  FaStar,
+  FaTag,
+  FaPaperclip,
+  FaExclamationCircle,
+  FaArrowLeft,
+  FaTrash,
+  FaLayerGroup,
+} from "react-icons/fa";
 import "../styles/EditarTrabalho.css";
 
 export default function EditarTrabalho() {
-  // Estados do formulário
+  const { usuarioLogado } = useContext(UsuarioContext);
+  const navigate = useNavigate();
+  const { id } = useParams();
+
+  // 📦 Estados
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
   const [orcamento, setOrcamento] = useState("");
   const [habilidades, setHabilidades] = useState([]);
-  const [novaHabilidade, setNovaHabilidade] = useState("");
-
-  // Estados de anexo - CORRIGIDO: usar anexo_url
-  const [anexoAtualUrl, setAnexoAtualUrl] = useState(null);
-  const [anexoAtualNome, setAnexoAtualNome] = useState("");
-  const [novoAnexo, setNovoAnexo] = useState(null);
+  const [habilidadeInput, setHabilidadeInput] = useState("");
+// eslint-disable-next-line no-unused-vars
+  const [sugestoes, setSugestoes] = useState([]);
+  const [anexo, setAnexo] = useState(null);
+  const [anexoAtual, setAnexoAtual] = useState(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
+  const [ramo, setRamo] = useState("");
 
-  // Estados de controle
   const [erros, setErros] = useState({});
-  const [sucesso, setSucesso] = useState("");
   const [erroGeral, setErroGeral] = useState("");
-  const [carregando, setCarregando] = useState(false);
-  const [carregandoInicial, setCarregandoInicial] = useState(true);
+  const [sucesso, setSucesso] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingTrabalho, setLoadingTrabalho] = useState(true);
+  const [trabalhoNaoEncontrado, setTrabalhoNaoEncontrado] = useState(false);
 
-  const navigate = useNavigate();
-  const { id } = useParams();
+  // ⏱️ debounce para busca de sugestões
+  const debounceRef = useRef(null);
 
-  // Carregar dados do trabalho
+  // 🎯 Hook para buscar ramos
+  const { ramos, loadingRamos } = useFetchRamos();
+
+  const habilidadesPopulares = [
+    "React", "JavaScript", "Python", "Node.js", "Design Gráfico",
+    "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
+    "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
+  ];
+
+  // 🔄 Carregar dados do trabalho
   useEffect(() => {
-    async function carregarTrabalho() {
-      try {
-        const resp = await api.get(`/trabalhos/${id}/`);
-        setTitulo(resp.data.titulo);
-        setDescricao(resp.data.descricao);
-        setPrazo(resp.data.prazo);
-        setOrcamento(resp.data.orcamento);
-        
-        // CORRIGIDO: usar anexo_url ao invés de anexo
-        if (resp.data.anexo_url) {
-          setAnexoAtualUrl(resp.data.anexo_url);
-          // Extrair nome do arquivo da URL
-          const nomeArquivo = resp.data.anexo_url.split('/').pop().split('?')[0];
-          setAnexoAtualNome(nomeArquivo || "Arquivo anexado");
-        }
-
-        if (resp.data.habilidades_detalhes) {
-          setHabilidades(resp.data.habilidades_detalhes.map((h) => h.nome));
-        }
-        setCarregandoInicial(false);
-      } catch {
-        setErroGeral("Erro ao carregar o trabalho. Tente novamente mais tarde.");
-        setCarregandoInicial(false);
-      }
-    }
     carregarTrabalho();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Submissão do formulário
+  const carregarTrabalho = async () => {
+    try {
+      setLoadingTrabalho(true);
+      const response = await api.get(`/trabalhos/${id}/`);
+      const trabalho = response.data;
+
+      // Verificar permissão
+      if (trabalho.cliente_id !== usuarioLogado?.id && !usuarioLogado?.is_superuser) {
+        navigate("/trabalhos");
+        return;
+      }
+
+      setTitulo(trabalho.titulo || "");
+      setDescricao(trabalho.descricao || "");
+      setPrazo(trabalho.prazo || "");
+      setOrcamento(String(trabalho.orcamento || ""));
+      setHabilidades(trabalho.habilidades || []);
+      setAnexoAtual(trabalho.anexo_url || null);
+      setRamo(trabalho.ramo || "");
+
+    } catch (error) {
+      console.error("Erro ao carregar trabalho:", error);
+      setTrabalhoNaoEncontrado(true);
+    } finally {
+      setLoadingTrabalho(false);
+    }
+  };
+
+  // 🔎 Sugestões de habilidades (search server-side)
+  const buscarSugestoes = useCallback(async (texto) => {
+    try {
+      const res = await api.get(`/habilidades/?search=${encodeURIComponent(texto || "")}`);
+      const nomes = Array.isArray(res.data) ? res.data.map((h) => h.nome) : [];
+      setSugestoes(texto ? nomes.filter((n) => !habilidades.includes(n)) : []);
+    } catch {
+      setSugestoes([]);
+    }
+  }, [habilidades]);
+
+  // 🖊️ input de habilidade com debounce
+  const handleHabilidadeInput = (e) => {
+    const valor = e.target.value;
+    setHabilidadeInput(valor);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => buscarSugestoes(valor), 200);
+  };
+
+  const handleHabilidadeKeyDown = (e) => {
+    if (["Enter", ","].includes(e.key) && habilidadeInput.trim()) {
+      e.preventDefault();
+      adicionarHabilidade(habilidadeInput.trim());
+    }
+  };
+
+  const adicionarHabilidade = (nome) => {
+    const limpo = nome.replace(/\s+/g, " ").trim();
+    if (!limpo) return;
+    if (!habilidades.includes(limpo)) {
+      setHabilidades((prev) => [...prev, limpo]);
+    }
+    setHabilidadeInput("");
+    setSugestoes([]);
+  };
+
+  const removeHabilidade = (hab) => {
+    setHabilidades((prev) => prev.filter((h) => h !== hab));
+  };
+
+  // 🛡️ Validações simples no cliente
+  const validarCampos = () => {
+    const novosErros = {};
+    if (!titulo.trim()) novosErros.titulo = "Preencha o título.";
+    if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
+    if (!prazo) novosErros.prazo = "Escolha o prazo.";
+    if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
+      novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
+    }
+    if (anexo) {
+      const max = 10 * 1024 * 1024;
+      if (anexo.size > max) {
+        novosErros.anexo = "Arquivo muito grande. Tamanho máximo: 10MB.";
+      } else {
+        const ext = (anexo.name.split(".").pop() || "").toLowerCase();
+        const permitidos = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar"];
+        if (!permitidos.includes(ext)) {
+          novosErros.anexo = "Tipo de arquivo não permitido (PDF, DOC, DOCX, JPG, PNG, ZIP, RAR).";
+        }
+      }
+    }
+    return novosErros;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErroGeral("");
     setErros({});
+    setErroGeral("");
     setSucesso("");
-    setCarregando(true);
+
+    const novosErros = validarCampos();
+    if (Object.keys(novosErros).length > 0) {
+      setErros(novosErros);
+      setErroGeral("Corrija os campos destacados para prosseguir.");
+      return;
+    }
+
+    setIsLoading(true);
 
     const formData = new FormData();
-    formData.append("titulo", titulo);
-    formData.append("descricao", descricao);
+    formData.append("titulo", titulo.trim());
+    formData.append("descricao", descricao.trim());
     formData.append("prazo", prazo);
-    formData.append("orcamento", orcamento);
+    formData.append("orcamento", String(Number(orcamento)));
+
+    // 🎯 RAMO (opcional)
+    if (ramo) {
+      formData.append("ramo", ramo);
+    }
 
     habilidades.forEach((hab) => formData.append("habilidades", hab));
-
-    if (removerAnexo) {
-      formData.append("anexo", "");
-    } else if (novoAnexo) {
-      formData.append("anexo", novoAnexo);
+    
+    if (anexo) {
+      formData.append("anexo", anexo);
+    } else if (removerAnexo) {
+      formData.append("remover_anexo", "true");
     }
 
     try {
@@ -86,109 +199,69 @@ export default function EditarTrabalho() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSucesso("Trabalho atualizado com sucesso!");
-      setTimeout(() => navigate("/trabalhos"), 2000);
+      setTimeout(() => navigate(`/trabalhos/${id}`), 1200);
     } catch (err) {
-      if (err.response?.data) {
-        const backendErros = err.response.data;
-        let novosErros = {};
-        Object.entries(backendErros).forEach(([campo, mensagem]) => {
-          novosErros[campo] = Array.isArray(mensagem)
-            ? mensagem.join(" ")
-            : mensagem;
+      const payload = err?.response?.data;
+      if (payload && typeof payload === "object") {
+        const coletado = {};
+        Object.entries(payload).forEach(([campo, mensagem]) => {
+          coletado[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : String(mensagem);
         });
-        setErros(novosErros);
-        setErroGeral(backendErros.detail || "Erro ao atualizar o trabalho.");
+        setErros(coletado);
+        setErroGeral(coletado.detail || coletado.erro || "Erro ao atualizar trabalho.");
       } else {
-        setErroGeral("Erro ao atualizar o trabalho. Verifique os dados e tente novamente.");
+        setErroGeral("Erro ao atualizar trabalho. Verifique os campos e tente novamente.");
       }
     } finally {
-      setCarregando(false);
+      setIsLoading(false);
     }
   };
 
-  // Gerenciar habilidades
-  const handleAdicionarHabilidade = () => {
-    if (novaHabilidade.trim() && !habilidades.includes(novaHabilidade.trim())) {
-      setHabilidades([...habilidades, novaHabilidade.trim()]);
-      setNovaHabilidade("");
-    }
-  };
-
-  const handleRemoverHabilidade = (hab) => {
-    setHabilidades(habilidades.filter((h) => h !== hab));
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAdicionarHabilidade();
-    }
-  };
-
-  // Gerenciar anexos
-  const handleAnexoChange = (e) => {
-    setNovoAnexo(e.target.files[0]);
+  const handleDesfazerRemocao = (e) => {
+    e.preventDefault();
     setRemoverAnexo(false);
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.add('dragover');
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('dragover');
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      setNovoAnexo(files[0]);
-      setRemoverAnexo(false);
-    }
-  };
-
-  // Loading inicial
-  if (carregandoInicial) {
+  // 🔒 Verificação de permissão
+  if (!usuarioLogado) {
     return (
       <div className="editar-trabalho-page">
         <div className="page-container">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <h3>Carregando trabalho...</h3>
-            <p>Aguarde enquanto buscamos as informações</p>
+          <div className="access-denied-container">
+            <FaExclamationCircle className="access-denied-icon" />
+            <h3>Acesso Negado</h3>
+            <p>Você precisa estar logado para editar trabalhos.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Estado de erro
-  if (erroGeral && !carregandoInicial) {
+  if (loadingTrabalho) {
+    return (
+      <div className="editar-trabalho-page">
+        <div className="page-container">
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <h3>Carregando trabalho...</h3>
+            <p>Aguarde enquanto buscamos os dados.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (trabalhoNaoEncontrado) {
     return (
       <div className="editar-trabalho-page">
         <div className="page-container">
           <div className="access-denied-container">
-            <div className="access-denied-icon">⚠️</div>
-            <h3>Erro ao Carregar</h3>
-            <p>{erroGeral}</p>
+            <FaExclamationCircle className="access-denied-icon" />
+            <h3>Trabalho Não Encontrado</h3>
+            <p>O trabalho que você está tentando editar não existe ou foi removido.</p>
             <div className="error-actions">
-              <button 
-                className="btn btn-primary"
-                onClick={() => window.location.reload()}
-              >
-                <i className="bi bi-arrow-clockwise"></i>
-                Tentar Novamente
-              </button>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => navigate("/trabalhos")}
-              >
-                <i className="bi bi-arrow-left"></i>
-                Voltar
+              <button className="btn btn-primary" onClick={() => navigate("/trabalhos")}>
+                <FaArrowLeft /> Voltar para Trabalhos
               </button>
             </div>
           </div>
@@ -199,460 +272,448 @@ export default function EditarTrabalho() {
 
   return (
     <div className="editar-trabalho-page">
-      {/* Container Principal */}
-      <div className="page-container">
-        
-        {/* Header com Breadcrumb */}
-        <div className="editar-trabalho-header">
-          <div className="detalhes-nav">
-            <button
-              onClick={() => navigate("/trabalhos")}
-              className="btn-voltar"
-            >
-              <i className="bi bi-arrow-left"></i>
-              Voltar para Trabalhos
-            </button>
-          </div>
-
-          {/* Título Principal */}
-          <div className="detalhes-title-section">
-            <h1 className="editar-trabalho-title">
-              <div className="editar-trabalho-title-icon">
-                <i className="bi bi-pencil-square"></i>
-              </div>
-              Editar Trabalho
-            </h1>
-            <p className="editar-trabalho-subtitle">
-              Atualize as informações do seu projeto para atrair os melhores profissionais
-            </p>
-          </div>
+      {/* Header */}
+      <div className="editar-trabalho-header">
+        <div className="detalhes-nav">
+          <button className="btn-voltar" onClick={() => navigate(`/trabalhos/${id}`)}>
+            <FaArrowLeft /> Voltar para Detalhes
+          </button>
         </div>
 
-        {/* Sucesso Alert */}
+        <div className="detalhes-title-section">
+          <div className="editar-trabalho-title">
+            <div className="editar-trabalho-title-icon">
+              <FaEdit />
+            </div>
+            <span>Editar Projeto</span>
+          </div>
+          <p className="editar-trabalho-subtitle">
+            Atualize as informações do seu projeto
+          </p>
+        </div>
+      </div>
+
+      <div className="page-container">
+        {/* Alertas */}
+        {erroGeral && (
+          <div className="alert-error">
+            <FaExclamationCircle />
+            <span>{erroGeral}</span>
+          </div>
+        )}
         {sucesso && (
           <div className="alert-success">
-            <i className="bi bi-check-circle-fill"></i>
+            <FaCheckCircle />
             <span>{sucesso}</span>
           </div>
         )}
 
-        {/* Erro Geral */}
-        {erroGeral && (
-          <div className="alert-error">
-            <i className="bi bi-exclamation-circle-fill"></i>
-            <span>{erroGeral}</span>
-          </div>
-        )}
-
-        {/* Layout Principal em Grid */}
+        {/* Layout */}
         <div className="editar-trabalho-grid">
-          
-          {/* Coluna Principal - Formulário */}
+          {/* Form principal */}
           <div className="form-main-column">
             <form onSubmit={handleSubmit} className="trabalho-form">
-              
-              {/* Card: Informações Básicas */}
+              {/* Informações Básicas */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
-                    <i className="bi bi-info-circle"></i>
+                    <FaFileAlt />
                     Informações Básicas
                   </h2>
                 </div>
 
                 <div className="card-body">
-                  {/* Título */}
                   <div className="form-field">
                     <label className="input-label">
-                      <i className="bi bi-card-text"></i>
-                      Título do Trabalho
-                      <span className="required">*</span>
+                      Título do Projeto <span className="required">*</span>
                     </label>
                     <input
                       type="text"
-                      className={`form-control ${erros.titulo ? 'error' : ''}`}
-                      placeholder="Ex: Desenvolvimento de sistema web para e-commerce..."
+                      className={`form-control ${erros.titulo ? "error" : ""}`}
+                      placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
-                      required
-                    />
-                    {erros.titulo && (
-                      <div className="error-msg">
-                        <i className="bi bi-exclamation-circle"></i> {erros.titulo}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Descrição */}
-                  <div className="form-field">
-                    <label className="input-label">
-                      <i className="bi bi-file-text"></i>
-                      Descrição Detalhada
-                      <span className="required">*</span>
-                    </label>
-                    <textarea
-                      className={`form-control textarea-field ${erros.descricao ? 'error' : ''}`}
-                      placeholder="Descreva detalhadamente o trabalho: objetivos, requisitos técnicos, escopo, entregáveis esperados..."
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      rows={6}
-                      maxLength={2000}
-                      required
+                      maxLength={100}
+                      disabled={isLoading}
                     />
                     <div className="input-footer">
-                      <div className="char-count">{descricao.length}/2000</div>
-                      {erros.descricao && (
-                        <div className="error-msg">
-                          <i className="bi bi-exclamation-circle"></i> {erros.descricao}
-                        </div>
-                      )}
+                      <span className="char-count">{titulo.length}/100</span>
+                      {erros.titulo && <span className="error-msg">{erros.titulo}</span>}
                     </div>
                   </div>
 
-                  {/* Row com Prazo e Orçamento */}
-                  <div className="form-row">
-                    {/* Prazo */}
-                    <div className="form-field">
-                      <label className="input-label">
-                        <i className="bi bi-calendar"></i>
-                        Data Limite
-                        <span className="required">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        className={`form-control ${erros.prazo ? 'error' : ''}`}
-                        value={prazo}
-                        onChange={(e) => setPrazo(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                      />
-                      {erros.prazo && (
-                        <div className="error-msg">
-                          <i className="bi bi-exclamation-circle"></i> {erros.prazo}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Orçamento */}
-                    <div className="form-field">
-                      <label className="input-label">
-                        <i className="bi bi-currency-dollar"></i>
-                        Orçamento (R$)
-                        <span className="required">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        className={`form-control ${erros.orcamento ? 'error' : ''}`}
-                        placeholder="1500.00"
-                        value={orcamento}
-                        onChange={(e) => setOrcamento(e.target.value)}
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                      {erros.orcamento && (
-                        <div className="error-msg">
-                          <i className="bi bi-exclamation-circle"></i> {erros.orcamento}
-                        </div>
-                      )}
+                  <div className="form-field">
+                    <label className="input-label">
+                      Descrição Detalhada <span className="required">*</span>
+                    </label>
+                    <textarea
+                      className={`form-control textarea-field ${erros.descricao ? "error" : ""}`}
+                      placeholder="Descreva em detalhes o que precisa ser desenvolvido..."
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      rows="6"
+                      maxLength={1000}
+                      disabled={isLoading}
+                    />
+                    <div className="input-footer">
+                      <span className="char-count">{descricao.length}/1000</span>
+                      {erros.descricao && <span className="error-msg">{erros.descricao}</span>}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card: Habilidades */}
+              {/* Prazo e Orçamento */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
-                    <i className="bi bi-tools"></i>
-                    Habilidades Necessárias
+                    <FaCalendarAlt />
+                    Prazo e Orçamento
+                  </h2>
+                </div>
+
+                <div className="card-body">
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label className="input-label">
+                        <FaCalendarAlt />
+                        Prazo de Entrega <span className="required">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className={`form-control ${erros.prazo ? "error" : ""}`}
+                        value={prazo}
+                        onChange={(e) => setPrazo(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        disabled={isLoading}
+                      />
+                      {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
+                    </div>
+
+                    <div className="form-field">
+                      <label className="input-label">
+                        <FaMoneyBillWave />
+                        Orçamento (R$) <span className="required">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className={`form-control ${erros.orcamento ? "error" : ""}`}
+                        placeholder="1500.00"
+                        value={orcamento}
+                        onChange={(e) => setOrcamento(e.target.value)}
+                        min="1"
+                        step="0.01"
+                        disabled={isLoading}
+                      />
+                      {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🆕 CARD DE CATEGORIZAÇÃO (RAMO) */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaLayerGroup />
+                    Categorização
                   </h2>
                   <span className="optional-badge">Opcional</span>
+                </div>
+
+                <div className="card-body">
+                  <div className="form-field">
+                    <label className="input-label">
+                      <FaLayerGroup />
+                      Área de Atuação
+                    </label>
+                    <div className="ramo-select-wrapper">
+                      <FaLayerGroup className="ramo-select-icon" />
+                      <select
+                        className="ramo-select"
+                        value={ramo}
+                        onChange={(e) => setRamo(e.target.value)}
+                        disabled={loadingRamos || isLoading}
+                      >
+                        <option value="">Selecione uma área (opcional)</option>
+                        {ramos.map(r => (
+                          <option key={r.id} value={r.id}>
+                            {r.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="ramo-helper-text">
+                      <FaLightbulb />
+                      Categorize seu trabalho para facilitar a busca de freelancers especializados
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Habilidades */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaTools />
+                    Habilidades Necessárias
+                  </h2>
                 </div>
 
                 <div className="card-body">
                   <div className="skills-container">
-                    {/* Input de Nova Habilidade */}
                     <div className="skills-input-wrapper">
-                      <i className="bi bi-search skills-input-icon"></i>
                       <input
                         type="text"
                         className="skills-input"
-                        placeholder="Digite uma habilidade (ex: React, Python, Figma)..."
-                        value={novaHabilidade}
-                        onChange={(e) => setNovaHabilidade(e.target.value)}
-                        onKeyPress={handleKeyPress}
+                        placeholder="Digite uma habilidade e pressione Enter..."
+                        value={habilidadeInput}
+                        onChange={handleHabilidadeInput}
+                        onKeyDown={handleHabilidadeKeyDown}
+                        disabled={isLoading}
                       />
+                      <FaTag className="skills-input-icon" />
                     </div>
 
-                    {/* Habilidades Selecionadas */}
                     {habilidades.length > 0 && (
                       <div className="selected-skills">
                         {habilidades.map((hab, index) => (
-                          <span key={index} className="skill-badge">
-                            {hab}
-                            <button 
-                              type="button" 
+                          <div key={index} className="skill-badge">
+                            <span>{hab}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeHabilidade(hab)}
                               className="skill-remove"
-                              onClick={() => handleRemoverHabilidade(hab)}
-                              title={`Remover ${hab}`}
+                              disabled={isLoading}
                             >
-                              <i className="bi bi-x"></i>
+                              <FaTimes />
                             </button>
-                          </span>
+                          </div>
                         ))}
                       </div>
                     )}
-                    
-                    {/* Sugestões Populares */}
+
                     <div className="popular-skills">
                       <div className="popular-skills-header">
-                        <i className="bi bi-star"></i>
-                        Sugestões Populares
+                        <FaStar />
+                        <span>Habilidades Populares</span>
                       </div>
                       <div className="popular-skills-list">
-                        {["JavaScript", "Python", "React", "Node.js", "Design Gráfico", "WordPress", "SEO", "Marketing Digital"].map(sug => (
-                          !habilidades.includes(sug) && (
+                        {habilidadesPopulares
+                          .filter((skill) => !habilidades.includes(skill))
+                          .slice(0, 10)
+                          .map((skill, index) => (
                             <button
-                              key={sug}
+                              key={index}
                               type="button"
                               className="popular-skill-tag"
-                              onClick={() => {
-                                setHabilidades([...habilidades, sug]);
-                              }}
+                              onClick={() => adicionarHabilidade(skill)}
+                              disabled={isLoading}
                             >
-                              {sug}
+                              {skill}
                             </button>
-                          )
-                        ))}
+                          ))}
                       </div>
                     </div>
-
-                    {erros.habilidades && (
-                      <div className="error-msg">
-                        <i className="bi bi-exclamation-circle"></i> {erros.habilidades}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Card: Anexos - CORRIGIDO */}
+              {/* Arquivo Anexo */}
               <div className="modern-card">
                 <div className="card-header">
                   <h2 className="card-title">
-                    <i className="bi bi-paperclip"></i>
-                    Arquivos e Anexos
+                    <FaPaperclip />
+                    Arquivo Anexo
                   </h2>
                   <span className="optional-badge">Opcional</span>
                 </div>
 
                 <div className="card-body">
-                  {/* Arquivo Atual - CORRIGIDO */}
-                  {anexoAtualUrl && !removerAnexo && (
+                  {anexoAtual && !removerAnexo && !anexo && (
                     <div className="current-file-section">
-                      <h4 className="subsection-title">
-                        <i className="bi bi-file-check"></i>
-                        Arquivo Atual
-                      </h4>
+                      <h4 className="subsection-title">Arquivo Atual</h4>
                       <div className="file-selected-info current">
-                        <div className="file-success-icon">
-                          <i className="bi bi-file-earmark-text"></i>
-                        </div>
+                        <FaCheckCircle className="file-success-icon" />
                         <div className="file-details">
-                          <span className="file-name">
-                            {anexoAtualNome}
-                          </span>
-                          <small className="file-size">Arquivo anexado</small>
-                          <a 
-                            href={anexoAtualUrl}
-                            target="_blank" 
+                          <span className="file-name">Arquivo anexado</span>
+                          <a
+                            href={anexoAtual}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="file-link"
-                            onClick={(e) => {
-                              if (!anexoAtualUrl || anexoAtualUrl === 'null') {
-                                e.preventDefault();
-                                alert('Arquivo não disponível');
-                              }
-                            }}
                           >
-                            <i className="bi bi-eye"></i>
-                            Visualizar arquivo
+                            <FaPaperclip /> Visualizar arquivo
                           </a>
                         </div>
                         <button
                           type="button"
                           className="file-remove"
-                          onClick={() => { 
-                            setRemoverAnexo(true); 
-                            setNovoAnexo(null); 
-                          }}
+                          onClick={() => setRemoverAnexo(true)}
+                          disabled={isLoading}
                           title="Remover arquivo"
                         >
-                          <i className="bi bi-x"></i>
+                          <FaTrash />
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Área de Upload */}
-                  <div className="file-upload-area"
-                       onDragOver={handleDragOver}
-                       onDragLeave={handleDragLeave}
-                       onDrop={handleDrop}
-                  >
+                  {removerAnexo && !anexo && (
+                    <div className="removal-warning">
+                      <FaExclamationCircle />
+                      <span>
+                        O arquivo será removido ao salvar.{" "}
+                        <button
+                          type="button"
+                          onClick={handleDesfazerRemocao}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "inherit",
+                            textDecoration: "underline",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                        >
+                          Desfazer
+                        </button>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="file-upload-area">
                     <input
                       id="file-input"
                       type="file"
                       className="file-input"
-                      onChange={handleAnexoChange}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.xlsx,.xls"
+                      onChange={(e) => {
+                        setAnexo(e.target.files?.[0] || null);
+                        setRemoverAnexo(false);
+                      }}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                      disabled={isLoading}
                     />
-                    
                     <label htmlFor="file-input" className="file-upload-label">
-                      <div className="file-upload-placeholder">
-                        <div className="upload-icon">
-                          <i className="bi bi-cloud-upload"></i>
-                        </div>
-                        
-                        <div className="upload-text">
-                          <span className="upload-title">
-                            {novoAnexo ? 'Arquivo Selecionado' : (anexoAtualUrl && !removerAnexo ? 'Substituir Arquivo' : 'Adicionar Arquivo')}
-                          </span>
-                          <span className="upload-subtitle">
-                            Clique aqui ou arraste um arquivo
-                          </span>
-                        </div>
-
-                        {novoAnexo && (
-                          <div className="file-selected-info">
-                            <div className="file-success-icon">
-                              <i className="bi bi-file-check"></i>
-                            </div>
-                            <div className="file-details">
-                              <span className="file-name">{novoAnexo.name}</span>
-                              <small className="file-size">({(novoAnexo.size / 1024 / 1024).toFixed(2)} MB)</small>
-                            </div>
-                            <button
-                              type="button"
-                              className="file-remove"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setNovoAnexo(null);
-                              }}
-                            >
-                              <i className="bi bi-x"></i>
-                            </button>
+                      {anexo ? (
+                        <div className="file-selected-info">
+                          <FaCheckCircle className="file-success-icon" />
+                          <div className="file-details">
+                            <span className="file-name">{anexo.name}</span>
+                            <span className="file-size">
+                              {(anexo.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
                           </div>
-                        )}
-
-                        <div className="file-types">
-                          PDF, DOC, DOCX, JPG, PNG, ZIP, XLSX (máx. 10MB)
+                          <button
+                            type="button"
+                            className="file-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setAnexo(null);
+                            }}
+                            disabled={isLoading}
+                          >
+                            <FaTimes />
+                          </button>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="file-upload-placeholder">
+                          <FaCloudUploadAlt className="upload-icon" />
+                          <div className="upload-text">
+                            <span className="upload-title">
+                              {anexoAtual && !removerAnexo
+                                ? "Substituir arquivo"
+                                : "Clique para enviar arquivo"}
+                            </span>
+                            <span className="upload-subtitle">
+                              PDF, DOC, DOCX, JPG, PNG, ZIP (Máx. 10MB)
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </label>
                   </div>
-
-                  {removerAnexo && (
-                    <div className="removal-warning">
-                      <i className="bi bi-exclamation-triangle"></i>
-                      <span>O arquivo atual será removido ao salvar as alterações</span>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-small"
-                        onClick={() => setRemoverAnexo(false)}
-                      >
-                        Cancelar remoção
-                      </button>
-                    </div>
-                  )}
-
-                  {erros.anexo && (
-                    <div className="error-msg">
-                      <i className="bi bi-exclamation-circle"></i> {erros.anexo}
-                    </div>
-                  )}
+                  {erros.anexo && <span className="error-msg">{erros.anexo}</span>}
                 </div>
+              </div>
+
+              {/* Botões */}
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className={`btn gradient-btn btn-large ${isLoading ? "loading" : ""}`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="loading-spinner"></div>
+                      <span>Salvando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaCheckCircle />
+                      <span>Salvar Alterações</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-large"
+                  onClick={() => navigate(`/trabalhos/${id}`)}
+                  disabled={isLoading}
+                >
+                  <FaTimes />
+                  <span>Cancelar</span>
+                </button>
               </div>
             </form>
           </div>
 
-          {/* Sidebar Direita - Preview e Ações */}
+          {/* Sidebar */}
           <div className="form-sidebar-column">
-            
-            {/* Preview do Trabalho */}
             <div className="modern-card preview-card">
               <div className="card-header">
                 <h2 className="card-title">
-                  <i className="bi bi-eye"></i>
-                  Preview do Trabalho
+                  <FaEye />
+                  Prévia do Projeto
                 </h2>
               </div>
+
               <div className="card-body">
                 <div className="preview-content">
-                  <h3 className="preview-title">
-                    {titulo || "Título do trabalho aparecerá aqui..."}
-                  </h3>
-                  <p className="preview-description">
-                    {descricao ? 
-                      (descricao.length > 150 ? descricao.substring(0, 150) + "..." : descricao)
-                      : "A descrição do trabalho será mostrada aqui conforme você digita..."
-                    }
-                  </p>
+                  <div className="preview-title">
+                    {titulo || "Título do seu projeto..."}
+                  </div>
+                  <div className="preview-description">
+                    {(descricao
+                      ? descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "")
+                      : "") || "Descrição do seu projeto aparecerá aqui..."}
+                  </div>
                   <div className="preview-details">
                     <div className="preview-detail">
-                      <i className="bi bi-calendar"></i>
-                      <span>Prazo: {prazo ? new Date(prazo).toLocaleDateString('pt-BR') : "Não definido"}</span>
+                      <FaCalendarAlt />
+                      <span>
+                        {prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Prazo"}
+                      </span>
                     </div>
                     <div className="preview-detail">
-                      <i className="bi bi-currency-dollar"></i>
-                      <span>Orçamento: {orcamento ? `R$ ${parseFloat(orcamento).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : "Não definido"}</span>
+                      <FaMoneyBillWave />
+                      <span>
+                        {orcamento
+                          ? new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(Number(orcamento))
+                          : "R$ 0,00"}
+                      </span>
                     </div>
                     <div className="preview-detail">
-                      <i className="bi bi-tools"></i>
-                      <span>Habilidades: {habilidades.length} selecionadas</span>
-                    </div>
-                    <div className="preview-detail">
-                      <i className="bi bi-paperclip"></i>
-                      <span>Anexo: {(anexoAtualUrl && !removerAnexo) || novoAnexo ? "Sim" : "Nenhum"}</span>
+                      <FaTools />
+                      <span>
+                        {habilidades.length} habilidade{habilidades.length !== 1 ? "s" : ""}
+                      </span>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Ações do Formulário */}
-            <div className="modern-card">
-              <div className="card-body">
-                <div className="form-actions">
-                  <button
-                    type="submit"
-                    className={`gradient-btn btn-large ${carregando ? 'loading' : ''}`}
-                    onClick={handleSubmit}
-                    disabled={carregando}
-                  >
-                    {carregando ? (
-                      <>
-                        <div className="loading-spinner"></div>
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-check-lg"></i>
-                        Salvar Alterações
-                      </>
-                    )}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => navigate("/trabalhos")}
-                    disabled={carregando}
-                  >
-                    <i className="bi bi-x"></i>
-                    Cancelar
-                  </button>
                 </div>
               </div>
             </div>

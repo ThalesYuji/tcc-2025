@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext, useCallback, useRef } from "rea
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
+import { useFetchRamos } from "../hooks/useFetchRamos";
 import {
   FaPlus,
   FaFileAlt,
@@ -19,6 +20,7 @@ import {
   FaTag,
   FaPaperclip,
   FaExclamationCircle,
+  FaLayerGroup,
 } from "react-icons/fa";
 import "../styles/CadastroTrabalho.css";
 
@@ -41,6 +43,7 @@ export default function CadastroTrabalho() {
   const [habilidadeInput, setHabilidadeInput] = useState("");
   const [sugestoes, setSugestoes] = useState([]);
   const [anexo, setAnexo] = useState(null);
+  const [ramo, setRamo] = useState("");
 
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState("");
@@ -49,6 +52,9 @@ export default function CadastroTrabalho() {
 
   // ⏱️ debounce para busca de sugestões
   const debounceRef = useRef(null);
+
+  // 🎯 Hook para buscar ramos
+  const { ramos, loadingRamos } = useFetchRamos();
 
   const habilidadesPopulares = [
     "React", "JavaScript", "Python", "Node.js", "Design Gráfico",
@@ -161,6 +167,11 @@ export default function CadastroTrabalho() {
     formData.append("descricao", descricao.trim());
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
+
+    // 🎯 RAMO (opcional)
+    if (ramo) {
+      formData.append("ramo", ramo);
+    }
 
     // habilidades: enviar repetido funciona com DRF (getlist)
     habilidades.forEach((hab) => formData.append("habilidades", hab));
@@ -340,6 +351,46 @@ export default function CadastroTrabalho() {
                         disabled={isLoading}
                       />
                       {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🆕 CARD DE CATEGORIZAÇÃO (RAMO) */}
+              <div className="modern-card">
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <FaLayerGroup />
+                    Categorização
+                  </h2>
+                  <span className="optional-badge">Opcional</span>
+                </div>
+
+                <div className="card-body">
+                  <div className="form-field">
+                    <label className="input-label">
+                      <FaLayerGroup />
+                      Área de Atuação
+                    </label>
+                    <div className="ramo-select-wrapper">
+                      <FaLayerGroup className="ramo-select-icon" />
+                      <select
+                        className="ramo-select"
+                        value={ramo}
+                        onChange={(e) => setRamo(e.target.value)}
+                        disabled={loadingRamos || isLoading}
+                      >
+                        <option value="">Selecione uma área (opcional)</option>
+                        {ramos.map(r => (
+                          <option key={r.id} value={r.id}>
+                            {r.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="ramo-helper-text">
+                      <FaLightbulb />
+                      Categorize seu trabalho para facilitar a busca de freelancers especializados
                     </div>
                   </div>
                 </div>

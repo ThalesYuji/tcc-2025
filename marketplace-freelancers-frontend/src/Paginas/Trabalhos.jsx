@@ -1,444 +1,349 @@
-// src/Paginas/Trabalhos.jsx
-import React, { useEffect, useState, useContext } from "react";
-import api from "../Servicos/Api";
-import { useNavigate } from "react-router-dom";
-import { UsuarioContext } from "../Contextos/UsuarioContext";
-import "../styles/Trabalhos.css";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaBriefcase, FaSearch, FaPlus, FaFilter, FaTimes, FaCalendar, FaDollarSign, FaClock, FaUser, FaPaperclip, FaLock, FaLayerGroup } from 'react-icons/fa';
+import api from '../Servicos/Api';
+import { useFetchRamos } from '../hooks/useFetchRamos';
+import '../styles/Trabalhos.css';
 
-export default function Trabalhos() {
-  const [trabalhos, setTrabalhos] = useState([]);
-  const [erro, setErro] = useState("");
-  const [busca, setBusca] = useState("");
-  const [habilidade, setHabilidade] = useState("");
-  const [todasHabilidades, setTodasHabilidades] = useState([]);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(6);
-  const [numPages, setNumPages] = useState(1);
-  const [loadingGrid, setLoadingGrid] = useState(false);
+const Trabalhos = () => {
   const navigate = useNavigate();
+  const usuarioLogado = JSON.parse(localStorage.getItem('usuario'));
+  
+  const [trabalhos, setTrabalhos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  
+  // Filtros
+  const [busca, setBusca] = useState('');
+  const [habilidadeFiltro, setHabilidadeFiltro] = useState('');
+  const [ramoFiltro, setRamoFiltro] = useState('');
+  const [filtrosAplicados, setFiltrosAplicados] = useState(false);
 
-  const { usuarioLogado, carregando } = useContext(UsuarioContext);
+  // Hook personalizado para buscar ramos
+  const { ramos, loadingRamos } = useFetchRamos();
+
+  const TRABALHOS_POR_PAGINA = 6;
 
   useEffect(() => {
-    api
-      .get("/habilidades/")
-      .then((res) => {
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          const habilidadesOrdenadas = res.data.sort((a, b) =>
-            a.nome.localeCompare(b.nome)
-          );
-          setTodasHabilidades(habilidadesOrdenadas);
-        } else {
-          setTodasHabilidades([]);
-        }
-      })
-      .catch(() => setTodasHabilidades([]));
-
-    buscarTrabalhos({ page: 1 });
+    carregarTrabalhos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [paginaAtual]);
 
-  function buscarTrabalhos(filtros = {}) {
-    setLoadingGrid(true);
-    let url = "/trabalhos/";
-    const params = [];
-    if (filtros.busca?.trim())
-      params.push(`busca=${encodeURIComponent(filtros.busca)}`);
-    if (filtros.habilidade)
-      params.push(`habilidade=${encodeURIComponent(filtros.habilidade)}`);
-    params.push(`page=${filtros.page || page}`);
-    params.push(`page_size=${pageSize}`);
-    if (params.length > 0) url += `?${params.join("&")}`;
+  const carregarTrabalhos = async () => {
+    try {
+      setLoading(true);
+      const offset = (paginaAtual - 1) * TRABALHOS_POR_PAGINA;
+      
+      let url = `/trabalhos/?limit=${TRABALHOS_POR_PAGINA}&offset=${offset}`;
+      
+      if (filtrosAplicados) {
+        if (busca) url += `&search=${encodeURIComponent(busca)}`;
+        if (habilidadeFiltro) url += `&habilidade=${encodeURIComponent(habilidadeFiltro)}`;
+        if (ramoFiltro) url += `&ramo=${encodeURIComponent(ramoFiltro)}`;
+      }
 
-    api
-      .get(url)
-      .then((response) => {
-        setTrabalhos(response.data.results || []);
-        setPage(response.data.page || 1);
-        setNumPages(response.data.num_pages || 1);
-        setErro("");
-      })
-      .catch(() => setErro("Erro ao buscar trabalhos."))
-      .finally(() => setLoadingGrid(false));
-  }
-
-  function formatarData(dataStr) {
-    if (!dataStr) return "Não definido";
-    // espera "YYYY-MM-DD"
-    const [ano, mes, dia] = String(dataStr).split("-");
-    if (!ano || !mes || !dia) return dataStr;
-    return `${dia}/${mes}/${ano}`;
-  }
-
-  function formatarOrcamento(valor) {
-    const n = Number(valor || 0);
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(n);
-  }
-
-  function getStatusClass(status) {
-    switch ((status || "").toLowerCase()) {
-      case "concluido":
-      case "concluído":
-        return "status-concluido"; // verde
-      case "cancelado":
-      case "recusado":
-        return "status-recusado"; // vermelho
-      case "aberto":
-        return "status-aberto"; // azul
-      case "aguardando_aceitacao":
-      case "aguardando aceitação":
-        return "status-aguardando"; // amarelo
-      case "em_andamento":
-      case "em andamento":
-      case "andamento":
-      default:
-        return "status-em-andamento"; // laranja
+      const response = await api.get(url);
+      
+      const trabalhosFiltrados = response.data.results.filter(trabalho => 
+        podeVerTrabalho(trabalho)
+      );
+      
+      setTrabalhos(trabalhosFiltrados);
+      setTotalPaginas(Math.ceil(response.data.count / TRABALHOS_POR_PAGINA));
+    } catch (error) {
+      console.error('Erro ao carregar trabalhos:', error);
+      setTrabalhos([]);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  function getStatusIcon(status) {
-    switch ((status || "").toLowerCase()) {
-      case "concluido":
-      case "concluído":
-        return "bi-check-circle-fill";
-      case "cancelado":
-      case "recusado":
-        return "bi-x-circle-fill";
-      case "aberto":
-        return "bi-circle";
-      case "aguardando_aceitacao":
-      case "aguardando aceitação":
-        return "bi-hourglass-split";
-      case "em_andamento":
-      case "em andamento":
-      case "andamento":
-      default:
-        return "bi-clock-fill";
-    }
-  }
-
-  // respeita visibilidade do backend
-  function podeVerTrabalhoPrivado(trabalho) {
-    if (!trabalho?.is_privado) return true;
+  const podeVerTrabalho = (trabalho) => {
+    if (!trabalho.privado) return true;
     if (!usuarioLogado) return false;
-    if (usuarioLogado.is_superuser) return true;
-    if (trabalho.contratante_id === usuarioLogado.id) return true;
-    if (trabalho.freelancer === usuarioLogado.id) return true; // serializer expõe id no campo "freelancer"
-    return false;
-  }
+    return trabalho.freelancer_id === usuarioLogado.id || 
+           trabalho.cliente_id === usuarioLogado.id;
+  };
 
-  function filtrar(e) {
+  const aplicarFiltros = (e) => {
     e.preventDefault();
-    const first = 1;
-    setPage(first);
-    buscarTrabalhos({ busca, habilidade, page: first });
-  }
+    setPaginaAtual(1);
+    setFiltrosAplicados(true);
+    carregarTrabalhos();
+  };
 
-  function limpar() {
-    setBusca("");
-    setHabilidade("");
-    const first = 1;
-    setPage(first);
-    buscarTrabalhos({ page: first });
-  }
+  const limparFiltros = () => {
+    setBusca('');
+    setHabilidadeFiltro('');
+    setRamoFiltro('');
+    setFiltrosAplicados(false);
+    setPaginaAtual(1);
+    setTimeout(carregarTrabalhos, 100);
+  };
 
-  function anterior() {
-    if (page > 1) {
-      const newPage = page - 1;
-      setPage(newPage);
-      buscarTrabalhos({ busca, habilidade, page: newPage });
-    }
-  }
+  const formatarMoeda = (valor) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
+  };
 
-  function proxima() {
-    if (page < numPages) {
-      const newPage = page + 1;
-      setPage(newPage);
-      buscarTrabalhos({ busca, habilidade, page: newPage });
-    }
-  }
+  const formatarData = (dataString) => {
+    const data = new Date(dataString);
+    return data.toLocaleDateString('pt-BR');
+  };
 
-  if (carregando) {
-    return (
-      <div className="trabalhos-page page-container">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <h3 style={{ color: "var(--cor-texto-light)" }}>
-            Carregando trabalhos...
-          </h3>
-          <p style={{ color: "var(--cor-texto-light)", textAlign: "center" }}>
-            Buscando as melhores oportunidades para você
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const getRamoClassName = (ramoNome) => {
+    if (!ramoNome) return 'ramo-default';
+    
+    const nome = ramoNome.toLowerCase().replace(/\s+/g, '-');
+    
+    if (nome.includes('backend')) return 'ramo-backend';
+    if (nome.includes('frontend')) return 'ramo-frontend';
+    if (nome.includes('mobile')) return 'ramo-mobile';
+    if (nome.includes('ui') || nome.includes('ux')) return 'ramo-ui-ux';
+    if (nome.includes('data') || nome.includes('ia')) return 'ramo-data-ia';
+    if (nome.includes('devops')) return 'ramo-devops';
+    
+    return 'ramo-default';
+  };
 
-  if (!usuarioLogado) {
-    return (
-      <div className="trabalhos-page page-container">
-        <div className="dashboard-error">
-          <div className="error-icon">⚠️</div>
-          <h3 className="error-title">Acesso Negado</h3>
-          <p className="error-message">
-            Você precisa estar autenticado para ver os trabalhos.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const trabalhosVisiveis = trabalhos.filter(podeVerTrabalhoPrivado);
+  const getRamoIcon = () => {
+    return <FaLayerGroup />;
+  };
 
   return (
-    <div className="trabalhos-page page-container fade-in">
-      <div className="trabalhos-header">
-        <h1 className="trabalhos-title">
-          <div className="trabalhos-title-icon">
-            <i className="bi bi-briefcase"></i>
+    <div className="trabalhos-page">
+      <div className="page-container">
+        {/* Header */}
+        <header className="trabalhos-header">
+          <div className="trabalhos-title">
+            <div className="trabalhos-title-icon">
+              <FaBriefcase />
+            </div>
+            <span>Trabalhos Disponíveis</span>
           </div>
-        Trabalhos Disponíveis
-        </h1>
-        <p className="trabalhos-subtitle">
-          Encontre oportunidades incríveis ou publique novos projetos com
-          segurança
-        </p>
-      </div>
+          <p className="trabalhos-subtitle">
+            Explore oportunidades e encontre o projeto ideal para você
+          </p>
+        </header>
 
-      <div className="filtros-container">
-        <form className="filtros-form" onSubmit={filtrar}>
-          <div className="filtros-linha-principal">
-            <div className="filtro-group filtro-busca">
-              <label className="filtro-label">Buscar trabalhos</label>
-              <div className="filtro-input-wrapper">
-                <i className="bi bi-search filtro-icon"></i>
-                <input
-                  type="text"
-                  className="filtro-input"
-                  placeholder="Buscar por título ou descrição..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                />
+        {/* Filtros */}
+        <div className="filtros-container">
+          <form onSubmit={aplicarFiltros} className="filtros-form">
+            <div className="filtros-linha-principal">
+              <div className="filtro-group">
+                <label className="filtro-label">Buscar por título</label>
+                <div className="filtro-input-wrapper">
+                  <FaSearch className="filtro-icon" />
+                  <input
+                    type="text"
+                    className="filtro-input"
+                    placeholder="Digite o título do trabalho..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="filtro-group">
+                <label className="filtro-label">Filtrar por habilidade</label>
+                <select
+                  className="filtro-select"
+                  value={habilidadeFiltro}
+                  onChange={(e) => setHabilidadeFiltro(e.target.value)}
+                >
+                  <option value="">Todas as habilidades</option>
+                  <option value="React">React</option>
+                  <option value="Python">Python</option>
+                  <option value="JavaScript">JavaScript</option>
+                  <option value="Node.js">Node.js</option>
+                  <option value="Django">Django</option>
+                  <option value="TypeScript">TypeScript</option>
+                </select>
               </div>
             </div>
 
-            <div className="filtro-group filtro-habilidade">
-              <label className="filtro-label">Filtrar por habilidade</label>
+            <div className="filtro-group">
+              <label className="filtro-label">Filtrar por ramo</label>
               <select
                 className="filtro-select"
-                value={habilidade}
-                onChange={(e) => setHabilidade(e.target.value)}
+                value={ramoFiltro}
+                onChange={(e) => setRamoFiltro(e.target.value)}
+                disabled={loadingRamos}
               >
-                <option value="">Todas as habilidades</option>
-                {todasHabilidades.length > 0 ? (
-                  todasHabilidades.map((hab) => (
-                    <option key={hab.id} value={hab.nome}>
-                      {hab.nome}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>Nenhuma habilidade cadastrada</option>
-                )}
+                <option value="">Todos os ramos</option>
+                {ramos.map(ramo => (
+                  <option key={ramo.id} value={ramo.id}>
+                    {ramo.nome}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
 
-          <div className="filtros-botoes">
-            <button type="submit" className="btn-filtrar" disabled={loadingGrid}>
-              <i className="bi bi-search"></i>
-              {loadingGrid ? "Filtrando..." : "Filtrar"}
-            </button>
-
-            <button
-              type="button"
-              className="btn-limpar"
-              onClick={limpar}
-              disabled={loadingGrid}
-            >
-              <i className="bi bi-eraser-fill"></i>
-              Limpar
-            </button>
-
-            {(usuarioLogado.tipo === "contratante" || usuarioLogado.is_superuser) && (
-              <button
-                type="button"
-                className="btn-novo-trabalho"
-                onClick={() => navigate("/trabalhos/novo")}
-              >
-                <i className="bi bi-plus-circle"></i>
-                Novo Trabalho
+            <div className="filtros-botoes">
+              <button type="submit" className="btn-filtrar">
+                <FaFilter /> Filtrar
               </button>
-            )}
+              <button type="button" className="btn-limpar" onClick={limparFiltros}>
+                <FaTimes /> Limpar
+              </button>
+              {usuarioLogado?.tipo_usuario === 'cliente' && (
+                <button
+                  type="button"
+                  className="btn-novo-trabalho"
+                  onClick={() => navigate('/cadastro-trabalho')}
+                >
+                  <FaPlus /> Novo Trabalho
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Grid de Trabalhos */}
+        {loading ? (
+          <div className="trabalhos-empty">
+            <div className="empty-icon">⏳</div>
+            <h3 className="empty-title">Carregando trabalhos...</h3>
           </div>
-        </form>
-      </div>
-
-      {erro && (
-        <div className="dashboard-error">
-          <div className="error-icon">❌</div>
-          <h3 className="error-title">Erro ao Carregar</h3>
-          <p className="error-message">{erro}</p>
-          <button
-            className="btn gradient-btn"
-            onClick={() => buscarTrabalhos({ busca, habilidade, page })}
-          >
-            <i className="bi bi-arrow-clockwise"></i>
-            Tentar Novamente
-          </button>
-        </div>
-      )}
-
-      {!erro && loadingGrid && (
-        <div className="trabalhos-loading-inline">
-          <div className="loading-spinner small"></div>
-          <span>Atualizando lista…</span>
-        </div>
-      )}
-
-      {trabalhosVisiveis.length === 0 && !erro && !loadingGrid ? (
-        <div className="trabalhos-empty">
-          <div className="empty-icon">
-            <i className="bi bi-briefcase"></i>
+        ) : trabalhos.length === 0 ? (
+          <div className="trabalhos-empty">
+            <div className="empty-icon">📭</div>
+            <h3 className="empty-title">Nenhum trabalho encontrado</h3>
+            <p className="empty-description">
+              {filtrosAplicados 
+                ? 'Tente ajustar os filtros para encontrar mais resultados.'
+                : 'Não há trabalhos disponíveis no momento.'}
+            </p>
           </div>
-          <h3 className="empty-title">Nenhum trabalho encontrado</h3>
-          <p className="empty-description">
-            {busca || habilidade
-              ? "Tente ajustar os filtros para encontrar mais oportunidades."
-              : "Não há trabalhos disponíveis no momento. Volte em breve!"}
-          </p>
-          {(busca || habilidade) && (
-            <button className="btn gradient-btn" onClick={limpar}>
-              <i className="bi bi-arrow-clockwise"></i>
-              Limpar Filtros
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="trabalhos-grid">
-          {trabalhosVisiveis.map((trabalho) => (
-            <div key={trabalho.id} className="trabalho-card modern-card">
-              <div className="trabalho-header">
-                <div className="trabalho-titulo-container">
-                  <h3 className="trabalho-titulo">
-                    <i className="bi bi-briefcase"></i>
-                    {trabalho.titulo}
-                  </h3>
-                </div>
-                <div className={`trabalho-status ${getStatusClass(trabalho.status)}`}>
-                  <i className={`bi ${getStatusIcon(trabalho.status)}`}></i>
-                  {trabalho.status}
-                </div>
-              </div>
-
-              <div className="trabalho-body">
-                <p className="trabalho-descricao">
-                  {trabalho.descricao || "Sem descrição disponível."}
-                </p>
-
-                <div className="trabalho-info-item">
-                  <i className="bi bi-calendar-event trabalho-info-icon"></i>
-                  <span>Prazo: </span>
-                  <span className="trabalho-info-value">
-                    {formatarData(trabalho.prazo)}
-                  </span>
-                </div>
-
-                <div className="trabalho-info-item">
-                  <i className="bi bi-currency-dollar trabalho-info-icon"></i>
-                  <span>Orçamento: </span>
-                  <span className="trabalho-info-value trabalho-orcamento">
-                    {formatarOrcamento(trabalho.orcamento)}
-                  </span>
-                </div>
-
-                <div className="trabalho-info-item">
-                  <i className="bi bi-person trabalho-info-icon"></i>
-                  <span>Contratante: </span>
-                  <span
-                    className="trabalho-info-value trabalho-cliente"
-                    onClick={() =>
-                      trabalho.contratante_id && navigate(`/perfil/${trabalho.contratante_id}`)
-                    }
-                    role="button"
-                  >
-                    {trabalho.nome_contratante || "—"}
-                  </span>
-                </div>
-
-                {trabalho.is_privado && (
-                  <div className="badge-privado-card">
-                    <i className="bi bi-lock-fill"></i>
-                    Trabalho Privado
+        ) : (
+          <>
+            <div className="trabalhos-grid">
+              {trabalhos.map(trabalho => (
+                <div key={trabalho.id} className="trabalho-card">
+                  <div className="trabalho-header">
+                    <div className="trabalho-titulo-container">
+                      {trabalho.privado && (
+                        <span className="badge-privado-card">
+                          <FaLock /> Privado
+                        </span>
+                      )}
+                      <h3 className="trabalho-titulo">{trabalho.titulo}</h3>
+                    </div>
+                    <span className={`trabalho-status status-${trabalho.status.toLowerCase().replace(' ', '-')}`}>
+                      {trabalho.status}
+                    </span>
                   </div>
-                )}
 
-                {Array.isArray(trabalho.habilidades_detalhes) &&
-                  trabalho.habilidades_detalhes.length > 0 && (
-                    <div>
-                      <div className="trabalho-info-item">
-                        <i className="bi bi-tools trabalho-info-icon"></i>
-                        <span>Habilidades necessárias:</span>
+                  <div className="trabalho-body">
+                    {trabalho.ramo && (
+                      <div className={`trabalho-ramo-badge ${getRamoClassName(trabalho.ramo_nome)}`}>
+                        {getRamoIcon()}
+                        <span>{trabalho.ramo_nome}</span>
                       </div>
+                    )}
+
+                    <p className="trabalho-descricao">{trabalho.descricao}</p>
+
+                    <div className="trabalho-info-item">
+                      <FaCalendar className="trabalho-info-icon" />
+                      <span className="trabalho-info-value">
+                        Prazo: {formatarData(trabalho.prazo)}
+                      </span>
+                    </div>
+
+                    <div className="trabalho-info-item">
+                      <FaDollarSign className="trabalho-info-icon" />
+                      <span className="trabalho-orcamento">
+                        {formatarMoeda(trabalho.orcamento)}
+                      </span>
+                    </div>
+
+                    <div className="trabalho-info-item">
+                      <FaClock className="trabalho-info-icon" />
+                      <span className="trabalho-info-value">
+                        Criado em: {formatarData(trabalho.data_criacao)}
+                      </span>
+                    </div>
+
+                    <div className="trabalho-info-item">
+                      <FaUser className="trabalho-info-icon" />
+                      <span 
+                        className="trabalho-cliente"
+                        onClick={() => navigate(`/perfil-publico/${trabalho.cliente_id}`)}
+                      >
+                        {trabalho.cliente_nome}
+                      </span>
+                    </div>
+
+                    {trabalho.habilidades && trabalho.habilidades.length > 0 && (
                       <div className="trabalho-habilidades">
-                        {trabalho.habilidades_detalhes.map((hab) => (
-                          <span key={hab.id || hab.nome} className="habilidade-tag">
-                            {hab.nome}
+                        {trabalho.habilidades.map((habilidade, index) => (
+                          <span key={index} className="habilidade-tag">
+                            {habilidade}
                           </span>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                {trabalho.anexo_url && trabalho.anexo_url !== "null" && (
-                  <div className="trabalho-info-item">
-                    <i className="bi bi-paperclip trabalho-info-icon"></i>
-                    <a
-                      href={trabalho.anexo_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="trabalho-anexo"
-                    >
-                      <i className="bi bi-download"></i>
-                      Ver Anexo
-                    </a>
+                    {trabalho.anexo_url && (
+                      <div className="trabalho-info-item">
+                        <FaPaperclip className="trabalho-info-icon" />
+                        <a 
+                          href={trabalho.anexo_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="trabalho-anexo"
+                        >
+                          Ver anexo
+                        </a>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="trabalho-footer">
+                  <div className="trabalho-footer">
+                    <button
+                      className="btn-ver-detalhes"
+                      onClick={() => navigate(`/trabalhos/${trabalho.id}`)}
+                    >
+                      Ver Detalhes
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div className="trabalhos-pagination">
                 <button
-                  className="btn-ver-detalhes"
-                  onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
+                  className="pagination-btn"
+                  onClick={() => setPaginaAtual(prev => prev - 1)}
+                  disabled={paginaAtual === 1}
                 >
-                  <i className="bi bi-eye"></i>
-                  Ver Detalhes Completos
+                  Anterior
+                </button>
+
+                <span className="pagination-info">
+                  Página <strong>{paginaAtual}</strong> de <strong>{totalPaginas}</strong>
+                </span>
+
+                <button
+                  className="pagination-btn"
+                  onClick={() => setPaginaAtual(prev => prev + 1)}
+                  disabled={paginaAtual === totalPaginas}
+                >
+                  Próxima
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {numPages > 1 && (
-        <div className="trabalhos-pagination">
-          <button className="pagination-btn" disabled={page <= 1} onClick={anterior}>
-            <i className="bi bi-chevron-left"></i>
-            Anterior
-          </button>
-
-          <div className="pagination-info">
-            Página <strong>{page}</strong> de <strong>{numPages}</strong>
-          </div>
-
-          <button className="pagination-btn" disabled={page >= numPages} onClick={proxima}>
-            Próxima
-            <i className="bi bi-chevron-right"></i>
-          </button>
-        </div>
-      )}
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default Trabalhos;
