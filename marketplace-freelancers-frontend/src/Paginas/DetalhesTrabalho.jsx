@@ -118,8 +118,12 @@ export default function DetalhesTrabalho() {
   /* =========================
      Derivados de Propostas
      ========================= */
+/* =========================
+   Derivados de Propostas
+   ========================= */
   const {
     totalEnvios,
+    // eslint-disable-next-line no-unused-vars
     ultimaProposta,
     existePendenteOuAceita,
     tentativasRestantes,
@@ -662,7 +666,7 @@ export default function DetalhesTrabalho() {
               <div className="trabalho-ramo-info">
                 <i className="bi bi-diagram-3-fill"></i>
                 <div>
-                  <div className="ramo-label">Área de Atuação</div>
+                  <div className="ramo-label">Ramo de Atuação</div>
                   <div className="ramo-nome">{trabalho.ramo_nome}</div>
                 </div>
               </div>

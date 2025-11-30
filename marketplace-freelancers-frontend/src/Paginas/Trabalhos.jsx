@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaBriefcase, FaSearch, FaPlus, FaFilter, FaTimes, FaCalendar, FaDollarSign, FaClock, FaUser, FaPaperclip, FaLock, FaLayerGroup } from 'react-icons/fa';
 import api from '../Servicos/Api';
 import { useFetchRamos } from '../hooks/useFetchRamos';
+import { UsuarioContext } from '../Contextos/UsuarioContext';
 import '../styles/Trabalhos.css';
 
 const Trabalhos = () => {
   const navigate = useNavigate();
-  const usuarioLogado = JSON.parse(localStorage.getItem('usuario'));
+  const { usuarioLogado } = useContext(UsuarioContext);
   
   const [trabalhos, setTrabalhos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -193,7 +194,7 @@ const Trabalhos = () => {
                 <button
                   type="button"
                   className="btn-novo-trabalho"
-                  onClick={() => navigate('/cadastro-trabalho')}
+                  onClick={() => navigate('/trabalhos/novo')}
                 >
                   <FaPlus /> Novo Trabalho
                 </button>

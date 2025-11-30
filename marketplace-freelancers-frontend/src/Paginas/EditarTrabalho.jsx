@@ -416,7 +416,7 @@ export default function EditarTrabalho() {
                 <div className="card-header">
                   <h2 className="card-title">
                     <FaLayerGroup />
-                    Categorização
+                    Ramo
                   </h2>
                   <span className="optional-badge">Opcional</span>
                 </div>
@@ -425,7 +425,7 @@ export default function EditarTrabalho() {
                   <div className="form-field">
                     <label className="input-label">
                       <FaLayerGroup />
-                      Área de Atuação
+                      Ramo de Atuação
                     </label>
                     <div className="ramo-select-wrapper">
                       <FaLayerGroup className="ramo-select-icon" />

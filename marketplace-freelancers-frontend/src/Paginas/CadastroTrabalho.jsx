@@ -1,4 +1,4 @@
-// src/Paginas/CadastroTrabalho.jsx
+// src/Paginas/CadastroTrabalho.jsx - DESIGN CRIATIVO E MODERNO
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -6,21 +6,19 @@ import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useFetchRamos } from "../hooks/useFetchRamos";
 import {
   FaPlus,
-  FaFileAlt,
   FaCalendarAlt,
   FaMoneyBillWave,
-  FaTools,
   FaCloudUploadAlt,
   FaCheckCircle,
   FaTimes,
   FaUser,
-  FaEye,
-  FaLightbulb,
-  FaStar,
-  FaTag,
-  FaPaperclip,
   FaExclamationCircle,
   FaLayerGroup,
+  FaRocket,
+  FaEdit,
+  FaMagic,
+  FaImage,
+  FaFile,
 } from "react-icons/fa";
 import "../styles/CadastroTrabalho.css";
 
@@ -29,11 +27,10 @@ export default function CadastroTrabalho() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🔗 Trabalho privado via query (?freelancer=ID)
   const params = new URLSearchParams(location.search);
   const freelancerId = params.get("freelancer");
 
-  // 📦 Estados
+  // Estados
   const [freelancerNome, setFreelancerNome] = useState("");
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -44,16 +41,14 @@ export default function CadastroTrabalho() {
   const [sugestoes, setSugestoes] = useState([]);
   const [anexo, setAnexo] = useState(null);
   const [ramo, setRamo] = useState("");
+  const [dragActive, setDragActive] = useState(false);
 
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // ⏱️ debounce para busca de sugestões
   const debounceRef = useRef(null);
-
-  // 🎯 Hook para buscar ramos
   const { ramos, loadingRamos } = useFetchRamos();
 
   const habilidadesPopulares = [
@@ -62,7 +57,7 @@ export default function CadastroTrabalho() {
     "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
   ];
 
-  // 🧍 Nome do freelancer (trabalho privado)
+  // Buscar nome do freelancer
   useEffect(() => {
     async function fetchFreelancer() {
       if (!freelancerId) return;
@@ -76,7 +71,7 @@ export default function CadastroTrabalho() {
     fetchFreelancer();
   }, [freelancerId]);
 
-  // 🔎 Sugestões de habilidades (search server-side)
+  // Buscar sugestões de habilidades
   const buscarSugestoes = useCallback(async (texto) => {
     try {
       const res = await api.get(`/habilidades/?search=${encodeURIComponent(texto || "")}`);
@@ -87,12 +82,10 @@ export default function CadastroTrabalho() {
     }
   }, [habilidades]);
 
-  // primeira carga
   useEffect(() => {
     buscarSugestoes("");
   }, [buscarSugestoes]);
 
-  // 🖊️ input de habilidade com debounce
   const handleHabilidadeInput = (e) => {
     const valor = e.target.value;
     setHabilidadeInput(valor);
@@ -109,10 +102,8 @@ export default function CadastroTrabalho() {
 
   const adicionarHabilidade = (nome) => {
     const limpo = nome.replace(/\s+/g, " ").trim();
-    if (!limpo) return;
-    if (!habilidades.includes(limpo)) {
-      setHabilidades((prev) => [...prev, limpo]);
-    }
+    if (!limpo || habilidades.includes(limpo)) return;
+    setHabilidades((prev) => [...prev, limpo]);
     setHabilidadeInput("");
     setSugestoes([]);
   };
@@ -121,25 +112,58 @@ export default function CadastroTrabalho() {
     setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
-  // 🛡️ Validações simples no cliente
+  // Drag & Drop para arquivo
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setAnexo(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Função para formatar data corretamente (sem fuso horário)
+  const formatarData = (dataString) => {
+    if (!dataString) return "Data de entrega";
+    const [ano, mes, dia] = dataString.split("-");
+    return new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR");
+  };
+
+  // Obter nome do ramo
+  const getNomeRamo = () => {
+    if (!ramo) return null;
+    const ramoSelecionado = ramos.find(r => String(r.id) === String(ramo));
+    return ramoSelecionado ? ramoSelecionado.nome : null;
+  };
+
+  // Validações
   const validarCampos = () => {
     const novosErros = {};
     if (!titulo.trim()) novosErros.titulo = "Preencha o título.";
     if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
     if (!prazo) novosErros.prazo = "Escolha o prazo.";
     if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
-      novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
+      novosErros.orcamento = "Informe um orçamento válido.";
     }
-    // anexo: valida o tamanho (10MB) e tipo (mesma regra do backend)
     if (anexo) {
       const max = 10 * 1024 * 1024;
       if (anexo.size > max) {
-        novosErros.anexo = "Arquivo muito grande. Tamanho máximo: 10MB.";
+        novosErros.anexo = "Arquivo muito grande (máx. 10MB).";
       } else {
         const ext = (anexo.name.split(".").pop() || "").toLowerCase();
         const permitidos = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar"];
         if (!permitidos.includes(ext)) {
-          novosErros.anexo = "Tipo de arquivo não permitido (PDF, DOC, DOCX, JPG, PNG, ZIP, RAR).";
+          novosErros.anexo = "Tipo não permitido.";
         }
       }
     }
@@ -161,19 +185,13 @@ export default function CadastroTrabalho() {
 
     setIsLoading(true);
 
-    // 📨 Monta FormData (compatível com TrabalhoSerializer)
     const formData = new FormData();
     formData.append("titulo", titulo.trim());
     formData.append("descricao", descricao.trim());
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
 
-    // 🎯 RAMO (opcional)
-    if (ramo) {
-      formData.append("ramo", ramo);
-    }
-
-    // habilidades: enviar repetido funciona com DRF (getlist)
+    if (ramo) formData.append("ramo", ramo);
     habilidades.forEach((hab) => formData.append("habilidades", hab));
     if (anexo) formData.append("anexo", anexo);
     if (freelancerId) formData.append("freelancer", freelancerId);
@@ -183,7 +201,6 @@ export default function CadastroTrabalho() {
       setSucesso("Trabalho cadastrado com sucesso!");
       setTimeout(() => navigate("/trabalhos"), 1200);
     } catch (err) {
-      // normaliza erros do backend (400/validações)
       const payload = err?.response?.data;
       if (payload && typeof payload === "object") {
         const coletado = {};
@@ -191,24 +208,36 @@ export default function CadastroTrabalho() {
           coletado[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : String(mensagem);
         });
         setErros(coletado);
-        setErroGeral(coletado.detail || coletado.erro || "Erro ao cadastrar trabalho.");
+        setErroGeral(coletado.detail || coletado.erro || "Erro ao cadastrar.");
       } else {
-        setErroGeral("Erro ao cadastrar trabalho. Verifique os campos e tente novamente.");
+        setErroGeral("Erro ao cadastrar. Tente novamente.");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 🔒 Permissão de acesso (apenas contratante ou admin)
+  // Calcular progresso do formulário
+  const calcularProgresso = () => {
+    let total = 0;
+    if (titulo.trim()) total += 25;
+    if (descricao.trim()) total += 25;
+    if (prazo) total += 25;
+    if (orcamento && Number(orcamento) > 0) total += 25;
+    return total;
+  };
+
+  const progresso = calcularProgresso();
+
+  // Permissão de acesso
   if (!usuarioLogado || (usuarioLogado.tipo !== "contratante" && !usuarioLogado.is_superuser)) {
     return (
       <div className="cadastro-trabalho-page">
-        <div className="page-container">
-          <div className="access-denied-container">
-            <FaExclamationCircle className="access-denied-icon" />
+        <div className="ct-access-denied">
+          <div className="ct-access-denied-content">
+            <FaExclamationCircle />
             <h3>Acesso Negado</h3>
-            <p>Apenas contratantes e administradores podem cadastrar trabalhos.</p>
+            <p>Apenas contratantes podem cadastrar trabalhos.</p>
           </div>
         </div>
       </div>
@@ -217,7 +246,7 @@ export default function CadastroTrabalho() {
 
   return (
     <div className="cadastro-trabalho-page">
-      {/* Header */}
+      {/* Header - MANTIDO IGUAL */}
       <div className="cadastro-trabalho-header">
         <div className="cadastro-trabalho-title">
           <div className="cadastro-trabalho-title-icon">
@@ -231,118 +260,129 @@ export default function CadastroTrabalho() {
             : "Publique seu projeto e encontre o freelancer ideal"}
         </div>
         {freelancerId && (
-          <div className="private-work-badge" title={`Direcionado para ${freelancerNome}`}>
+          <div className="private-work-badge">
             <FaUser />
             <span>Trabalho Privado</span>
           </div>
         )}
       </div>
 
-      <div className="page-container">
+      {/* Conteúdo Principal */}
+      <div className="ct-main-container">
         {/* Alertas */}
         {erroGeral && (
-          <div className="alert-error">
+          <div className="ct-alert ct-alert-error">
             <FaExclamationCircle />
             <span>{erroGeral}</span>
           </div>
         )}
         {sucesso && (
-          <div className="alert-success">
+          <div className="ct-alert ct-alert-success">
             <FaCheckCircle />
             <span>{sucesso}</span>
           </div>
         )}
 
-        {/* Layout */}
-        <div className="cadastro-trabalho-grid">
-          {/* Form principal */}
-          <div className="form-main-column">
-            <form onSubmit={handleSubmit} className="trabalho-form">
-              {/* Informações Básicas */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaFileAlt />
-                    Informações Básicas
-                  </h2>
-                </div>
-
-                <div className="card-body">
-                  <div className="form-field">
-                    <label className="input-label">
-                      Título do Projeto <span className="required">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className={`form-control ${erros.titulo ? "error" : ""}`}
-                      placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
-                      value={titulo}
-                      onChange={(e) => setTitulo(e.target.value)}
-                      maxLength={100}
-                      disabled={isLoading}
-                    />
-                    <div className="input-footer">
-                      <span className="char-count">{titulo.length}/100</span>
-                      {erros.titulo && <span className="error-msg">{erros.titulo}</span>}
-                    </div>
+        {/* Layout Criativo em 2 Colunas */}
+        <div className="ct-creative-layout">
+          
+          {/* Coluna Esquerda - Formulário */}
+          <div className="ct-form-column">
+            <form onSubmit={handleSubmit} className="ct-form">
+              
+              {/* Bloco: Título */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaEdit />
                   </div>
-
-                  <div className="form-field">
-                    <label className="input-label">
-                      Descrição Detalhada <span className="required">*</span>
-                    </label>
-                    <textarea
-                      className={`form-control textarea-field ${erros.descricao ? "error" : ""}`}
-                      placeholder="Descreva em detalhes o que precisa ser desenvolvido, objetivos, requisitos específicos..."
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      rows="6"
-                      maxLength={1000}
-                      disabled={isLoading}
-                    />
-                    <div className="input-footer">
-                      <span className="char-count">{descricao.length}/1000</span>
-                      {erros.descricao && <span className="error-msg">{erros.descricao}</span>}
-                    </div>
+                  <div className="ct-block-info">
+                    <h3>Título do Projeto</h3>
+                    <p>Um título claro atrai mais freelancers</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <input
+                    type="text"
+                    className={`ct-input ct-input-large ${erros.titulo ? "ct-input-error" : ""}`}
+                    placeholder="Ex: Desenvolvimento de aplicativo mobile para delivery"
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    maxLength={100}
+                    disabled={isLoading}
+                  />
+                  <div className="ct-input-meta">
+                    {erros.titulo && <span className="ct-error">{erros.titulo}</span>}
+                    <span className="ct-char-count">{titulo.length}/100</span>
                   </div>
                 </div>
               </div>
 
-              {/* Prazo e Orçamento */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaCalendarAlt />
-                    Prazo e Orçamento
-                  </h2>
+              {/* Bloco: Descrição */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaMagic />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Descrição Detalhada</h3>
+                    <p>Quanto mais detalhes, melhores propostas você receberá</p>
+                  </div>
                 </div>
+                <div className="ct-block-content">
+                  <textarea
+                    className={`ct-textarea ${erros.descricao ? "ct-input-error" : ""}`}
+                    placeholder="Descreva o que você precisa, funcionalidades desejadas, referências visuais, prazos específicos, tecnologias preferidas..."
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    rows="6"
+                    maxLength={1000}
+                    disabled={isLoading}
+                  />
+                  <div className="ct-input-meta">
+                    {erros.descricao && <span className="ct-error">{erros.descricao}</span>}
+                    <span className="ct-char-count">{descricao.length}/1000</span>
+                  </div>
+                </div>
+              </div>
 
-                <div className="card-body">
-                  <div className="form-row">
-                    <div className="form-field">
-                      <label className="input-label">
+              {/* Bloco: Prazo e Orçamento */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaMoneyBillWave />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Prazo e Investimento</h3>
+                    <p>Defina quando precisa e quanto pode investir</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <div className="ct-inline-fields">
+                    <div className="ct-field-group">
+                      <label>
                         <FaCalendarAlt />
-                        Prazo de Entrega <span className="required">*</span>
+                        Prazo de Entrega
                       </label>
                       <input
                         type="date"
-                        className={`form-control ${erros.prazo ? "error" : ""}`}
+                        className={`ct-input ${erros.prazo ? "ct-input-error" : ""}`}
                         value={prazo}
                         onChange={(e) => setPrazo(e.target.value)}
                         min={new Date().toISOString().split("T")[0]}
                         disabled={isLoading}
                       />
-                      {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
+                      {erros.prazo && <span className="ct-error">{erros.prazo}</span>}
                     </div>
 
-                    <div className="form-field">
-                      <label className="input-label">
+                    <div className="ct-field-group">
+                      <label>
                         <FaMoneyBillWave />
-                        Orçamento (R$) <span className="required">*</span>
+                        Orçamento (R$)
                       </label>
                       <input
                         type="number"
-                        className={`form-control ${erros.orcamento ? "error" : ""}`}
+                        className={`ct-input ${erros.orcamento ? "ct-input-error" : ""}`}
                         placeholder="1500.00"
                         value={orcamento}
                         onChange={(e) => setOrcamento(e.target.value)}
@@ -350,219 +390,189 @@ export default function CadastroTrabalho() {
                         step="0.01"
                         disabled={isLoading}
                       />
-                      {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
+                      {erros.orcamento && <span className="ct-error">{erros.orcamento}</span>}
                     </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* 🆕 CARD DE CATEGORIZAÇÃO (RAMO) */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaLayerGroup />
-                    Categorização
-                  </h2>
-                  <span className="optional-badge">Opcional</span>
-                </div>
-
-                <div className="card-body">
-                  <div className="form-field">
-                    <label className="input-label">
-                      <FaLayerGroup />
-                      Área de Atuação
-                    </label>
-                    <div className="ramo-select-wrapper">
-                      <FaLayerGroup className="ramo-select-icon" />
+                    <div className="ct-field-group">
+                      <label>
+                        <FaLayerGroup />
+                        Área/Ramo
+                      </label>
                       <select
-                        className="ramo-select"
+                        className="ct-input ct-select"
                         value={ramo}
                         onChange={(e) => setRamo(e.target.value)}
                         disabled={loadingRamos || isLoading}
                       >
-                        <option value="">Selecione uma área (opcional)</option>
+                        <option value="">Selecionar</option>
                         {ramos.map(r => (
-                          <option key={r.id} value={r.id}>
-                            {r.nome}
-                          </option>
+                          <option key={r.id} value={r.id}>{r.nome}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="ramo-helper-text">
-                      <FaLightbulb />
-                      Categorize seu trabalho para facilitar a busca de freelancers especializados
-                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Habilidades */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaTools />
-                    Habilidades Necessárias
-                  </h2>
-                </div>
-
-                <div className="card-body">
-                  <div className="skills-container">
-                    <div className="skills-input-wrapper">
-                      <input
-                        type="text"
-                        className="skills-input"
-                        placeholder="Digite uma habilidade e pressione Enter..."
-                        value={habilidadeInput}
-                        onChange={handleHabilidadeInput}
-                        onKeyDown={handleHabilidadeKeyDown}
-                        disabled={isLoading}
-                      />
-                      <FaTag className="skills-input-icon" />
-                    </div>
-
-                    {habilidades.length > 0 && (
-                      <div className="selected-skills">
-                        {habilidades.map((hab, index) => (
-                          <div key={index} className="skill-badge">
-                            <span>{hab}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeHabilidade(hab)}
-                              className="skill-remove"
-                              disabled={isLoading}
-                            >
-                              <FaTimes />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {sugestoes.length > 0 && (
-                      <div className="skills-suggestions">
-                        <div className="suggestions-header">
-                          <FaLightbulb />
-                          <span>Sugestões</span>
-                        </div>
-                        <div className="suggestions-list">
-                          {sugestoes.slice(0, 8).map((sug, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              className="suggestion-tag"
-                              onClick={() => adicionarHabilidade(sug)}
-                              disabled={isLoading}
-                            >
-                              {sug}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="popular-skills">
-                      <div className="popular-skills-header">
-                        <FaStar />
-                        <span>Habilidades Populares</span>
-                      </div>
-                      <div className="popular-skills-list">
-                        {habilidadesPopulares
-                          .filter((skill) => !habilidades.includes(skill))
-                          .slice(0, 10)
-                          .map((skill, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              className="popular-skill-tag"
-                              onClick={() => adicionarHabilidade(skill)}
-                              disabled={isLoading}
-                            >
-                              {skill}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
+              {/* Bloco: Habilidades */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
+                    <FaMagic />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Habilidades Necessárias <span className="ct-optional">Opcional</span></h3>
+                    <p>Selecione as competências que o freelancer precisa ter</p>
                   </div>
                 </div>
-              </div>
-
-              {/* Arquivo Anexo */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaPaperclip />
-                    Arquivo Anexo
-                  </h2>
-                  <span className="optional-badge">Opcional</span>
-                </div>
-
-                <div className="card-body">
-                  <div className="file-upload-area">
+                <div className="ct-block-content">
+                  <div className="ct-skills-input-container">
                     <input
-                      id="file-input"
+                      type="text"
+                      className="ct-input"
+                      placeholder="Digite uma habilidade e pressione Enter"
+                      value={habilidadeInput}
+                      onChange={handleHabilidadeInput}
+                      onKeyDown={handleHabilidadeKeyDown}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {habilidades.length > 0 && (
+                    <div className="ct-selected-skills">
+                      {habilidades.map((hab, index) => (
+                        <span key={index} className="ct-skill-tag">
+                          {hab}
+                          <button type="button" onClick={() => removeHabilidade(hab)} disabled={isLoading}>
+                            <FaTimes />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {sugestoes.length > 0 && (
+                    <div className="ct-skill-suggestions">
+                      <span className="ct-suggestions-label">Sugestões:</span>
+                      {sugestoes.slice(0, 6).map((sug, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="ct-suggestion-btn"
+                          onClick={() => adicionarHabilidade(sug)}
+                          disabled={isLoading}
+                        >
+                          + {sug}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="ct-popular-skills">
+                    <span className="ct-popular-label">Populares:</span>
+                    <div className="ct-popular-list">
+                      {habilidadesPopulares
+                        .filter((skill) => !habilidades.includes(skill))
+                        .slice(0, 10)
+                        .map((skill, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="ct-popular-btn"
+                            onClick={() => adicionarHabilidade(skill)}
+                            disabled={isLoading}
+                          >
+                            {skill}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco: Upload */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
+                    <FaImage />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Anexar Arquivo <span className="ct-optional">Opcional</span></h3>
+                    <p>Adicione referências, briefings ou documentos relevantes</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <div 
+                    className={`ct-upload-zone ${dragActive ? "ct-upload-zone-active" : ""} ${anexo ? "ct-upload-zone-filled" : ""}`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                  >
+                    <input
+                      id="ct-file-input"
                       type="file"
-                      className="file-input"
                       onChange={(e) => setAnexo(e.target.files?.[0] || null)}
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
                       disabled={isLoading}
                     />
-                    <label htmlFor="file-input" className="file-upload-label">
-                      {anexo ? (
-                        <div className="file-selected-info">
-                          <FaCheckCircle className="file-success-icon" />
-                          <div className="file-details">
-                            <span className="file-name">{anexo.name}</span>
-                            <span className="file-size">
-                              {(anexo.size / 1024 / 1024).toFixed(2)} MB
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="file-remove"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setAnexo(null);
-                            }}
-                            disabled={isLoading}
-                          >
-                            <FaTimes />
-                          </button>
+                    
+                    {anexo ? (
+                      <div className="ct-file-preview">
+                        <div className="ct-file-icon">
+                          <FaCheckCircle />
                         </div>
-                      ) : (
-                        <div className="file-upload-placeholder">
-                          <FaCloudUploadAlt className="upload-icon" />
-                          <div className="upload-text">
-                            <span className="upload-title">Clique para enviar arquivo</span>
-                            <span className="upload-subtitle">
-                              PDF, DOC, DOCX, JPG, PNG, ZIP (Máx. 10MB)
-                            </span>
-                          </div>
+                        <div className="ct-file-info">
+                          <span className="ct-file-name">{anexo.name}</span>
+                          <span className="ct-file-size">{(anexo.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                      )}
-                    </label>
+                        <button
+                          type="button"
+                          className="ct-file-remove"
+                          onClick={() => setAnexo(null)}
+                          disabled={isLoading}
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor="ct-file-input" className="ct-upload-content">
+                        <FaCloudUploadAlt className="ct-upload-icon" />
+                        <span className="ct-upload-text">
+                          Arraste um arquivo ou <strong>clique para selecionar</strong>
+                        </span>
+                        <span className="ct-upload-hint">PDF, DOC, JPG, PNG, ZIP até 10MB</span>
+                      </label>
+                    )}
                   </div>
-                  {erros.anexo && <span className="error-msg">{erros.anexo}</span>}
+                  {erros.anexo && <span className="ct-error">{erros.anexo}</span>}
                 </div>
               </div>
 
-              {/* Botão */}
-              <div className="form-actions">
+              {/* Ações */}
+              <div className="ct-form-actions">
+                <button
+                  type="button"
+                  className="ct-btn ct-btn-secondary"
+                  onClick={() => navigate(-1)}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className={`btn gradient-btn btn-large ${isLoading ? "loading" : ""}`}
-                  disabled={isLoading}
+                  className={`ct-btn ct-btn-primary ${isLoading ? "ct-btn-loading" : ""}`}
+                  disabled={isLoading || progresso < 100}
                 >
                   {isLoading ? (
                     <>
-                      <div className="loading-spinner"></div>
-                      <span>Cadastrando...</span>
+                      <span className="ct-spinner"></span>
+                      Publicando...
                     </>
                   ) : (
                     <>
-                      <FaPlus />
-                      <span>
-                        {freelancerId ? "Enviar para Freelancer" : "Publicar Projeto"}
-                      </span>
+                      <FaRocket />
+                      {freelancerId ? "Enviar Proposta" : "Publicar Projeto"}
                     </>
                   )}
                 </button>
@@ -570,68 +580,96 @@ export default function CadastroTrabalho() {
             </form>
           </div>
 
-          {/* Sidebar */}
-          <div className="form-sidebar-column">
-            <div className="modern-card preview-card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  <FaEye />
-                  Prévia do Projeto
-                </h2>
+          {/* Coluna Direita - Preview Visual */}
+          <div className="ct-preview-column">
+            <div className="ct-preview-card">
+              <div className="ct-preview-header">
+                <span className="ct-preview-badge">
+                  Preview do Trabalho
+                </span>
               </div>
+              
+              <div className="ct-preview-body">
+                <div className="ct-preview-mockup">
+                  <div className="ct-mockup-header">
+                    <div className="ct-mockup-dots">
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+                  <div className="ct-mockup-content">
+                    <h3 className="ct-preview-title">
+                      {titulo || "Título do seu projeto aparecerá aqui..."}
+                    </h3>
+                    <p className="ct-preview-desc">
+                      {descricao 
+                        ? (descricao.length > 200 ? descricao.substring(0, 200) + "..." : descricao)
+                        : "A descrição detalhada do seu projeto será exibida neste espaço. Freelancers poderão ler e entender exatamente o que você precisa."}
+                    </p>
+                    
+                    <div className="ct-preview-meta">
+                      <div className="ct-preview-meta-item">
+                        <FaCalendarAlt />
+                        <span>{formatarData(prazo)}</span>
+                      </div>
+                      <div className="ct-preview-meta-item ct-preview-meta-budget">
+                        <FaMoneyBillWave />
+                        <span>
+                          {orcamento 
+                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
+                            : "R$ 0,00"}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="card-body">
-                <div className="preview-content">
-                  <div className="preview-title">
-                    {titulo || "Título do seu projeto..."}
-                  </div>
-                  <div className="preview-description">
-                    {(descricao
-                      ? descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "")
-                      : "") || "Descrição do seu projeto aparecerá aqui..."}
-                  </div>
-                  <div className="preview-details">
-                    <div className="preview-detail">
-                      <FaCalendarAlt />
-                      <span>
-                        {prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Prazo"}
-                      </span>
-                    </div>
-                    <div className="preview-detail">
-                      <FaMoneyBillWave />
-                      <span>
-                        {orcamento
-                          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
-                          : "R$ 0,00"}
-                      </span>
-                    </div>
-                    <div className="preview-detail">
-                      <FaTools />
-                      <span>
-                        {habilidades.length} habilidade{habilidades.length !== 1 ? "s" : ""}
-                      </span>
-                    </div>
+                    {getNomeRamo() && (
+                      <div className="ct-preview-ramo">
+                        <FaLayerGroup />
+                        <span>{getNomeRamo()}</span>
+                      </div>
+                    )}
+
+                    {habilidades.length > 0 && (
+                      <div className="ct-preview-skills">
+                        {habilidades.slice(0, 5).map((hab, i) => (
+                          <span key={i} className="ct-preview-skill">{hab}</span>
+                        ))}
+                        {habilidades.length > 5 && (
+                          <span className="ct-preview-skill ct-preview-skill-more">
+                            +{habilidades.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {anexo && (
+                      <div className="ct-preview-attachment">
+                        <FaFile />
+                        <span>{anexo.name}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="modern-card tips-card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  <FaLightbulb />
-                  Dicas para um Bom Projeto
-                </h2>
-              </div>
-
-              <div className="card-body">
-                <ul className="tips-list">
-                  <li>Seja específico no título e descrição</li>
-                  <li>Defina um prazo realista</li>
-                  <li>Escolha habilidades relevantes</li>
-                  <li>Anexe materiais de referência</li>
-                  <li>Estabeleça um orçamento justo</li>
-                </ul>
+              {/* Barra de Progresso */}
+              <div className="ct-progress-section">
+                <div className="ct-progress-header">
+                  <span>Progresso do formulário</span>
+                  <span className="ct-progress-percent">{progresso}%</span>
+                </div>
+                <div className="ct-progress-bar">
+                  <div 
+                    className="ct-progress-fill" 
+                    style={{ width: `${progresso}%` }}
+                  ></div>
+                </div>
+                <div className="ct-progress-tips">
+                  <span>
+                    {progresso < 100 
+                      ? "Complete todos os campos obrigatórios para publicar"
+                      : "Tudo pronto! Você pode publicar seu projeto"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
