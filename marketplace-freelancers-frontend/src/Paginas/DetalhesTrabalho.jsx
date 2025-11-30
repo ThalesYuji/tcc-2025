@@ -10,15 +10,15 @@ import "../styles/DetalhesTrabalho.css";
    ========================= */
 function getStatusClass(status) {
   switch ((status || "").toLowerCase()) {
-    case "aberto": return "status-aberto";                // azul
+    case "aberto": return "status-aberto";
     case "aguardando_aceitacao":
-    case "aguardando aceitação": return "status-aguardando"; // amarelo
+    case "aguardando aceitação": return "status-aguardando";
     case "em_andamento":
-    case "em andamento": return "status-em-andamento";    // laranja
+    case "em andamento": return "status-em-andamento";
     case "concluido":
-    case "concluído": return "status-concluido";          // verde
-    case "cancelado": return "status-cancelado";          // cinza/vermelho
-    case "recusado": return "status-recusado";            // vermelho
+    case "concluído": return "status-concluido";
+    case "cancelado": return "status-cancelado";
+    case "recusado": return "status-recusado";
     default: return "status-default";
   }
 }
@@ -42,15 +42,11 @@ export default function DetalhesTrabalho() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  /* =========================
-     State principal
-     ========================= */
   const [trabalho, setTrabalho] = useState(null);
   const [erro, setErro] = useState("");
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Modais/ações
   const [showForm, setShowForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRecusaPrivado, setShowRecusaPrivado] = useState(false);
@@ -58,24 +54,14 @@ export default function DetalhesTrabalho() {
   const [excluindo, setExcluindo] = useState(false);
   const [recusando, setRecusando] = useState(false);
 
-  // Form proposta
   const [form, setForm] = useState({ descricao: "", valor: "", prazo_estimado: "" });
   const [motivoRevisao, setMotivoRevisao] = useState("");
   const [formErro, setFormErro] = useState("");
-
-  // Recusa de trabalho privado (motivo opcional — backend aceita)
   const [motivoRecusaPrivado, setMotivoRecusaPrivado] = useState("");
-
-  // Alerta central (toast/overlay)
   const [alerta, setAlerta] = useState(null);
-
-  // Propostas do usuário para ESTE trabalho
   const [minhasPropostas, setMinhasPropostas] = useState([]);
-  const MAX_ENVIOS = 3; // 1 original + até 2 reenvios
+  const MAX_ENVIOS = 3;
 
-  /* =========================
-     Bootstrapping inicial
-     ========================= */
   useEffect(() => {
     (async () => {
       try {
@@ -87,7 +73,6 @@ export default function DetalhesTrabalho() {
         setUsuarioLogado(user);
 
         if (user) {
-          // Busca propostas e filtra por este trabalho
           const propsResp = await api
             .get(`/propostas/`, { params: { trabalho: id } })
             .catch(async () => {
@@ -115,12 +100,6 @@ export default function DetalhesTrabalho() {
     })();
   }, [id]);
 
-  /* =========================
-     Derivados de Propostas
-     ========================= */
-/* =========================
-   Derivados de Propostas
-   ========================= */
   const {
     totalEnvios,
     // eslint-disable-next-line no-unused-vars
@@ -143,9 +122,6 @@ export default function DetalhesTrabalho() {
     };
   }, [minhasPropostas]);
 
-  /* =========================
-     Regras de permissão (UI)
-     ========================= */
   const podeEditarOuExcluir = () =>
     usuarioLogado &&
     trabalho &&
@@ -161,9 +137,6 @@ export default function DetalhesTrabalho() {
 
   const isReenvio = useMemo(() => totalEnvios >= 1 && isReenvioElegivel, [totalEnvios, isReenvioElegivel]);
 
-  /* =========================
-     Utils
-     ========================= */
   function formatarData(dataStr) {
     if (!dataStr) return "Não definido";
     const [ano, mes, dia] = String(dataStr).split("-");
@@ -190,9 +163,6 @@ export default function DetalhesTrabalho() {
     }, 2200);
   }
 
-  /* =========================
-     Ações (DELETE / ACEITAR / RECUSAR / PROPOSTA)
-     ========================= */
   const handleDelete = async () => {
     setExcluindo(true);
     try {
@@ -266,7 +236,6 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  // Agora abre modal pedindo motivo (opcional) antes de recusar
   const recusarTrabalhoAbrir = () => {
     setMotivoRecusaPrivado("");
     setShowRecusaPrivado(true);
@@ -287,9 +256,6 @@ export default function DetalhesTrabalho() {
     }
   };
 
-  /* =========================
-     Estados de tela
-     ========================= */
   if (carregando) {
     return (
       <div className="detalhes-trabalho-page page-container">
@@ -341,9 +307,6 @@ export default function DetalhesTrabalho() {
     return "bi-info-circle-fill";
   };
 
-  /* =========================
-     Render
-     ========================= */
   return (
     <div className="detalhes-trabalho-page page-container fade-in">
       {/* ALERTA CENTRAL */}
@@ -403,7 +366,7 @@ export default function DetalhesTrabalho() {
         </div>
       )}
 
-      {/* MODAL DE RECUSAR TRABALHO PRIVADO (com motivo opcional) */}
+      {/* MODAL DE RECUSAR TRABALHO PRIVADO */}
       {showRecusaPrivado && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
@@ -476,7 +439,6 @@ export default function DetalhesTrabalho() {
       {showForm && (
         <div className="proposta-modal-overlay">
           <div className="proposta-modal-content">
-            {/* Header */}
             <div className="proposta-modal-header">
               <div className="proposta-modal-title-wrapper">
                 <div className="proposta-modal-icon">
@@ -494,7 +456,6 @@ export default function DetalhesTrabalho() {
               </button>
             </div>
 
-            {/* Form */}
             <form className="proposta-form" onSubmit={enviarProposta}>
               {isReenvio && (
                 <div className="proposta-info-badge">
@@ -661,46 +622,40 @@ export default function DetalhesTrabalho() {
             <div className="trabalho-descricao-completa">
               {trabalho.descricao || "Nenhuma descrição fornecida."}
             </div>
-
-            {trabalho.ramo_nome && (
-              <div className="trabalho-ramo-info">
-                <i className="bi bi-diagram-3-fill"></i>
-                <div>
-                  <div className="ramo-label">Ramo de Atuação</div>
-                  <div className="ramo-nome">{trabalho.ramo_nome}</div>
-                </div>
-              </div>
-            )}
             
+            {/* GRID DE INFORMAÇÕES - ORÇAMENTO, PRAZO, CONTRATANTE, RAMO */}
             <div className="trabalho-info-grid">
+              {/* ORÇAMENTO */}
               <div className="info-item">
                 <div className="info-icon">
                   <i className="bi bi-currency-dollar"></i>
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Orçamento</span>
+                  <span className="info-label">ORÇAMENTO</span>
                   <span className="info-value trabalho-orcamento">
                     {formatarOrcamento(trabalho.orcamento)}
                   </span>
                 </div>
               </div>
 
+              {/* PRAZO */}
               <div className="info-item">
                 <div className="info-icon">
                   <i className="bi bi-calendar-event"></i>
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Prazo</span>
+                  <span className="info-label">PRAZO</span>
                   <span className="info-value">{formatarData(trabalho.prazo)}</span>
                 </div>
               </div>
 
+              {/* CONTRATANTE */}
               <div className="info-item">
                 <div className="info-icon">
                   <i className="bi bi-person"></i>
                 </div>
                 <div className="info-content">
-                  <span className="info-label">Contratante</span>
+                  <span className="info-label">CONTRATANTE</span>
                   <span
                     className="info-value cliente-link"
                     onClick={() => trabalho.contratante_id && navigate(`/perfil/${trabalho.contratante_id}`)}
@@ -711,13 +666,27 @@ export default function DetalhesTrabalho() {
                 </div>
               </div>
 
+              {/* ÁREA/RAMO - SEMPRE EXIBE, MESMO SE VAZIO */}
+              <div className="info-item">
+                <div className="info-icon">
+                  <i className="bi bi-diagram-3"></i>
+                </div>
+                <div className="info-content">
+                  <span className="info-label">ÁREA/RAMO</span>
+                  <span className="info-value">
+                    {trabalho.ramo_nome || "Não especificado"}
+                  </span>
+                </div>
+              </div>
+
+              {/* TRABALHO PRIVADO */}
               {trabalho.is_privado && (
                 <div className="info-item">
                   <div className="info-icon">
                     <i className="bi bi-lock"></i>
                   </div>
                   <div className="info-content">
-                    <span className="info-label">Tipo</span>
+                    <span className="info-label">TIPO</span>
                     <span className="info-value">
                       <span className="badge-privado">Trabalho Privado</span>
                     </span>
@@ -757,7 +726,7 @@ export default function DetalhesTrabalho() {
                   className="anexo-link"
                 >
                   <i className="bi bi-download"></i>
-                  Baixar Arquivo
+                  Visualizar Arquivo
                 </a>
               </div>
             )}
@@ -811,7 +780,6 @@ export default function DetalhesTrabalho() {
               </div>
             )}
 
-            {/* Fluxo de privado para o freelancer convidado */}
             {usuarioLogado && trabalho?.is_privado &&
               trabalho.freelancer === usuarioLogado.id &&
               (trabalho.status || "").toLowerCase() === "aberto" && (

@@ -61,9 +61,10 @@ const Trabalhos = () => {
   };
 
   const podeVerTrabalho = (trabalho) => {
-    if (!trabalho.privado) return true;
+    if (!trabalho.is_privado) return true;
     if (!usuarioLogado) return false;
-    return trabalho.freelancer_id === usuarioLogado.id || 
+    return trabalho.freelancer === usuarioLogado.id || 
+           trabalho.contratante_id === usuarioLogado.id || 
            trabalho.cliente_id === usuarioLogado.id;
   };
 
@@ -90,8 +91,23 @@ const Trabalhos = () => {
     }).format(valor);
   };
 
+  // 🔧 FUNÇÃO CORRIGIDA para formatar data
   const formatarData = (dataString) => {
+    if (!dataString) return "Não definido";
+    
+    if (dataString.includes('-') && !dataString.includes('T')) {
+      const [ano, mes, dia] = dataString.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+    
+    const dataParte = dataString.split('T')[0];
+    if (dataParte) {
+      const [ano, mes, dia] = dataParte.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+    
     const data = new Date(dataString);
+    if (isNaN(data.getTime())) return "Data inválida";
     return data.toLocaleDateString('pt-BR');
   };
 
@@ -110,8 +126,11 @@ const Trabalhos = () => {
     return 'ramo-default';
   };
 
-  const getRamoIcon = () => {
-    return <FaLayerGroup />;
+  const getRamoNome = (trabalho) => {
+    if (!trabalho.ramo && !trabalho.ramo_id) return null;
+    const ramoId = trabalho.ramo || trabalho.ramo_id;
+    const ramoEncontrado = ramos.find(r => String(r.id) === String(ramoId));
+    return ramoEncontrado ? ramoEncontrado.nome : trabalho.ramo_nome;
   };
 
   return (
@@ -226,7 +245,7 @@ const Trabalhos = () => {
                 <div key={trabalho.id} className="trabalho-card">
                   <div className="trabalho-header">
                     <div className="trabalho-titulo-container">
-                      {trabalho.privado && (
+                      {trabalho.is_privado && (
                         <span className="badge-privado-card">
                           <FaLock /> Privado
                         </span>
@@ -239,46 +258,57 @@ const Trabalhos = () => {
                   </div>
 
                   <div className="trabalho-body">
-                    {trabalho.ramo && (
-                      <div className={`trabalho-ramo-badge ${getRamoClassName(trabalho.ramo_nome)}`}>
-                        {getRamoIcon()}
-                        <span>{trabalho.ramo_nome}</span>
+                    {/* 🎯 RAMO/ÁREA - AGORA APARECE */}
+                    {getRamoNome(trabalho) && (
+                      <div className={`trabalho-ramo-badge ${getRamoClassName(getRamoNome(trabalho))}`}>
+                        <FaLayerGroup />
+                        <span>{getRamoNome(trabalho)}</span>
                       </div>
                     )}
 
                     <p className="trabalho-descricao">{trabalho.descricao}</p>
 
+                    {/* 📅 PRAZO */}
                     <div className="trabalho-info-item">
                       <FaCalendar className="trabalho-info-icon" />
+                      <span className="trabalho-info-label">Prazo:</span>
                       <span className="trabalho-info-value">
-                        Prazo: {formatarData(trabalho.prazo)}
+                        {formatarData(trabalho.prazo)}
                       </span>
                     </div>
 
+                    {/* 💰 ORÇAMENTO - COM LABEL */}
                     <div className="trabalho-info-item">
                       <FaDollarSign className="trabalho-info-icon" />
+                      <span className="trabalho-info-label">Orçamento:</span>
                       <span className="trabalho-orcamento">
                         {formatarMoeda(trabalho.orcamento)}
                       </span>
                     </div>
 
+                    {/* 🕐 CRIADO EM */}
                     <div className="trabalho-info-item">
                       <FaClock className="trabalho-info-icon" />
+                      <span className="trabalho-info-label">Criado em:</span>
                       <span className="trabalho-info-value">
-                        Criado em: {formatarData(trabalho.data_criacao)}
+                        {formatarData(trabalho.criado_em || trabalho.data_criacao)}
                       </span>
                     </div>
 
+                    {/* 👤 CONTRATANTE */}
                     <div className="trabalho-info-item">
                       <FaUser className="trabalho-info-icon" />
+                      <span className="trabalho-info-label">Contratante:</span>
                       <span 
-                        className="trabalho-cliente"
-                        onClick={() => navigate(`/perfil-publico/${trabalho.cliente_id}`)}
+                        className="trabalho-contratante"
+                        onClick={() => navigate(`/perfil/${trabalho.contratante_id || trabalho.cliente_id}`)}
+                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
                       >
-                        {trabalho.cliente_nome}
+                        {trabalho.nome_contratante || trabalho.cliente_nome || 'Usuário'}
                       </span>
                     </div>
 
+                    {/* 🏆 HABILIDADES */}
                     {trabalho.habilidades && trabalho.habilidades.length > 0 && (
                       <div className="trabalho-habilidades">
                         {trabalho.habilidades.map((habilidade, index) => (
@@ -289,6 +319,7 @@ const Trabalhos = () => {
                       </div>
                     )}
 
+                    {/* 📎 ANEXO */}
                     {trabalho.anexo_url && (
                       <div className="trabalho-info-item">
                         <FaPaperclip className="trabalho-info-icon" />
@@ -307,7 +338,7 @@ const Trabalhos = () => {
                   <div className="trabalho-footer">
                     <button
                       className="btn-ver-detalhes"
-                      onClick={() => navigate(`/trabalhos/${trabalho.id}`)}
+                      onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
                     >
                       Ver Detalhes
                     </button>
