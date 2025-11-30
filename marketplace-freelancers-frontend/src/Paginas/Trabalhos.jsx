@@ -189,7 +189,7 @@ const Trabalhos = () => {
               <button type="button" className="btn-limpar" onClick={limparFiltros}>
                 <FaTimes /> Limpar
               </button>
-              {usuarioLogado?.tipo_usuario === 'cliente' && (
+              {usuarioLogado?.tipo === 'contratante' && (
                 <button
                   type="button"
                   className="btn-novo-trabalho"
