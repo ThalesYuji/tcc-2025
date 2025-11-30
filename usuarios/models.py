@@ -1,4 +1,3 @@
-# usuarios/models.py
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -7,12 +6,8 @@ from cloudinary_storage.storage import MediaCloudinaryStorage
 
 class UsuarioManager(BaseUserManager):
     """Gerencia a criação de usuários e superusuários."""
+
     def create_user(self, email, password=None, **extra_fields):
-        """
-        Cria um usuário comum.
-        - Normaliza e valida o e-mail
-        - Define a senha
-        """
         if not email:
             raise ValueError('O email é obrigatório.')
         email = self.normalize_email(email)
@@ -22,7 +17,6 @@ class UsuarioManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        """Cria um superusuário (admin)."""
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         if extra_fields.get('is_staff') is not True:
@@ -34,33 +28,39 @@ class UsuarioManager(BaseUserManager):
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
     """
-    Modelo de usuário unificado do sistema.
-    Tipos possíveis: freelancer, contratante.
-
-    🔒 Desativação voluntária (modo leitura):
-    - is_suspended_self=True => usuário pode autenticar, mas fica em read-only.
-    - deactivated_at => quando desativou.
-    - deactivated_reason => motivo opcional informado pelo próprio usuário.
+    Modelo unificado de usuário do sistema ProFreelaBR.
+    Inclui:
+    - Tipos: freelancer / contratante
+    - Modo leitura (desativação voluntária)
+    - Punições administrativas: advertência, suspensão e banimento
     """
 
-    # ---- Tipos de usuário
+    # ---------------------------
+    # TIPOS DE USUÁRIO
+    # ---------------------------
     TIPO_USUARIO = (
         ('freelancer', 'Freelancer'),
         ('contratante', 'Contratante'),
     )
 
-    # ========= Dados principais =========
+    # ---------------------------
+    # DADOS PRINCIPAIS
+    # ---------------------------
     email = models.EmailField(unique=True)
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_USUARIO)
 
-    # ========= Identificadores =========
+    # ---------------------------
+    # IDENTIFICADORES
+    # ---------------------------
     cpf = models.CharField(max_length=14, blank=True, null=True, unique=True)
     cnpj = models.CharField(max_length=18, blank=True, null=True, unique=True)
-    sou_empresa = models.BooleanField(default=False)  # indica se o contratante é empresa
+    sou_empresa = models.BooleanField(default=False)
     telefone = models.CharField(max_length=15)
 
-    # ========= Perfil e configurações =========
+    # ---------------------------
+    # PERFIL / CONFIGURAÇÕES
+    # ---------------------------
     foto_perfil = models.ImageField(
         upload_to='fotos_perfil/',
         storage=MediaCloudinaryStorage(),
@@ -71,7 +71,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     notificacao_email = models.BooleanField(default=True)
     bio = models.TextField(blank=True, null=True)
 
-    # ========= Desativação voluntária (modo leitura) =========
+    # ---------------------------
+    # DESATIVAÇÃO VOLUNTÁRIA (modo leitura)
+    # ---------------------------
     is_suspended_self = models.BooleanField(
         default=False,
         db_index=True,
@@ -85,21 +87,64 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     deactivated_reason = models.TextField(
         null=True,
         blank=True,
-        help_text="Motivo opcional informado pelo usuário ao desativar."
+        help_text="Motivo informado pelo usuário ao desativar."
     )
 
-    # ========= Permissões do Django =========
-    is_active = models.BooleanField(default=True)   # controla login pelo Django
-    is_staff = models.BooleanField(default=False)   # acesso ao admin
+    # ---------------------------
+    # 🔥 PUNIÇÕES ADMINISTRATIVAS (NOVO)
+    # ---------------------------
+    # suspensão aplicada por admin
+    is_suspended_admin = models.BooleanField(
+        default=False,
+        help_text="Usuário suspenso temporariamente por administrador."
+    )
+    suspenso_ate = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Data em que a suspensão expira."
+    )
+    motivo_suspensao_admin = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Motivo da suspensão aplicada pelo admin."
+    )
 
-    # ========= Gerenciador customizado =========
+    # banimento permanente
+    banido = models.BooleanField(
+        default=False,
+        help_text="Se verdadeiro, o usuário está banido permanentemente."
+    )
+    banido_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Data do banimento."
+    )
+    motivo_banimento = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Motivo do banimento aplicado pelo admin."
+    )
+
+    # ---------------------------
+    # PERMISSÕES DJANGO
+    # ---------------------------
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    # ---------------------------
+    # MANAGER
+    # ---------------------------
     objects = UsuarioManager()
 
-    # ========= Campos obrigatórios =========
+    # ---------------------------
+    # CAMPOS OBRIGATÓRIOS
+    # ---------------------------
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nome', 'tipo', 'cpf', 'telefone']
 
-    # ========= Representações =========
+    # ---------------------------
+    # REPRESENTAÇÕES
+    # ---------------------------
     def __str__(self):
         return f"{self.nome} ({self.tipo})"
 
@@ -109,14 +154,25 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.nome.split()[0] if self.nome else self.email
 
-    # ========= Helpers de status =========
+    # ---------------------------
+    # HELPERS DE STATUS
+    # ---------------------------
     @property
     def is_read_only(self) -> bool:
-        """Retorna True quando o usuário está em modo leitura (desativado por si)."""
+        """Modo leitura voluntário."""
         return bool(self.is_suspended_self)
 
+    @property
+    def is_suspended(self) -> bool:
+        """Suspensão administrativa ativa."""
+        if self.is_suspended_admin:
+            if self.suspenso_ate and timezone.now() > self.suspenso_ate:
+                return False
+            return True
+        return False
+
     def desativar(self, motivo: str | None = None):
-        """Coloca o usuário em modo leitura."""
+        """Modo leitura voluntário."""
         self.is_suspended_self = True
         self.deactivated_at = timezone.now()
         if motivo:
@@ -124,7 +180,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         self.save(update_fields=["is_suspended_self", "deactivated_at", "deactivated_reason"])
 
     def reativar(self, limpar_motivo: bool = False):
-        """Sai do modo leitura."""
+        """Retira modo leitura voluntário."""
         self.is_suspended_self = False
         self.deactivated_at = None
         if limpar_motivo:
