@@ -674,7 +674,7 @@ export default function DetalhesTrabalho() {
                 <div className="info-content">
                   <span className="info-label">ÁREA/RAMO</span>
                   <span className="info-value">
-                    {trabalho.ramo_nome || "Não especificado"}
+                    {trabalho.ramo_detalhes?.nome || "Não especificado"}
                   </span>
                 </div>
               </div>

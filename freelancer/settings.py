@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'avaliacoes',
     'mensagens',
     'denuncias',
+    'punicoes',
     'habilidades',
     'notificacoes',
 ]

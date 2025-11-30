@@ -75,7 +75,7 @@ export default function EditarTrabalho() {
       const trabalho = response.data;
 
       // Verificar permissão
-      if (trabalho.cliente_id !== usuarioLogado?.id && !usuarioLogado?.is_superuser) {
+      if (trabalho.contratante_id !== usuarioLogado?.id && !usuarioLogado?.is_superuser) {
         navigate("/trabalhos");
         return;
       }

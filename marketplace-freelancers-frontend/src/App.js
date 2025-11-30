@@ -30,7 +30,7 @@ import HomeInicial from "./Paginas/HomeInicial";
 import EsqueciSenha from "./Paginas/EsqueciSenha";
 import ResetarSenha from "./Paginas/ResetarSenha";
 
-// Retorno do Mercado Pago (Checkout Pro)
+// Retorno do pagamento (Mercado Pago)
 import CheckoutRetorno from "./Paginas/CheckoutRetorno";
 
 // Toastify
@@ -47,25 +47,22 @@ function App() {
           position="top-right"
           autoClose={3000}
           hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
           draggable
           pauseOnHover
           theme="colored"
         />
 
         <Routes>
-          {/* Rotas públicas */}
-          <Route path="/" element={<Navigate to="/login" />} />
+
+          {/* ROTAS PÚBLICAS */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<CadastroUsuario />} />
           <Route path="/perfil/:id" element={<PerfilPublico />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/reset-password/:uid/:token" element={<ResetarSenha />} />
 
-          {/* Rotas protegidas (usuário logado) */}
+          {/* ROTAS PROTEGIDAS */}
           <Route
             path="*"
             element={
@@ -74,27 +71,44 @@ function App() {
                   <Navbar />
                   <div className="app-container">
                     <Routes>
+
+                      {/* HOME / DASHBOARD */}
                       <Route path="/home" element={<HomeInicial />} />
                       <Route path="/dashboard" element={<Dashboard />} />
+
+                      {/* TRABALHOS */}
                       <Route path="/trabalhos" element={<Trabalhos />} />
                       <Route path="/trabalhos/novo" element={<CadastroTrabalho />} />
                       <Route path="/trabalhos/editar/:id" element={<EditarTrabalho />} />
                       <Route path="/trabalhos/detalhes/:id" element={<DetalhesTrabalho />} />
+
+                      {/* PROPOSTAS */}
                       <Route path="/propostas" element={<Propostas />} />
+
+                      {/* CONTRATOS */}
                       <Route path="/contratos" element={<Contratos />} />
                       <Route path="/contratos/:id/pagamento" element={<PagamentoContrato />} />
                       <Route path="/contratos/:id/avaliacao" element={<AvaliacaoContrato />} />
+                      <Route path="/contratos/:contratoId/chat" element={<ChatContrato />} />
+
+                      {/* AVALIAÇÕES */}
                       <Route path="/avaliacoes" element={<MinhasAvaliacoes />} />
+
+                      {/* MINHA CONTA */}
                       <Route path="/conta" element={<Conta />} />
+
+                      {/* DENÚNCIAS */}
                       <Route path="/denuncias/cadastrar" element={<CadastrarDenuncia />} />
                       <Route path="/painel-denuncias" element={<PainelDenuncias />} />
                       <Route path="/minhas-denuncias" element={<MinhasDenuncias />} />
-                      <Route path="/notificacoes" element={<HistoricoNotificacoes />} />
-                      <Route path="/contratos/:contratoId/chat" element={<ChatContrato />} />
 
-                      {/* 🔹 Retorno do Checkout Pro */}
+                      {/* NOTIFICAÇÕES */}
+                      <Route path="/notificacoes" element={<HistoricoNotificacoes />} />
+
+                      {/* MERCADO PAGO */}
                       <Route path="/checkout/retorno" element={<CheckoutRetorno />} />
 
+                      {/* CASO A ROTA NÃO EXISTA */}
                       <Route path="*" element={<Navigate to="/home" replace />} />
                     </Routes>
                   </div>

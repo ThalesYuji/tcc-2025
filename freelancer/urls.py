@@ -64,6 +64,7 @@ urlpatterns = [
 
     # DRF routers + demais apps
     path("api/", include(router.urls)),
+    path("api/punicoes/", include("punicoes.urls")),
     path("api/", include("trabalhos.urls")),
     path("api/", include("habilidades.urls")),
 ]
