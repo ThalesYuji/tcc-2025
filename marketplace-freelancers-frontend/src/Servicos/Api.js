@@ -29,7 +29,6 @@ function getAuthToken() {
 // =============================================================
 // 🚫 MODO LEITURA (SUSPENSÃO)
 // =============================================================
-
 export function getSuspendedFlag() {
   return localStorage.getItem(SUSP_KEY) === "1";
 }
@@ -41,7 +40,9 @@ export function setSuspendedFlag(value) {
 
 function notifySuspension(message = "Sua conta está desativada (modo leitura).") {
   try {
-    window.dispatchEvent(new CustomEvent("account:suspended", { detail: { message } }));
+    window.dispatchEvent(
+      new CustomEvent("account:suspended", { detail: { message } })
+    );
   } catch {}
   if (!IS_PROD) console.warn("🚫 Modo leitura acionado:", message);
 }
@@ -77,7 +78,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 403 — conta em modo leitura
+    // 403 — conta em modo leitura (middleware)
     const blocked = String(headers[SUSP_HEADER]) === "true";
     if (status === 403 && blocked) {
       setSuspendedFlag(true);
@@ -164,6 +165,28 @@ export async function aplicarBanimento(usuario_id, motivo, denuncia_id = null) {
 
 export async function removerSuspensao(usuario_id) {
   const resp = await api.post("/punicoes/remover-suspensao/", { usuario_id });
+  return resp.data;
+}
+
+// =============================================================
+// 📌 NOVO — HISTÓRICO DE PUNIÇÕES
+// =============================================================
+
+// 🔹 Buscar histórico completo
+export async function listarHistoricoPunicoes() {
+  const resp = await api.get("/punicoes/historico/");
+  return resp.data;
+}
+
+// 🔹 Buscar histórico de um único usuário
+export async function listarPunicoesPorUsuario(usuario_id) {
+  const resp = await api.get(`/punicoes/historico/${usuario_id}/`);
+  return resp.data;
+}
+
+// 🔹 Remover (anular) uma punição
+export async function removerPunicao(punicao_id) {
+  const resp = await api.post(`/punicoes/remover/${punicao_id}/`);
   return resp.data;
 }
 

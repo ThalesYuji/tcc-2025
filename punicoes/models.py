@@ -43,10 +43,19 @@ class Punicao(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     valido_ate = models.DateTimeField(null=True, blank=True)
 
-    ativo = models.BooleanField(default=True)  # True enquanto a punição está em vigor
+    ativo = models.BooleanField(default=True)
+
+    # 🔥 NOVO – Histórico de remoção
+    removida_em = models.DateTimeField(null=True, blank=True)
+    removida_por_admin = models.ForeignKey(
+        Usuario,
+        related_name="punicoes_removidas",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
 
     def esta_expirada(self):
-        """Retorna True se a punição expirou."""
         if self.tipo != "suspensao":
             return False
         if self.valido_ate and timezone.now() > self.valido_ate:

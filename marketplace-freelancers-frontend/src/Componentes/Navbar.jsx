@@ -11,6 +11,7 @@ import {
   FaFileAlt,
   FaHandshake,
   FaStar,
+  FaGavel, // ← ÍCONE NOVO
 } from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
 import "../styles/Navbar.css";
@@ -106,6 +107,7 @@ export default function Navbar() {
             </button>
           )}
 
+          {/* 🔥 DENÚNCIAS */}
           {usuarioLogado.is_superuser ? (
             <button
               onClick={() => navegarPara("/painel-denuncias")}
@@ -123,6 +125,18 @@ export default function Navbar() {
             >
               <FaExclamationTriangle />
               <span>Denúncias</span>
+            </button>
+          )}
+
+          {/* 🔥🔥 NOVO – HISTÓRICO DE PUNIÇÕES (APENAS ADMIN) */}
+          {usuarioLogado.is_superuser && (
+            <button
+              onClick={() => navegarPara("/historico-punicoes")}
+              className={rotaAtiva("/historico-punicoes")}
+              title="Histórico de Punições"
+            >
+              <FaGavel />
+              <span>Punições</span>
             </button>
           )}
         </div>

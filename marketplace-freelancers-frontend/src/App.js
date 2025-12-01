@@ -30,12 +30,15 @@ import HomeInicial from "./Paginas/HomeInicial";
 import EsqueciSenha from "./Paginas/EsqueciSenha";
 import ResetarSenha from "./Paginas/ResetarSenha";
 
-// Retorno do pagamento (Mercado Pago)
+// Retorno Mercado Pago
 import CheckoutRetorno from "./Paginas/CheckoutRetorno";
 
 // Toastify
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+// 🔥 NOVA PÁGINA — Histórico de Punições
+import HistoricoPunicoes from "./Paginas/HistoricoPunicoes";
 
 import "./App.css";
 
@@ -108,8 +111,12 @@ function App() {
                       {/* MERCADO PAGO */}
                       <Route path="/checkout/retorno" element={<CheckoutRetorno />} />
 
+                      {/* 🔥 NOVO — HISTÓRICO DE PUNIÇÕES */}
+                      <Route path="/historico-punicoes" element={<HistoricoPunicoes />} />
+
                       {/* CASO A ROTA NÃO EXISTA */}
                       <Route path="*" element={<Navigate to="/home" replace />} />
+
                     </Routes>
                   </div>
                 </>

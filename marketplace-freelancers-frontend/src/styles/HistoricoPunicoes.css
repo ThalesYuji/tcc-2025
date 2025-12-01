@@ -1,0 +1,248 @@
+/* =============================
+   CONTAINER PRINCIPAL
+============================= */
+.hp-container {
+  padding: 2rem;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* =============================
+   TÍTULOS
+============================= */
+.hp-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hp-title i {
+  color: #dc2626;
+}
+
+.hp-subtitle {
+  color: #64748b;
+  margin-bottom: 2rem;
+}
+
+/* =============================
+   FILTROS
+============================= */
+.hp-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+  margin-bottom: 2rem;
+}
+
+.hp-select {
+  padding: 0.6rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+/* SEARCH */
+.hp-search {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+}
+
+.hp-search input {
+  width: 100%;
+  padding: 0.6rem 2.5rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.hp-search i {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
+.hp-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+/* BTN REFRESH */
+.hp-btn-refresh {
+  padding: 0.6rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hp-btn-refresh:hover {
+  background: #2563eb;
+}
+
+/* =============================
+   GRID DE CARDS
+============================= */
+.hp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+/* EMPTY */
+.hp-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 4rem 0;
+  width: 100%;
+}
+
+.hp-empty i {
+  font-size: 3rem;
+  opacity: 0.5;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+/* =============================
+   CARD
+============================= */
+.hp-card {
+  background: white;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+  transition: 0.2s;
+}
+
+.hp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.hp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.hp-card-header h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: #1e293b;
+}
+
+/* =============================
+   BADGES
+============================= */
+.hp-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-default {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* =============================
+   INFO DO CARD
+============================= */
+.hp-info p {
+  margin-bottom: 0.75rem;
+  color: #334155;
+}
+
+.hp-info strong {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+/* =============================
+   BOTÃO REMOVER
+============================= */
+.hp-btn-remove {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.7rem;
+  background: #ef4444;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hp-btn-remove:hover {
+  background: #dc2626;
+}
+
+/* =============================
+   LOADING
+============================= */
+.hp-loading {
+  text-align: center;
+  padding-top: 4rem;
+}
+
+.hp-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #cbd5e1;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
