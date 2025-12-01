@@ -15,13 +15,13 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
 
   const usuarioPunidoId = denuncia?.denunciado_detalhes?.id;
 
-  // Caso algo venha null, evita erros silenciosos ou crashes
+  // Proteção caso a denúncia venha quebrada (não deve acontecer)
   if (!usuarioPunidoId) {
     return (
       <div className="modal-overlay">
         <div className="modal-content">
           <div className="modal-header">
-            <h3>Punição não disponível</h3>
+            <h3>Punição indisponível</h3>
             <button className="close-btn" onClick={onClose}>
               <i className="bi bi-x-lg"></i>
             </button>
@@ -39,35 +39,66 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
     );
   }
 
+  // =========================================================
+  // ▶ FUNÇÃO PRINCIPAL: APLICAR PUNIÇÃO
+  // =========================================================
   async function aplicar() {
-    if (loading) return; // evita clique duplo
+    if (loading) return;
 
     if (!motivo.trim()) {
-      alert("O motivo da punição é obrigatório.");
+      window.dispatchEvent(
+        new CustomEvent("toast", {
+          detail: {
+            type: "error",
+            title: "Campo obrigatório",
+            message: "O motivo da punição deve ser informado."
+          }
+        })
+      );
       return;
     }
 
     setLoading(true);
 
     try {
+      // EXECUTA O TIPO DE PUNIÇÃO
+      if (tipo === "advertencia") {
+        await aplicarAdvertencia(usuarioPunidoId, motivo, denuncia.id);
+      }
 
-    if (tipo === "advertencia") {
-    await aplicarAdvertencia(usuarioPunidoId, motivo, denuncia.id);
-    } 
-    else if (tipo === "suspensao") {
-    if (!dias || dias < 1) {
-        alert("Informe uma quantidade válida de dias.");
-        setLoading(false);
-        return;
-    }
-    await aplicarSuspensao(usuarioPunidoId, motivo, dias, denuncia.id);
-    } 
-    else if (tipo === "banimento") {
-    await aplicarBanimento(usuarioPunidoId, motivo, denuncia.id);
-    }
+      else if (tipo === "suspensao") {
+        if (!dias || dias < 1) {
+          window.dispatchEvent(
+            new CustomEvent("toast", {
+              detail: {
+                type: "error",
+                title: "Valor inválido",
+                message: "Informe um número de dias válido para suspensão."
+              }
+            })
+          );
+          setLoading(false);
+          return;
+        }
+        await aplicarSuspensao(usuarioPunidoId, motivo, dias, denuncia.id);
+      }
 
-      alert("Punição aplicada com sucesso!");
+      else if (tipo === "banimento") {
+        await aplicarBanimento(usuarioPunidoId, motivo, denuncia.id);
+      }
 
+      // Toast bonito no canto superior direito
+      window.dispatchEvent(
+        new CustomEvent("toast", {
+          detail: {
+            type: "success",
+            title: "Punição aplicada!",
+            message: "A punição foi aplicada com sucesso."
+          }
+        })
+      );
+
+      // Atualiza o card da denúncia como resolvida
       if (onPunicaoAplicada) {
         onPunicaoAplicada({
           ...denuncia,
@@ -75,21 +106,34 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
         });
       }
 
+      // Fecha o modal após sucesso
       onClose();
 
     } catch (error) {
       console.error("Erro ao aplicar punição:", error);
-      alert("Não foi possível aplicar a punição.");
+
+      window.dispatchEvent(
+        new CustomEvent("toast", {
+          detail: {
+            type: "error",
+            title: "Erro na punição",
+            message: "Não foi possível aplicar a punição. Tente novamente."
+          }
+        })
+      );
     }
 
     setLoading(false);
   }
 
+  // =========================================================
+  // ▶ RENDERIZAÇÃO DO MODAL
+  // =========================================================
   return (
     <div className="modal-overlay">
       <div className="modal-content">
 
-        {/* Header */}
+        {/* HEADER */}
         <div className="modal-header">
           <h3>Punição ao Usuário</h3>
           <button className="close-btn" onClick={onClose}>
@@ -97,10 +141,10 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
           </button>
         </div>
 
-        {/* Corpo do modal */}
+        {/* BODY */}
         <div className="modal-body">
           <p>
-            Você está aplicando uma punição ao usuário: 
+            Você está aplicando uma punição ao usuário:
             <strong> {denuncia?.denunciado_detalhes?.nome}</strong>
           </p>
 
@@ -125,7 +169,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
             onChange={(e) => setMotivo(e.target.value)}
           ></textarea>
 
-          {/* Campo de dias */}
+          {/* Dias (só aparece na suspensão) */}
           {tipo === "suspensao" && (
             <>
               <label className="form-label">Dias de Suspensão</label>
@@ -140,7 +184,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
           )}
         </div>
 
-        {/* Rodapé */}
+        {/* FOOTER */}
         <div className="modal-footer">
           <button
             className="btn btn-secondary"
