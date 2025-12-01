@@ -60,6 +60,11 @@ ALLOWED_HOSTS = list(filter(None, os.getenv('ALLOWED_HOSTS', '').split(','))) or
 if _site_host and _site_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_site_host)
 
+# ✅ CORREÇÕES IMPORTANTES
+APPEND_SLASH = True
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 # ------------------------
 # APPS INSTALADOS
 # ------------------------
@@ -222,7 +227,6 @@ SIMPLE_JWT = {
 # ------------------------
 # ⚙️ Modo leitura (desativação voluntária)
 # ------------------------
-# Estes valores serão usados pelo ModoLeituraMiddleware
 SUSPENSION_BLOCKED_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 SUSPENSION_RESPONSE_HEADER = 'X-Blocked-By-Suspension'
 SUSPENSION_MESSAGE = "Sua conta está desativada (modo leitura). Reative para realizar esta ação."
@@ -338,3 +342,39 @@ else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+
+# ------------------------
+# ✅ LOGGING PARA DEBUG (RAILWAY)
+# ------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

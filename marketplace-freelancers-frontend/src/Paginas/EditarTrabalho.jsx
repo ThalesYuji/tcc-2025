@@ -1,47 +1,50 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
+// src/Paginas/EditarTrabalho.jsx - REDESIGN COMPLETO NO PADRÃO CADASTROTRABALHO
+import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useParams } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import { useFetchRamos } from "../hooks/useFetchRamos";
 import {
   FaEdit,
-  FaFileAlt,
   FaCalendarAlt,
   FaMoneyBillWave,
-  FaTools,
   FaCloudUploadAlt,
   FaCheckCircle,
   FaTimes,
-  FaEye,
   FaLightbulb,
-  FaStar,
-  FaTag,
-  FaPaperclip,
   FaExclamationCircle,
-  FaArrowLeft,
-  FaTrash,
   FaLayerGroup,
+  FaArrowLeft,
+  FaMagic,
+  FaImage,
+  FaFile,
+  FaTrash,
+  FaPlus,
 } from "react-icons/fa";
-import "../styles/EditarTrabalho.css";
+import "../styles/CadastroTrabalho.css";
 
 export default function EditarTrabalho() {
   const { usuarioLogado } = useContext(UsuarioContext);
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // 📦 Estados
+  // Estados principais
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
   const [orcamento, setOrcamento] = useState("");
   const [habilidades, setHabilidades] = useState([]);
   const [habilidadeInput, setHabilidadeInput] = useState("");
-// eslint-disable-next-line no-unused-vars
   const [sugestoes, setSugestoes] = useState([]);
   const [anexo, setAnexo] = useState(null);
   const [anexoAtual, setAnexoAtual] = useState(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
-  const [ramo, setRamo] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+
+  // 🔹 Estados do Ramo - NOVO: igual ao CadastroTrabalho
+  const [ramoSelecionado, setRamoSelecionado] = useState("");
+  const [ramoInput, setRamoInput] = useState("");
+  const [showRamoSugestoes, setShowRamoSugestoes] = useState(false);
 
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState("");
@@ -50,10 +53,8 @@ export default function EditarTrabalho() {
   const [loadingTrabalho, setLoadingTrabalho] = useState(true);
   const [trabalhoNaoEncontrado, setTrabalhoNaoEncontrado] = useState(false);
 
-  // ⏱️ debounce para busca de sugestões
   const debounceRef = useRef(null);
-
-  // 🎯 Hook para buscar ramos
+  const ramoInputRef = useRef(null);
   const { ramos, loadingRamos } = useFetchRamos();
 
   const habilidadesPopulares = [
@@ -61,6 +62,21 @@ export default function EditarTrabalho() {
     "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
     "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
   ];
+
+  const ramosPopulares = [
+    "Desenvolvimento Web", "Design", "Marketing Digital", "Mobile",
+    "Data Science", "DevOps", "UI/UX", "Backend", "Frontend",
+  ];
+
+  // 🔹 Filtrar sugestões de ramos conforme digitação
+  const ramoSugestoesFiltradas = useMemo(() => {
+    if (!ramoInput.trim()) return [];
+    const termo = ramoInput.toLowerCase();
+    return ramos
+      .filter(r => r.nome.toLowerCase().includes(termo))
+      .filter(r => r.nome !== ramoSelecionado)
+      .slice(0, 5);
+  }, [ramoInput, ramos, ramoSelecionado]);
 
   // 🔄 Carregar dados do trabalho
   useEffect(() => {
@@ -74,7 +90,6 @@ export default function EditarTrabalho() {
       const response = await api.get(`/trabalhos/${id}/`);
       const trabalho = response.data;
 
-      // Verificar permissão
       if (trabalho.contratante_id !== usuarioLogado?.id && !usuarioLogado?.is_superuser) {
         navigate("/trabalhos");
         return;
@@ -84,12 +99,10 @@ export default function EditarTrabalho() {
       setDescricao(trabalho.descricao || "");
       setPrazo(trabalho.prazo || "");
       setOrcamento(String(trabalho.orcamento || ""));
-      
-      // 🔧 CORRIGIDO: Carrega habilidades do formato correto
+
       if (trabalho.habilidades_detalhes && trabalho.habilidades_detalhes.length > 0) {
         setHabilidades(trabalho.habilidades_detalhes.map(h => h.nome));
       } else if (trabalho.habilidades && trabalho.habilidades.length > 0) {
-        // Fallback para formato antigo
         if (typeof trabalho.habilidades[0] === 'object') {
           setHabilidades(trabalho.habilidades.map(h => h.nome));
         } else {
@@ -98,16 +111,14 @@ export default function EditarTrabalho() {
       } else {
         setHabilidades([]);
       }
-      
+
       setAnexoAtual(trabalho.anexo_url || null);
-      
-      // 🔧 CORRIGIDO: Carrega ramo do formato correto (ramo_detalhes)
-      if (trabalho.ramo_detalhes?.id) {
-        setRamo(String(trabalho.ramo_detalhes.id));
-      } else if (trabalho.ramo) {
-        setRamo(String(trabalho.ramo));
+
+      // 🔹 Carregar ramo como NOME (não ID)
+      if (trabalho.ramo_detalhes?.nome) {
+        setRamoSelecionado(trabalho.ramo_detalhes.nome);
       } else {
-        setRamo("");
+        setRamoSelecionado("");
       }
 
     } catch (error) {
@@ -118,7 +129,7 @@ export default function EditarTrabalho() {
     }
   };
 
-  // 🔎 Sugestões de habilidades (search server-side)
+  // Buscar sugestões de habilidades
   const buscarSugestoes = useCallback(async (texto) => {
     try {
       const res = await api.get(`/habilidades/?search=${encodeURIComponent(texto || "")}`);
@@ -129,7 +140,10 @@ export default function EditarTrabalho() {
     }
   }, [habilidades]);
 
-  // 🖊️ input de habilidade com debounce
+  useEffect(() => {
+    buscarSugestoes("");
+  }, [buscarSugestoes]);
+
   const handleHabilidadeInput = (e) => {
     const valor = e.target.value;
     setHabilidadeInput(valor);
@@ -146,10 +160,8 @@ export default function EditarTrabalho() {
 
   const adicionarHabilidade = (nome) => {
     const limpo = nome.replace(/\s+/g, " ").trim();
-    if (!limpo) return;
-    if (!habilidades.includes(limpo)) {
-      setHabilidades((prev) => [...prev, limpo]);
-    }
+    if (!limpo || habilidades.includes(limpo)) return;
+    setHabilidades((prev) => [...prev, limpo]);
     setHabilidadeInput("");
     setSugestoes([]);
   };
@@ -158,30 +170,78 @@ export default function EditarTrabalho() {
     setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
-  // 🛡️ Validações simples no cliente
+  // 🔹 Handlers do Ramo
+  const handleRamoInput = (e) => {
+    const valor = e.target.value;
+    setRamoInput(valor);
+    setShowRamoSugestoes(valor.trim().length > 0);
+  };
+
+  const handleRamoKeyDown = (e) => {
+    if (e.key === "Enter" && ramoInput.trim()) {
+      e.preventDefault();
+      selecionarRamo(ramoInput.trim());
+    }
+    if (e.key === "Escape") {
+      setShowRamoSugestoes(false);
+    }
+  };
+
+  const selecionarRamo = (nome) => {
+    const limpo = nome.replace(/\s+/g, " ").trim();
+    if (!limpo) return;
+    setRamoSelecionado(limpo);
+    setRamoInput("");
+    setShowRamoSugestoes(false);
+  };
+
+  const removerRamo = () => {
+    setRamoSelecionado("");
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ramoInputRef.current && !ramoInputRef.current.contains(e.target)) {
+        setShowRamoSugestoes(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Drag & Drop
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setAnexo(e.dataTransfer.files[0]);
+      setRemoverAnexo(false);
+    }
+  };
+
+  // Validação
   const validarCampos = () => {
     const novosErros = {};
-    if (!titulo.trim()) novosErros.titulo = "Preencha o título.";
-    if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
-    if (!prazo) novosErros.prazo = "Escolha o prazo.";
-    if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
-      novosErros.orcamento = "Informe um orçamento válido (maior que zero).";
-    }
-    if (anexo) {
-      const max = 10 * 1024 * 1024;
-      if (anexo.size > max) {
-        novosErros.anexo = "Arquivo muito grande. Tamanho máximo: 10MB.";
-      } else {
-        const ext = (anexo.name.split(".").pop() || "").toLowerCase();
-        const permitidos = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar"];
-        if (!permitidos.includes(ext)) {
-          novosErros.anexo = "Tipo de arquivo não permitido (PDF, DOC, DOCX, JPG, PNG, ZIP, RAR).";
-        }
-      }
-    }
+    if (!titulo.trim()) novosErros.titulo = "O título é obrigatório.";
+    if (!descricao.trim()) novosErros.descricao = "A descrição é obrigatória.";
+    if (!prazo) novosErros.prazo = "O prazo é obrigatório.";
+    if (!orcamento || Number(orcamento) <= 0) novosErros.orcamento = "O orçamento deve ser maior que zero.";
+    if (anexo && anexo.size > 10 * 1024 * 1024) novosErros.anexo = "Arquivo muito grande (máx. 10MB).";
     return novosErros;
   };
 
+  // Submeter
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErros({});
@@ -203,13 +263,10 @@ export default function EditarTrabalho() {
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
 
-    // 🎯 RAMO (opcional) - envia ID se selecionado
-    if (ramo) {
-      formData.append("ramo", ramo);
-    }
+    if (ramoSelecionado) formData.append("ramo", ramoSelecionado);
 
     habilidades.forEach((hab) => formData.append("habilidades", hab));
-    
+
     if (anexo) {
       formData.append("anexo", anexo);
     } else if (removerAnexo) {
@@ -230,27 +287,34 @@ export default function EditarTrabalho() {
           coletado[campo] = Array.isArray(mensagem) ? mensagem.join(" ") : String(mensagem);
         });
         setErros(coletado);
-        setErroGeral(coletado.detail || coletado.erro || "Erro ao atualizar trabalho.");
+        setErroGeral(coletado.detail || coletado.erro || "Erro ao atualizar.");
       } else {
-        setErroGeral("Erro ao atualizar trabalho. Verifique os campos e tente novamente.");
+        setErroGeral("Erro ao atualizar. Tente novamente.");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDesfazerRemocao = (e) => {
-    e.preventDefault();
-    setRemoverAnexo(false);
+  // Calcular progresso
+  const calcularProgresso = () => {
+    let total = 0;
+    if (titulo.trim()) total += 25;
+    if (descricao.trim()) total += 25;
+    if (prazo) total += 25;
+    if (orcamento && Number(orcamento) > 0) total += 25;
+    return total;
   };
 
-  // 🔒 Verificação de permissão
+  const progresso = calcularProgresso();
+
+  // Estados de carregamento
   if (!usuarioLogado) {
     return (
-      <div className="editar-trabalho-page">
-        <div className="page-container">
-          <div className="access-denied-container">
-            <FaExclamationCircle className="access-denied-icon" />
+      <div className="cadastro-trabalho-page">
+        <div className="ct-access-denied">
+          <div className="ct-access-denied-content">
+            <FaExclamationCircle />
             <h3>Acesso Negado</h3>
             <p>Você precisa estar logado para editar trabalhos.</p>
           </div>
@@ -261,10 +325,10 @@ export default function EditarTrabalho() {
 
   if (loadingTrabalho) {
     return (
-      <div className="editar-trabalho-page">
-        <div className="page-container">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
+      <div className="cadastro-trabalho-page">
+        <div className="ct-access-denied">
+          <div className="ct-access-denied-content">
+            <div className="ct-spinner"></div>
             <h3>Carregando trabalho...</h3>
             <p>Aguarde enquanto buscamos os dados.</p>
           </div>
@@ -275,17 +339,15 @@ export default function EditarTrabalho() {
 
   if (trabalhoNaoEncontrado) {
     return (
-      <div className="editar-trabalho-page">
-        <div className="page-container">
-          <div className="access-denied-container">
-            <FaExclamationCircle className="access-denied-icon" />
+      <div className="cadastro-trabalho-page">
+        <div className="ct-access-denied">
+          <div className="ct-access-denied-content">
+            <FaExclamationCircle />
             <h3>Trabalho Não Encontrado</h3>
             <p>O trabalho que você está tentando editar não existe ou foi removido.</p>
-            <div className="error-actions">
-              <button className="btn btn-primary" onClick={() => navigate("/trabalhos")}>
-                <FaArrowLeft /> Voltar para Trabalhos
-              </button>
-            </div>
+            <button className="ct-btn ct-btn-primary" onClick={() => navigate("/trabalhos")}>
+              <FaArrowLeft /> Voltar aos Trabalhos
+            </button>
           </div>
         </div>
       </div>
@@ -293,133 +355,238 @@ export default function EditarTrabalho() {
   }
 
   return (
-    <div className="editar-trabalho-page">
+    <div className="cadastro-trabalho-page">
       {/* Header */}
-      <div className="editar-trabalho-header">
-        <div className="detalhes-nav">
-          <button className="btn-voltar" onClick={() => navigate(`/trabalhos/${id}`)}>
-            <FaArrowLeft /> Voltar para Detalhes
-          </button>
-        </div>
-
-        <div className="detalhes-title-section">
-          <div className="editar-trabalho-title">
-            <div className="editar-trabalho-title-icon">
-              <FaEdit />
-            </div>
-            <span>Editar Projeto</span>
+      <div className="cadastro-trabalho-header">
+        <div className="cadastro-trabalho-title">
+          <div className="cadastro-trabalho-title-icon">
+            <FaEdit />
           </div>
-          <p className="editar-trabalho-subtitle">
-            Atualize as informações do seu projeto
-          </p>
+          Editar Projeto
+        </div>
+        <div className="cadastro-trabalho-subtitle">
+          Atualize as informações do seu projeto
         </div>
       </div>
 
-      <div className="page-container">
+      {/* Conteúdo Principal */}
+      <div className="ct-main-container">
         {/* Alertas */}
         {erroGeral && (
-          <div className="alert-error">
+          <div className="ct-alert ct-alert-error">
             <FaExclamationCircle />
             <span>{erroGeral}</span>
           </div>
         )}
         {sucesso && (
-          <div className="alert-success">
+          <div className="ct-alert ct-alert-success">
             <FaCheckCircle />
             <span>{sucesso}</span>
           </div>
         )}
 
-        {/* Layout */}
-        <div className="editar-trabalho-grid">
-          {/* Form principal */}
-          <div className="form-main-column">
-            <form onSubmit={handleSubmit} className="trabalho-form">
-              {/* Informações Básicas */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaFileAlt />
-                    Informações Básicas
-                  </h2>
-                </div>
+        {/* Botão Voltar - MOVIDO AQUI */}
+        <div style={{ marginBottom: "var(--space-xl)" }}>
+          <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
+            <i className="bi bi-arrow-left"></i>
+            Voltar aos Trabalhos
+          </button>
+        </div>
 
-                <div className="card-body">
-                  <div className="form-field">
-                    <label className="input-label">
-                      Título do Projeto <span className="required">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className={`form-control ${erros.titulo ? "error" : ""}`}
-                      placeholder="Ex: Desenvolvimento de Landing Page para E-commerce"
-                      value={titulo}
-                      onChange={(e) => setTitulo(e.target.value)}
-                      maxLength={100}
-                      disabled={isLoading}
-                    />
-                    <div className="input-footer">
-                      <span className="char-count">{titulo.length}/100</span>
-                      {erros.titulo && <span className="error-msg">{erros.titulo}</span>}
+        {/* Layout Criativo em 2 Colunas */}
+        <div className="ct-creative-layout">
+          {/* Coluna Esquerda - Preview Visual */}
+          <div className="ct-preview-column">
+            <div className="ct-preview-card">
+              <div className="ct-preview-header">
+                <span className="ct-preview-badge">
+                  <FaEdit /> Preview em Tempo Real
+                </span>
+              </div>
+              
+              <div className="ct-preview-body">
+                <div className="ct-preview-mockup">
+                  <div className="ct-mockup-header">
+                    <div className="ct-mockup-dots">
+                      <span></span><span></span><span></span>
                     </div>
                   </div>
-
-                  <div className="form-field">
-                    <label className="input-label">
-                      Descrição Detalhada <span className="required">*</span>
-                    </label>
-                    <textarea
-                      className={`form-control textarea-field ${erros.descricao ? "error" : ""}`}
-                      placeholder="Descreva em detalhes o que precisa ser desenvolvido..."
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      rows="6"
-                      maxLength={1000}
-                      disabled={isLoading}
-                    />
-                    <div className="input-footer">
-                      <span className="char-count">{descricao.length}/1000</span>
-                      {erros.descricao && <span className="error-msg">{erros.descricao}</span>}
+                  <div className="ct-mockup-content">
+                    <h3 className="ct-preview-title">
+                      {titulo || "Título do seu projeto aparecerá aqui..."}
+                    </h3>
+                    <p className="ct-preview-desc">
+                      {descricao 
+                        ? (descricao.length > 200 ? descricao.substring(0, 200) + "..." : descricao)
+                        : "A descrição detalhada do seu projeto será exibida neste espaço."}
+                    </p>
+                    
+                    <div className="ct-preview-meta">
+                      <div className="ct-preview-meta-item">
+                        <FaCalendarAlt />
+                        <span>{prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Data de entrega"}</span>
+                      </div>
+                      <div className="ct-preview-meta-item ct-preview-meta-budget">
+                        <FaMoneyBillWave />
+                        <span>
+                          {orcamento 
+                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
+                            : "R$ 0,00"}
+                        </span>
+                      </div>
                     </div>
+
+                    {ramoSelecionado && (
+                      <div className="ct-preview-ramo">
+                        <FaLayerGroup />
+                        <span>{ramoSelecionado}</span>
+                      </div>
+                    )}
+
+                    {habilidades.length > 0 && (
+                      <div className="ct-preview-skills">
+                        {habilidades.slice(0, 5).map((hab, i) => (
+                          <span key={i} className="ct-preview-skill">{hab}</span>
+                        ))}
+                        {habilidades.length > 5 && (
+                          <span className="ct-preview-skill ct-preview-skill-more">
+                            +{habilidades.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {(anexo || anexoAtual) && !removerAnexo && (
+                      <div className="ct-preview-attachment">
+                        <FaFile />
+                        <span>{anexo ? anexo.name : "Arquivo anexado"}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Prazo e Orçamento */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaCalendarAlt />
-                    Prazo e Orçamento
-                  </h2>
+              {/* Barra de Progresso */}
+              <div className="ct-progress-section">
+                <div className="ct-progress-header">
+                  <span>Progresso do formulário</span>
+                  <span className="ct-progress-percent">{progresso}%</span>
                 </div>
+                <div className="ct-progress-bar">
+                  <div 
+                    className="ct-progress-fill" 
+                    style={{ width: `${progresso}%` }}
+                  ></div>
+                </div>
+                <div className="ct-progress-tips">
+                  <FaLightbulb />
+                  <span>
+                    {progresso < 100 
+                      ? "Complete todos os campos obrigatórios"
+                      : "Tudo pronto! Você pode salvar as alterações"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="card-body">
-                  <div className="form-row">
-                    <div className="form-field">
-                      <label className="input-label">
+          {/* Coluna Direita - Formulário */}
+          <div className="ct-form-column">
+            <form onSubmit={handleSubmit} className="ct-form">
+              
+              {/* Bloco: Título */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaEdit />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Título do Projeto</h3>
+                    <p>Um título claro atrai mais freelancers</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <input
+                    type="text"
+                    className={`ct-input ct-input-large ${erros.titulo ? "ct-input-error" : ""}`}
+                    placeholder="Ex: Desenvolvimento de aplicativo mobile para delivery"
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    maxLength={100}
+                    disabled={isLoading}
+                  />
+                  <div className="ct-input-meta">
+                    {erros.titulo && <span className="ct-error">{erros.titulo}</span>}
+                    <span className="ct-char-count">{titulo.length}/100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco: Descrição */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaMagic />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Descrição Detalhada</h3>
+                    <p>Quanto mais detalhes, melhores propostas você receberá</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <textarea
+                    className={`ct-textarea ${erros.descricao ? "ct-input-error" : ""}`}
+                    placeholder="Descreva o que você precisa, funcionalidades desejadas, referências visuais..."
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    rows="6"
+                    maxLength={1000}
+                    disabled={isLoading}
+                  />
+                  <div className="ct-input-meta">
+                    {erros.descricao && <span className="ct-error">{erros.descricao}</span>}
+                    <span className="ct-char-count">{descricao.length}/1000</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco: Prazo e Orçamento */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon">
+                    <FaMoneyBillWave />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Prazo e Investimento</h3>
+                    <p>Defina quando precisa e quanto pode investir</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <div className="ct-inline-fields">
+                    <div className="ct-field-group">
+                      <label>
                         <FaCalendarAlt />
-                        Prazo de Entrega <span className="required">*</span>
+                        Prazo de Entrega
                       </label>
                       <input
                         type="date"
-                        className={`form-control ${erros.prazo ? "error" : ""}`}
+                        className={`ct-input ${erros.prazo ? "ct-input-error" : ""}`}
                         value={prazo}
                         onChange={(e) => setPrazo(e.target.value)}
                         min={new Date().toISOString().split("T")[0]}
                         disabled={isLoading}
                       />
-                      {erros.prazo && <span className="error-msg">{erros.prazo}</span>}
+                      {erros.prazo && <span className="ct-error">{erros.prazo}</span>}
                     </div>
 
-                    <div className="form-field">
-                      <label className="input-label">
+                    <div className="ct-field-group">
+                      <label>
                         <FaMoneyBillWave />
-                        Orçamento (R$) <span className="required">*</span>
+                        Orçamento (R$)
                       </label>
                       <input
                         type="number"
-                        className={`form-control ${erros.orcamento ? "error" : ""}`}
+                        className={`ct-input ${erros.orcamento ? "ct-input-error" : ""}`}
                         placeholder="1500.00"
                         value={orcamento}
                         onChange={(e) => setOrcamento(e.target.value)}
@@ -427,150 +594,212 @@ export default function EditarTrabalho() {
                         step="0.01"
                         disabled={isLoading}
                       />
-                      {erros.orcamento && <span className="error-msg">{erros.orcamento}</span>}
+                      {erros.orcamento && <span className="ct-error">{erros.orcamento}</span>}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 🆕 CARD DE CATEGORIZAÇÃO (RAMO) */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
+              {/* Bloco: Área/Ramo */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
                     <FaLayerGroup />
-                    Ramo
-                  </h2>
-                  <span className="optional-badge">Opcional</span>
-                </div>
-
-                <div className="card-body">
-                  <div className="form-field">
-                    <label className="input-label">
-                      <FaLayerGroup />
-                      Ramo de Atuação
-                    </label>
-                    <div className="ramo-select-wrapper">
-                      <FaLayerGroup className="ramo-select-icon" />
-                      <select
-                        className="ramo-select"
-                        value={ramo}
-                        onChange={(e) => setRamo(e.target.value)}
-                        disabled={loadingRamos || isLoading}
-                      >
-                        <option value="">Selecione uma área (opcional)</option>
-                        {ramos.map(r => (
-                          <option key={r.id} value={r.id}>
-                            {r.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="ramo-helper-text">
-                      <FaLightbulb />
-                      Categorize seu trabalho para facilitar a busca de freelancers especializados
-                    </div>
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Área/Ramo <span className="ct-optional">Opcional</span></h3>
+                    <p>Selecione ou digite uma nova área para categorizar seu projeto</p>
                   </div>
                 </div>
-              </div>
-
-              {/* Habilidades */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaTools />
-                    Habilidades Necessárias
-                  </h2>
-                </div>
-
-                <div className="card-body">
-                  <div className="skills-container">
-                    <div className="skills-input-wrapper">
+                <div className="ct-block-content">
+                  {ramoSelecionado ? (
+                    <div className="ct-selected-ramo">
+                      <span className="ct-ramo-tag">
+                        <FaLayerGroup />
+                        {ramoSelecionado}
+                        <button type="button" onClick={removerRamo} disabled={isLoading}>
+                          <FaTimes />
+                        </button>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="ct-ramo-input-container" ref={ramoInputRef}>
                       <input
                         type="text"
-                        className="skills-input"
-                        placeholder="Digite uma habilidade e pressione Enter..."
-                        value={habilidadeInput}
-                        onChange={handleHabilidadeInput}
-                        onKeyDown={handleHabilidadeKeyDown}
-                        disabled={isLoading}
+                        className="ct-input"
+                        placeholder="Digite ou selecione uma área (ex: Desenvolvimento Web)"
+                        value={ramoInput}
+                        onChange={handleRamoInput}
+                        onKeyDown={handleRamoKeyDown}
+                        onFocus={() => setShowRamoSugestoes(true)}
+                        disabled={isLoading || loadingRamos}
                       />
-                      <FaTag className="skills-input-icon" />
-                    </div>
-
-                    {habilidades.length > 0 && (
-                      <div className="selected-skills">
-                        {habilidades.map((hab, index) => (
-                          <div key={index} className="skill-badge">
-                            <span>{hab}</span>
+                      
+                      {showRamoSugestoes && (ramoSugestoesFiltradas.length > 0 || ramoInput.trim()) && (
+                        <div className="ct-ramo-dropdown">
+                          {ramoSugestoesFiltradas.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              className="ct-ramo-option"
+                              onClick={() => selecionarRamo(r.nome)}
+                            >
+                              {r.nome}
+                            </button>
+                          ))}
+                          {ramoInput.trim() && !ramoSugestoesFiltradas.some(r => r.nome.toLowerCase() === ramoInput.toLowerCase()) && (
                             <button
                               type="button"
-                              onClick={() => removeHabilidade(hab)}
-                              className="skill-remove"
-                              disabled={isLoading}
+                              className="ct-ramo-option ct-ramo-option-new"
+                              onClick={() => selecionarRamo(ramoInput.trim())}
                             >
-                              <FaTimes />
+                              <FaPlus /> Criar "{ramoInput.trim()}"
                             </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                    <div className="popular-skills">
-                      <div className="popular-skills-header">
-                        <FaStar />
-                        <span>Habilidades Populares</span>
-                      </div>
-                      <div className="popular-skills-list">
-                        {habilidadesPopulares
-                          .filter((skill) => !habilidades.includes(skill))
-                          .slice(0, 10)
-                          .map((skill, index) => (
+                  {!ramoSelecionado && (
+                    <div className="ct-popular-ramos">
+                      <span className="ct-popular-label">Populares:</span>
+                      <div className="ct-popular-list">
+                        {ramosPopulares
+                          .filter((r) => r !== ramoSelecionado)
+                          .slice(0, 6)
+                          .map((r, index) => (
                             <button
                               key={index}
                               type="button"
-                              className="popular-skill-tag"
-                              onClick={() => adicionarHabilidade(skill)}
+                              className="ct-popular-btn"
+                              onClick={() => selecionarRamo(r)}
                               disabled={isLoading}
                             >
-                              {skill}
+                              {r}
                             </button>
                           ))}
                       </div>
                     </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bloco: Habilidades */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
+                    <FaMagic />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Habilidades Necessárias <span className="ct-optional">Opcional</span></h3>
+                    <p>Selecione as competências que o freelancer precisa ter</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  <div className="ct-skills-input-container">
+                    <input
+                      type="text"
+                      className="ct-input"
+                      placeholder="Digite uma habilidade e pressione Enter"
+                      value={habilidadeInput}
+                      onChange={handleHabilidadeInput}
+                      onKeyDown={handleHabilidadeKeyDown}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {habilidades.length > 0 && (
+                    <div className="ct-selected-skills">
+                      {habilidades.map((hab, index) => (
+                        <span key={index} className="ct-skill-tag">
+                          {hab}
+                          <button type="button" onClick={() => removeHabilidade(hab)} disabled={isLoading}>
+                            <FaTimes />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {sugestoes.length > 0 && (
+                    <div className="ct-skill-suggestions">
+                      <span className="ct-suggestions-label">Sugestões:</span>
+                      {sugestoes.slice(0, 6).map((sug, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="ct-suggestion-btn"
+                          onClick={() => adicionarHabilidade(sug)}
+                          disabled={isLoading}
+                        >
+                          + {sug}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="ct-popular-skills">
+                    <span className="ct-popular-label">Populares:</span>
+                    <div className="ct-popular-list">
+                      {habilidadesPopulares
+                        .filter((skill) => !habilidades.includes(skill))
+                        .slice(0, 10)
+                        .map((skill, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="ct-popular-btn"
+                            onClick={() => adicionarHabilidade(skill)}
+                            disabled={isLoading}
+                          >
+                            {skill}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Arquivo Anexo */}
-              <div className="modern-card">
-                <div className="card-header">
-                  <h2 className="card-title">
-                    <FaPaperclip />
-                    Arquivo Anexo
-                  </h2>
-                  <span className="optional-badge">Opcional</span>
+              {/* Bloco: Upload */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
+                    <FaImage />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Anexar Arquivo <span className="ct-optional">Opcional</span></h3>
+                    <p>Adicione referências, briefings ou documentos relevantes</p>
+                  </div>
                 </div>
-
-                <div className="card-body">
+                <div className="ct-block-content">
+                  {/* Arquivo Atual */}
                   {anexoAtual && !removerAnexo && !anexo && (
-                    <div className="current-file-section">
-                      <h4 className="subsection-title">Arquivo Atual</h4>
-                      <div className="file-selected-info current">
-                        <FaCheckCircle className="file-success-icon" />
-                        <div className="file-details">
-                          <span className="file-name">Arquivo anexado</span>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div className="ct-file-preview" style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                        <div className="ct-file-icon">
+                          <FaCheckCircle />
+                        </div>
+                        <div className="ct-file-info">
+                          <span className="ct-file-name">Arquivo atual anexado</span>
+
                           <a
                             href={anexoAtual}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="file-link"
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--cor-primaria)",
+                              textDecoration: "underline",
+                            }}
                           >
-                            <FaPaperclip /> Visualizar arquivo
+                            Visualizar arquivo
                           </a>
+
                         </div>
                         <button
                           type="button"
-                          className="file-remove"
+                          className="ct-file-remove"
                           onClick={() => setRemoverAnexo(true)}
                           disabled={isLoading}
                           title="Remover arquivo"
@@ -581,14 +810,26 @@ export default function EditarTrabalho() {
                     </div>
                   )}
 
+                  {/* Aviso de remoção */}
                   {removerAnexo && !anexo && (
-                    <div className="removal-warning">
+                    <div style={{ 
+                      background: "rgba(239, 68, 68, 0.1)", 
+                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "1rem",
+                      marginBottom: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      fontSize: "0.875rem",
+                      color: "#dc2626"
+                    }}>
                       <FaExclamationCircle />
                       <span>
                         O arquivo será removido ao salvar.{" "}
                         <button
                           type="button"
-                          onClick={handleDesfazerRemocao}
+                          onClick={() => setRemoverAnexo(false)}
                           style={{
                             background: "none",
                             border: "none",
@@ -596,6 +837,7 @@ export default function EditarTrabalho() {
                             textDecoration: "underline",
                             cursor: "pointer",
                             padding: 0,
+                            font: "inherit"
                           }}
                         >
                           Desfazer
@@ -604,11 +846,16 @@ export default function EditarTrabalho() {
                     </div>
                   )}
 
-                  <div className="file-upload-area">
+                  <div 
+                    className={`ct-upload-zone ${dragActive ? "ct-upload-zone-active" : ""} ${anexo ? "ct-upload-zone-filled" : ""}`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                  >
                     <input
-                      id="file-input"
+                      id="ct-file-input"
                       type="file"
-                      className="file-input"
                       onChange={(e) => {
                         setAnexo(e.target.files?.[0] || null);
                         setRemoverAnexo(false);
@@ -616,129 +863,70 @@ export default function EditarTrabalho() {
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
                       disabled={isLoading}
                     />
-                    <label htmlFor="file-input" className="file-upload-label">
-                      {anexo ? (
-                        <div className="file-selected-info">
-                          <FaCheckCircle className="file-success-icon" />
-                          <div className="file-details">
-                            <span className="file-name">{anexo.name}</span>
-                            <span className="file-size">
-                              {(anexo.size / 1024 / 1024).toFixed(2)} MB
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="file-remove"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setAnexo(null);
-                            }}
-                            disabled={isLoading}
-                          >
-                            <FaTimes />
-                          </button>
+                    
+                    {anexo ? (
+                      <div className="ct-file-preview">
+                        <div className="ct-file-icon">
+                          <FaCheckCircle />
                         </div>
-                      ) : (
-                        <div className="file-upload-placeholder">
-                          <FaCloudUploadAlt className="upload-icon" />
-                          <div className="upload-text">
-                            <span className="upload-title">
-                              {anexoAtual && !removerAnexo
-                                ? "Substituir arquivo"
-                                : "Clique para enviar arquivo"}
-                            </span>
-                            <span className="upload-subtitle">
-                              PDF, DOC, DOCX, JPG, PNG, ZIP (Máx. 10MB)
-                            </span>
-                          </div>
+                        <div className="ct-file-info">
+                          <span className="ct-file-name">{anexo.name}</span>
+                          <span className="ct-file-size">{(anexo.size / 1024 / 1024).toFixed(2)} MB</span>
                         </div>
-                      )}
-                    </label>
+                        <button
+                          type="button"
+                          className="ct-file-remove"
+                          onClick={() => setAnexo(null)}
+                          disabled={isLoading}
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor="ct-file-input" className="ct-upload-content">
+                        <FaCloudUploadAlt className="ct-upload-icon" />
+                        <span className="ct-upload-text">
+                          {anexoAtual && !removerAnexo
+                            ? <>Arraste um arquivo ou <strong>clique para substituir</strong></>
+                            : <>Arraste um arquivo ou <strong>clique para selecionar</strong></>}
+                        </span>
+                        <span className="ct-upload-hint">PDF, DOC, JPG, PNG, ZIP até 10MB</span>
+                      </label>
+                    )}
                   </div>
-                  {erros.anexo && <span className="error-msg">{erros.anexo}</span>}
+                  {erros.anexo && <span className="ct-error">{erros.anexo}</span>}
                 </div>
               </div>
 
-              {/* Botões */}
-              <div className="form-actions">
+              {/* Ações */}
+              <div className="ct-form-actions">
+                <button
+                  type="button"
+                  className="ct-btn ct-btn-secondary"
+                  onClick={() => navigate(`/trabalhos/${id}`)}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className={`btn gradient-btn btn-large ${isLoading ? "loading" : ""}`}
-                  disabled={isLoading}
+                  className={`ct-btn ct-btn-primary ${isLoading ? "ct-btn-loading" : ""}`}
+                  disabled={isLoading || progresso < 100}
                 >
                   {isLoading ? (
                     <>
-                      <div className="loading-spinner"></div>
-                      <span>Salvando...</span>
+                      <span className="ct-spinner"></span>
+                      Salvando...
                     </>
                   ) : (
                     <>
                       <FaCheckCircle />
-                      <span>Salvar Alterações</span>
+                      Salvar Alterações
                     </>
                   )}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-large"
-                  onClick={() => navigate(`/trabalhos/${id}`)}
-                  disabled={isLoading}
-                >
-                  <FaTimes />
-                  <span>Cancelar</span>
-                </button>
               </div>
             </form>
-          </div>
-
-          {/* Sidebar */}
-          <div className="form-sidebar-column">
-            <div className="modern-card preview-card">
-              <div className="card-header">
-                <h2 className="card-title">
-                  <FaEye />
-                  Prévia do Projeto
-                </h2>
-              </div>
-
-              <div className="card-body">
-                <div className="preview-content">
-                  <div className="preview-title">
-                    {titulo || "Título do seu projeto..."}
-                  </div>
-                  <div className="preview-description">
-                    {(descricao
-                      ? descricao.substring(0, 150) + (descricao.length > 150 ? "..." : "")
-                      : "") || "Descrição do seu projeto aparecerá aqui..."}
-                  </div>
-                  <div className="preview-details">
-                    <div className="preview-detail">
-                      <FaCalendarAlt />
-                      <span>
-                        {prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Prazo"}
-                      </span>
-                    </div>
-                    <div className="preview-detail">
-                      <FaMoneyBillWave />
-                      <span>
-                        {orcamento
-                          ? new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(Number(orcamento))
-                          : "R$ 0,00"}
-                      </span>
-                    </div>
-                    <div className="preview-detail">
-                      <FaTools />
-                      <span>
-                        {habilidades.length} habilidade{habilidades.length !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
