@@ -5,6 +5,7 @@ import api from '../Servicos/Api';
 import { useFetchRamos } from '../hooks/useFetchRamos';
 import { UsuarioContext } from '../Contextos/UsuarioContext';
 import '../styles/Trabalhos.css';
+import { useFetchHabilidades } from "../hooks/useFetchHabilidades";
 
 const Trabalhos = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Trabalhos = () => {
   const [habilidadeFiltro, setHabilidadeFiltro] = useState('');
   const [ramoFiltro, setRamoFiltro] = useState('');
   const [filtrosAplicados, setFiltrosAplicados] = useState(false);
+  const { habilidades, loadingHabilidades } = useFetchHabilidades();
 
   // Hook personalizado para buscar ramos
   const { ramos, loadingRamos } = useFetchRamos();
@@ -189,14 +191,15 @@ const Trabalhos = () => {
                   className="filtro-select"
                   value={habilidadeFiltro}
                   onChange={(e) => setHabilidadeFiltro(e.target.value)}
+                  disabled={loadingHabilidades}
                 >
                   <option value="">Todas as habilidades</option>
-                  <option value="React">React</option>
-                  <option value="Python">Python</option>
-                  <option value="JavaScript">JavaScript</option>
-                  <option value="Node.js">Node.js</option>
-                  <option value="Django">Django</option>
-                  <option value="TypeScript">TypeScript</option>
+
+                  {habilidades.map((h) => (
+                    <option key={h.id} value={h.nome}>
+                      {h.nome}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
