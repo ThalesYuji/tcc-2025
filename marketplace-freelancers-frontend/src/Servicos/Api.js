@@ -189,7 +189,7 @@ export async function listarPunicoesPorUsuario(usuario_id) {
 
 // 🔹 Remover punição (DELETE correto)
 export async function removerPunicao(punicao_id) {
-  const resp = await api.post(`/punicoes/remover/${punicao_id}/`);
+  const resp = await api.delete(`/punicoes/remover/${punicao_id}/`);
   return resp.data;
 }
 
