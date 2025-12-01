@@ -14,7 +14,7 @@ from .serializers import (
     AplicarAdvertenciaSerializer,
     AplicarSuspensaoSerializer,
     AplicarBanimentoSerializer,
-    RemoverSuspensaoSerializer
+    RemoverSuspensaoSerializer,
 )
 
 

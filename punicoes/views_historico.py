@@ -10,7 +10,7 @@ from .serializers import PunicaoSerializer
 
 
 # ============================================================
-# 🔹 LISTAR HISTÓRICO COMPLETO (APENAS ATIVAS)
+# 🔹 LISTAR HISTÓRICO COMPLETO (ATIVAS APENAS)
 # ============================================================
 class HistoricoPunicoesView(APIView):
     permission_classes = [IsAdminUser]
@@ -31,7 +31,7 @@ class HistoricoPunicoesView(APIView):
 
 
 # ============================================================
-# 🔹 HISTÓRICO POR USUÁRIO (APENAS ATIVAS)
+# 🔹 LISTAR HISTÓRICO POR USUÁRIO (ATIVAS APENAS)
 # ============================================================
 class HistoricoPorUsuarioView(APIView):
     permission_classes = [IsAdminUser]
@@ -52,12 +52,13 @@ class HistoricoPorUsuarioView(APIView):
 
 
 # ============================================================
-# 🔹 REMOVER / DESFAZER PUNIÇÃO
+# 🔹 DESFAZER / REMOVER PUNIÇÃO
 # ============================================================
 class RemoverPunicaoView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request, punicao_id):
+
         try:
             punicao = Punicao.objects.get(id=punicao_id)
         except Punicao.DoesNotExist:
@@ -66,6 +67,7 @@ class RemoverPunicaoView(APIView):
         if not punicao.ativo:
             return Response({"erro": "Esta punição já está inativa."}, status=400)
 
+        # Marca como removida
         punicao.ativo = False
         punicao.removida_em = timezone.now()
         punicao.removida_por_admin = request.user
@@ -73,7 +75,7 @@ class RemoverPunicaoView(APIView):
 
         usuario = punicao.usuario_punido
 
-        # Reverter efeitos
+        # Reverter efeitos automáticos
         if punicao.tipo == "suspensao":
             usuario.is_suspended_admin = False
             usuario.suspenso_ate = None
