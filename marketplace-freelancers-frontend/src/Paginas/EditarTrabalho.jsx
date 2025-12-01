@@ -84,9 +84,31 @@ export default function EditarTrabalho() {
       setDescricao(trabalho.descricao || "");
       setPrazo(trabalho.prazo || "");
       setOrcamento(String(trabalho.orcamento || ""));
-      setHabilidades(trabalho.habilidades || []);
+      
+      // 🔧 CORRIGIDO: Carrega habilidades do formato correto
+      if (trabalho.habilidades_detalhes && trabalho.habilidades_detalhes.length > 0) {
+        setHabilidades(trabalho.habilidades_detalhes.map(h => h.nome));
+      } else if (trabalho.habilidades && trabalho.habilidades.length > 0) {
+        // Fallback para formato antigo
+        if (typeof trabalho.habilidades[0] === 'object') {
+          setHabilidades(trabalho.habilidades.map(h => h.nome));
+        } else {
+          setHabilidades(trabalho.habilidades);
+        }
+      } else {
+        setHabilidades([]);
+      }
+      
       setAnexoAtual(trabalho.anexo_url || null);
-      setRamo(trabalho.ramo || "");
+      
+      // 🔧 CORRIGIDO: Carrega ramo do formato correto (ramo_detalhes)
+      if (trabalho.ramo_detalhes?.id) {
+        setRamo(String(trabalho.ramo_detalhes.id));
+      } else if (trabalho.ramo) {
+        setRamo(String(trabalho.ramo));
+      } else {
+        setRamo("");
+      }
 
     } catch (error) {
       console.error("Erro ao carregar trabalho:", error);
@@ -181,7 +203,7 @@ export default function EditarTrabalho() {
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
 
-    // 🎯 RAMO (opcional)
+    // 🎯 RAMO (opcional) - envia ID se selecionado
     if (ramo) {
       formData.append("ramo", ramo);
     }

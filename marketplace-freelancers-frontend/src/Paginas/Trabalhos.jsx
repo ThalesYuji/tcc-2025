@@ -126,11 +126,34 @@ const Trabalhos = () => {
     return 'ramo-default';
   };
 
+  // 🔧 CORRIGIDO: Agora usa ramo_detalhes primeiro
   const getRamoNome = (trabalho) => {
+    // Primeiro tenta ramo_detalhes (novo formato do serializer)
+    if (trabalho.ramo_detalhes?.nome) {
+      return trabalho.ramo_detalhes.nome;
+    }
+    // Fallback para formato antigo (ramo como ID)
     if (!trabalho.ramo && !trabalho.ramo_id) return null;
     const ramoId = trabalho.ramo || trabalho.ramo_id;
     const ramoEncontrado = ramos.find(r => String(r.id) === String(ramoId));
     return ramoEncontrado ? ramoEncontrado.nome : trabalho.ramo_nome;
+  };
+
+  // 🔧 NOVO: Função para obter habilidades (suporta ambos os formatos)
+  const getHabilidades = (trabalho) => {
+    // Primeiro tenta habilidades_detalhes (novo formato do serializer)
+    if (trabalho.habilidades_detalhes && trabalho.habilidades_detalhes.length > 0) {
+      return trabalho.habilidades_detalhes.map(h => h.nome);
+    }
+    // Fallback para formato antigo (array de strings)
+    if (trabalho.habilidades && trabalho.habilidades.length > 0) {
+      // Verifica se é array de objetos ou strings
+      if (typeof trabalho.habilidades[0] === 'object') {
+        return trabalho.habilidades.map(h => h.nome);
+      }
+      return trabalho.habilidades;
+    }
+    return [];
   };
 
   return (
@@ -241,110 +264,114 @@ const Trabalhos = () => {
         ) : (
           <>
             <div className="trabalhos-grid">
-              {trabalhos.map(trabalho => (
-                <div key={trabalho.id} className="trabalho-card">
-                  <div className="trabalho-header">
-                    <div className="trabalho-titulo-container">
-                      {trabalho.is_privado && (
-                        <span className="badge-privado-card">
-                          <FaLock /> Privado
-                        </span>
-                      )}
-                      <h3 className="trabalho-titulo">{trabalho.titulo}</h3>
-                    </div>
-                    <span className={`trabalho-status status-${trabalho.status.toLowerCase().replace(' ', '-')}`}>
-                      {trabalho.status}
-                    </span>
-                  </div>
-
-                  <div className="trabalho-body">
-                    {/* 🎯 RAMO/ÁREA - AGORA APARECE */}
-                    {getRamoNome(trabalho) && (
-                      <div className={`trabalho-ramo-badge ${getRamoClassName(getRamoNome(trabalho))}`}>
-                        <FaLayerGroup />
-                        <span>{getRamoNome(trabalho)}</span>
-                      </div>
-                    )}
-
-                    <p className="trabalho-descricao">{trabalho.descricao}</p>
-
-                    {/* 📅 PRAZO */}
-                    <div className="trabalho-info-item">
-                      <FaCalendar className="trabalho-info-icon" />
-                      <span className="trabalho-info-label">Prazo:</span>
-                      <span className="trabalho-info-value">
-                        {formatarData(trabalho.prazo)}
-                      </span>
-                    </div>
-
-                    {/* 💰 ORÇAMENTO - COM LABEL */}
-                    <div className="trabalho-info-item">
-                      <FaDollarSign className="trabalho-info-icon" />
-                      <span className="trabalho-info-label">Orçamento:</span>
-                      <span className="trabalho-orcamento">
-                        {formatarMoeda(trabalho.orcamento)}
-                      </span>
-                    </div>
-
-                    {/* 🕐 CRIADO EM */}
-                    <div className="trabalho-info-item">
-                      <FaClock className="trabalho-info-icon" />
-                      <span className="trabalho-info-label">Criado em:</span>
-                      <span className="trabalho-info-value">
-                        {formatarData(trabalho.criado_em || trabalho.data_criacao)}
-                      </span>
-                    </div>
-
-                    {/* 👤 CONTRATANTE */}
-                    <div className="trabalho-info-item">
-                      <FaUser className="trabalho-info-icon" />
-                      <span className="trabalho-info-label">Contratante:</span>
-                      <span 
-                        className="trabalho-contratante"
-                        onClick={() => navigate(`/perfil/${trabalho.contratante_id || trabalho.cliente_id}`)}
-                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        {trabalho.nome_contratante || trabalho.cliente_nome || 'Usuário'}
-                      </span>
-                    </div>
-
-                    {/* 🏆 HABILIDADES */}
-                    {trabalho.habilidades && trabalho.habilidades.length > 0 && (
-                      <div className="trabalho-habilidades">
-                        {trabalho.habilidades.map((habilidade, index) => (
-                          <span key={index} className="habilidade-tag">
-                            {habilidade}
+              {trabalhos.map(trabalho => {
+                const habilidadesLista = getHabilidades(trabalho);
+                
+                return (
+                  <div key={trabalho.id} className="trabalho-card">
+                    <div className="trabalho-header">
+                      <div className="trabalho-titulo-container">
+                        {trabalho.is_privado && (
+                          <span className="badge-privado-card">
+                            <FaLock /> Privado
                           </span>
-                        ))}
+                        )}
+                        <h3 className="trabalho-titulo">{trabalho.titulo}</h3>
                       </div>
-                    )}
+                      <span className={`trabalho-status status-${trabalho.status.toLowerCase().replace(' ', '-')}`}>
+                        {trabalho.status}
+                      </span>
+                    </div>
 
-                    {/* 📎 ANEXO */}
-                    {trabalho.anexo_url && (
+                    <div className="trabalho-body">
+                      {/* 🎯 RAMO/ÁREA - CORRIGIDO */}
+                      {getRamoNome(trabalho) && (
+                        <div className={`trabalho-ramo-badge ${getRamoClassName(getRamoNome(trabalho))}`}>
+                          <FaLayerGroup />
+                          <span>{getRamoNome(trabalho)}</span>
+                        </div>
+                      )}
+
+                      <p className="trabalho-descricao">{trabalho.descricao}</p>
+
+                      {/* 📅 PRAZO */}
                       <div className="trabalho-info-item">
-                        <FaPaperclip className="trabalho-info-icon" />
-                        <a 
-                          href={trabalho.anexo_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="trabalho-anexo"
-                        >
-                          Ver anexo
-                        </a>
+                        <FaCalendar className="trabalho-info-icon" />
+                        <span className="trabalho-info-label">Prazo:</span>
+                        <span className="trabalho-info-value">
+                          {formatarData(trabalho.prazo)}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="trabalho-footer">
-                    <button
-                      className="btn-ver-detalhes"
-                      onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
-                    >
-                      Ver Detalhes
-                    </button>
+                      {/* 💰 ORÇAMENTO - COM LABEL */}
+                      <div className="trabalho-info-item">
+                        <FaDollarSign className="trabalho-info-icon" />
+                        <span className="trabalho-info-label">Orçamento:</span>
+                        <span className="trabalho-orcamento">
+                          {formatarMoeda(trabalho.orcamento)}
+                        </span>
+                      </div>
+
+                      {/* 🕐 CRIADO EM */}
+                      <div className="trabalho-info-item">
+                        <FaClock className="trabalho-info-icon" />
+                        <span className="trabalho-info-label">Criado em:</span>
+                        <span className="trabalho-info-value">
+                          {formatarData(trabalho.criado_em || trabalho.data_criacao)}
+                        </span>
+                      </div>
+
+                      {/* 👤 CONTRATANTE */}
+                      <div className="trabalho-info-item">
+                        <FaUser className="trabalho-info-icon" />
+                        <span className="trabalho-info-label">Contratante:</span>
+                        <span 
+                          className="trabalho-contratante"
+                          onClick={() => navigate(`/perfil/${trabalho.contratante_id || trabalho.cliente_id}`)}
+                          style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                        >
+                          {trabalho.nome_contratante || trabalho.cliente_nome || 'Usuário'}
+                        </span>
+                      </div>
+
+                      {/* 🏆 HABILIDADES - CORRIGIDO */}
+                      {habilidadesLista.length > 0 && (
+                        <div className="trabalho-habilidades">
+                          {habilidadesLista.map((habilidade, index) => (
+                            <span key={index} className="habilidade-tag">
+                              {habilidade}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 📎 ANEXO */}
+                      {trabalho.anexo_url && (
+                        <div className="trabalho-info-item">
+                          <FaPaperclip className="trabalho-info-icon" />
+                          <a 
+                            href={trabalho.anexo_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="trabalho-anexo"
+                          >
+                            Ver anexo
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="trabalho-footer">
+                      <button
+                        className="btn-ver-detalhes"
+                        onClick={() => navigate(`/trabalhos/detalhes/${trabalho.id}`)}
+                      >
+                        Ver Detalhes
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Paginação */}
