@@ -4,28 +4,20 @@ import os
 import dj_database_url
 from dotenv import load_dotenv
 from urllib.parse import urlparse
-import pymysql  # ✅ Driver MySQL
-pymysql.install_as_MySQLdb()  # ✅ Faz Django usar o PyMySQL
+import pymysql  
+pymysql.install_as_MySQLdb()
 
-# ------------------------
 # Caminho base do projeto
-# ------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ------------------------
 # Carrega variáveis do .env
-# ------------------------
 load_dotenv(BASE_DIR / ".env")
 
-# ------------------------
 # Segurança
-# ------------------------
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-123')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# ------------------------
 # Funções auxiliares
-# ------------------------
 def _host_from_url(url: str | None) -> str | None:
     if not url:
         return None
@@ -46,9 +38,7 @@ def _origin(url: str | None) -> str | None:
         pass
     return None
 
-# ------------------------
 # URLs e Hosts
-# ------------------------
 SITE_URL = os.getenv("SITE_URL", "").rstrip("/")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 FRONT_RETURN_URL = os.getenv("FRONT_RETURN_URL", f"{FRONTEND_URL}/checkout/retorno").rstrip("/")
@@ -60,15 +50,13 @@ ALLOWED_HOSTS = list(filter(None, os.getenv('ALLOWED_HOSTS', '').split(','))) or
 if _site_host and _site_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_site_host)
 
-# ✅ CORREÇÕES IMPORTANTES
 APPEND_SLASH = True
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
-# ------------------------
 # APPS INSTALADOS
-# ------------------------
 INSTALLED_APPS = [
+
     # Django padrão
     'django.contrib.admin',
     'django.contrib.auth',
@@ -77,16 +65,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-
     # Terceiros
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-
-    # Cloudinary (storage)
+    # Cloudinary 
     'cloudinary',
     'cloudinary_storage',
-
     # Apps do projeto
     'usuarios.apps.UsuariosConfig',
     'trabalhos',
@@ -101,9 +86,7 @@ INSTALLED_APPS = [
     'notificacoes',
 ]
 
-# ------------------------
 # MIDDLEWARE
-# ------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -117,9 +100,7 @@ MIDDLEWARE = [
     'usuarios.middleware.ModoLeituraMiddleware',
 ]
 
-# ------------------------
 # URLS / TEMPLATES
-# ------------------------
 ROOT_URLCONF = 'freelancer.urls'
 
 TEMPLATES = [
@@ -137,14 +118,10 @@ TEMPLATES = [
     },
 ]
 
-# ------------------------
 # WSGI
-# ------------------------
 WSGI_APPLICATION = 'freelancer.wsgi.application'
 
-# ------------------------
 # BANCO DE DADOS
-# ------------------------
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
@@ -154,9 +131,7 @@ DATABASES = {
     )
 }
 
-# ------------------------
 # VALIDAÇÃO DE SENHA
-# ------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -164,17 +139,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ------------------------
-# INTERNACIONALIZAÇÃO
-# ------------------------
 LANGUAGE_CODE = 'pt-br'
 TIME_ZONE = 'America/Sao_Paulo'
 USE_I18N = True
 USE_TZ = True
 
-# ------------------------
 # STATIC / MEDIA
-# ------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -186,9 +156,7 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# ------------------------
 # CLOUDINARY
-# ------------------------
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME", "dtxz7xxrh"),
@@ -196,15 +164,11 @@ CLOUDINARY_STORAGE = {
     "API_SECRET": os.getenv("CLOUDINARY_API_SECRET", "xhNjam6wM6DeUCmzKKmcfUQEKEk"),
 }
 
-# ------------------------
 # USER CUSTOM
-# ------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'usuarios.Usuario'
 
-# ------------------------
 # DJANGO REST + JWT
-# ------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -224,16 +188,12 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# ------------------------
-# ⚙️ Modo leitura (desativação voluntária)
-# ------------------------
+# Modo leitura (desativação voluntária)
 SUSPENSION_BLOCKED_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 SUSPENSION_RESPONSE_HEADER = 'X-Blocked-By-Suspension'
 SUSPENSION_MESSAGE = "Sua conta está desativada (modo leitura). Reative para realizar esta ação."
 
-# ------------------------
-# CORS (✅ CORRIGIDO PARA MERCADO PAGO)
-# ------------------------
+# CORS 
 if DEBUG:
     # Ambiente local - tudo liberado
     CORS_ALLOW_ALL_ORIGINS = True
@@ -249,14 +209,13 @@ else:
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://web-production-385bb.up.railway.app",
-        # ✅ Domínios do Mercado Pago
         "https://www.mercadopago.com.br",
         "https://www.mercadopago.com",
         "https://http2.mlstatic.com",
         "https://secure.mlstatic.com",
     ]
     CORS_ALLOW_CREDENTIALS = True
-    # ✅ Headers necessários para o Mercado Pago
+    # Headers necessários para o Mercado Pago
     CORS_ALLOW_HEADERS = [
         'accept',
         'accept-encoding',
@@ -270,9 +229,7 @@ else:
         'x-trackingid',
     ]
 
-# ------------------------
-# CSRF (✅ CORRIGIDO PARA MERCADO PAGO)
-# ------------------------
+# CSRF 
 _csrf_default = ['http://localhost:8000']
 _front_origin = _origin(FRONTEND_URL)
 _site_origin = _origin(SITE_URL)
@@ -283,21 +240,19 @@ CSRF_TRUSTED_ORIGINS = list(set(
     ([_front_origin] if _front_origin else []) +
     ([_site_origin] if _site_origin else []) +
     _csrf_env +
-    # ✅ Domínios do Mercado Pago
+    # Domínios do Mercado Pago
     [
         "https://www.mercadopago.com.br",
         "https://www.mercadopago.com",
     ]
 ))
 
-# ------------------------
 # E-MAIL (SendGrid API)
-# ------------------------
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@profreelabr.com")
 SITE_NAME = os.getenv("SITE_NAME", "ProFreelaBR")
 
-# 💡 Log de envio (útil para verificar se Django tentou enviar)
+# Log de envio
 import logging
 logger = logging.getLogger("sendgrid")
 if not logger.handlers:
@@ -307,35 +262,28 @@ if not logger.handlers:
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
-# ⚙️ Função auxiliar (fallback opcional)
+# Função auxiliar
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# ------------------------
 # API CPF/CNPJ
-# ------------------------
 CPF_CNPJ_API_BASE = os.getenv("CPF_CNPJ_API_BASE")
 CPF_CNPJ_TOKEN = os.getenv("CPF_CNPJ_TOKEN")
 CPF_CNPJ_PACOTE_CPF_C = int(os.getenv("CPF_CNPJ_PACOTE_CPF_C", 2))
 CPF_CNPJ_PACOTE_CNPJ_C = int(os.getenv("CPF_CNPJ_PACOTE_CNPJ_C", 10))
 CPF_CNPJ_TIMEOUT = int(os.getenv("CPF_CNPJ_TIMEOUT", 15))
 
-# ------------------------
 # MERCADO PAGO
-# ------------------------
 MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET")
 MP_INCLUDE_PAYER = False
 
-# ------------------------
-# HTTPS / SEGURANÇA (✅ CORRIGIDO PARA MERCADO PAGO)
-# ------------------------
+# HTTPS / SEGURANÇA
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # ✅ Permite redirects e iframes do Mercado Pago
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
     X_FRAME_OPTIONS = 'SAMEORIGIN'
 else:
@@ -343,9 +291,8 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# ------------------------
-# ✅ LOGGING PARA DEBUG (RAILWAY)
-# ------------------------
+
+# LOGGING PARA DEBUG
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

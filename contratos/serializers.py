@@ -22,7 +22,7 @@ class ContratoSerializer(serializers.ModelSerializer):
         model = Contrato
         fields = "__all__"
 
-    # ======================== VALIDAÇÃO PRINCIPAL ========================
+    # VALIDAÇÃO PRINCIPAL
 
     def validate(self, data):
         """
@@ -51,23 +51,23 @@ class ContratoSerializer(serializers.ModelSerializer):
         if freelancer.tipo != "freelancer":
             raise serializers.ValidationError("O campo 'freelancer' deve conter um usuário do tipo freelancer.")
 
-        # 🔹 Se houver proposta vinculada, valida consistência
+        # Se houver proposta vinculada, valida consistência
         if proposta:
             if freelancer != proposta.freelancer:
                 raise serializers.ValidationError("O freelancer deve ser o mesmo da proposta selecionada.")
 
-            # 🔹 Impede contratos duplicados para a mesma proposta
+            # Impede contratos duplicados para a mesma proposta
             if self.instance is None and self.Meta.model.objects.filter(proposta=proposta).exists():
                 raise serializers.ValidationError({"proposta": "Já existe um contrato para esta proposta."})
 
         if data_fim and data_fim <= date.today():
             raise serializers.ValidationError("A data de fim deve ser uma data futura.")
 
-        # 🆕 Validação da data de entrega
+        # Validação da data de entrega
         if data_entrega and data_entrega > date.today():
             raise serializers.ValidationError({"data_entrega": "A data de entrega não pode ser futura."})
 
-        # 🔹 Bloqueio de conclusão manual (só superuser pode forçar)
+        # Bloqueio de conclusão manual (só superuser pode forçar)
         request = self.context.get("request")
         if status_novo == "concluido" and request and not request.user.is_superuser:
             raise serializers.ValidationError(
@@ -76,7 +76,7 @@ class ContratoSerializer(serializers.ModelSerializer):
 
         return data
 
-    # ======================== CRIAÇÃO ========================
+    # CRIAÇÃO 
 
     def create(self, validated_data):
         """

@@ -24,7 +24,7 @@ export default function CadastroUsuario() {
     tipo: "freelancer",
     cpf: "",
     cnpj: "",
-    sou_empresa: false, // ✅ Novo campo
+    sou_empresa: false,
     telefone: "",
     foto_perfil: null,
   });
@@ -34,12 +34,12 @@ export default function CadastroUsuario() {
   const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  // 👁️ controle de visibilidade das senhas
+  // controle de visibilidade das senhas
   const [visivel, setVisivel] = useState({ senha: false, confirmar: false });
 
   const navigate = useNavigate();
 
-  // 🔹 Máscaras (telefone, CPF, CNPJ)
+  // Máscaras (telefone, CPF, CNPJ)
   function formatarTelefone(valor) {
     if (!valor) return "";
     let numeros = valor.replace(/\D/g, "");
@@ -76,7 +76,7 @@ export default function CadastroUsuario() {
     const { name, value, checked, files } = e.target;
 
     if (name === "sou_empresa") {
-      // ✅ Se desmarcar "sou empresa", apaga CNPJ
+      // Se desmarcar "sou empresa", apaga CNPJ
       setForm({ ...form, sou_empresa: checked, cnpj: checked ? form.cnpj : "" });
     } else if (name === "foto_perfil") {
       setForm({ ...form, [name]: files[0] });
@@ -309,7 +309,7 @@ export default function CadastroUsuario() {
               </div>
               {erros.tipo && <div className="error-msg">{erros.tipo}</div>}
 
-              {/* ✅ Checkbox Sou Empresa */}
+              {/* Checkbox Sou Empresa */}
               {form.tipo === "contratante" && (
                 <div className="form-check mb-3">
                   <input

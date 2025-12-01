@@ -1,13 +1,10 @@
-// src/Paginas/DetalhesTrabalho.jsx - VERSÃO COMPLETA E AJUSTADA
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../Servicos/Api";
 import { getUsuarioLogado } from "../Servicos/Auth";
 import { useParams, useNavigate } from "react-router-dom";
 import "../styles/DetalhesTrabalho.css";
 
-/* =========================
-   Helpers de Status (UI)
-   ========================= */
+/* Helpers de Status */
 function getStatusClass(status) {
   switch ((status || "").toLowerCase()) {
     case "aberto": return "status-aberto";
@@ -623,7 +620,7 @@ export default function DetalhesTrabalho() {
               {trabalho.descricao || "Nenhuma descrição fornecida."}
             </div>
             
-            {/* GRID DE INFORMAÇÕES - ORÇAMENTO, PRAZO, CONTRATANTE, RAMO */}
+            {/* GRID DE INFORMAÇÕES */}
             <div className="trabalho-info-grid">
               {/* ORÇAMENTO */}
               <div className="info-item">
@@ -666,7 +663,7 @@ export default function DetalhesTrabalho() {
                 </div>
               </div>
 
-              {/* ÁREA/RAMO - SEMPRE EXIBE, MESMO SE VAZIO */}
+              {/* ÁREA/RAMO */}
               <div className="info-item">
                 <div className="info-icon">
                   <i className="bi bi-diagram-3"></i>

@@ -1,4 +1,3 @@
-// src/Paginas/MinhasAvaliacoes.jsx - Redesign Moderno
 import React, { useEffect, useState, useContext, useMemo } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";

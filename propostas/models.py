@@ -10,7 +10,7 @@ class Proposta(models.Model):
         ('recusada', 'Recusada'),
     )
     
-    # 🔹 Cada proposta está vinculada a um trabalho específico
+    # Cada proposta está vinculada a um trabalho específico
     trabalho = models.ForeignKey(
         Trabalho,
         on_delete=models.CASCADE,
@@ -18,7 +18,7 @@ class Proposta(models.Model):
         db_index=True,
     )
     
-    # 🔹 Usuário freelancer que enviou a proposta
+    # Usuário freelancer que enviou a proposta
     freelancer = models.ForeignKey(
         Usuario,
         on_delete=models.CASCADE,
@@ -37,7 +37,7 @@ class Proposta(models.Model):
         db_index=True,
     )
     
-    # 🔹 Controle de reenvio/histórico
+    # Controle de reenvio/histórico
     revisao_de = models.ForeignKey(
         'self',
         null=True,
@@ -53,7 +53,7 @@ class Proposta(models.Model):
         help_text="Explique o que mudou nesta nova proposta (valor/escopo/prazo)."
     )
     
-    # 🆕 NOVO: Motivo da recusa pelo contratante
+    # Motivo da recusa pelo contratante
     motivo_recusa = models.TextField(
         blank=True,
         default="",
@@ -80,7 +80,7 @@ class Proposta(models.Model):
     def __str__(self):
         return f"Proposta de {self.freelancer.nome} para o trabalho '{self.trabalho.titulo}'"
     
-    # 🔎 Útil no front/serializers
+    # Útil no front/serializers
     @property
     def is_reenvio(self) -> bool:
         return (self.numero_envio or 1) > 1

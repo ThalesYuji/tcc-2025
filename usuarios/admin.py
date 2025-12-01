@@ -1,4 +1,3 @@
-# usuarios/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import Usuario
@@ -6,7 +5,6 @@ from .models import Usuario
 
 @admin.register(Usuario)
 class UsuarioAdmin(BaseUserAdmin):
-    # ✅ NECESSÁRIO para autocomplete_fields funcionar
     search_fields = ('email', 'nome', 'cpf', 'cnpj')
     
     # Listagem

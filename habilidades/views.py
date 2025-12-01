@@ -1,4 +1,3 @@
-# habilidades/views.py
 from rest_framework import generics, permissions, filters
 from rest_framework.response import Response
 
@@ -6,9 +5,7 @@ from .models import Habilidade, Ramo
 from .serializers import HabilidadeSerializer, RamoSerializer
 
 
-# ==============================
 # HABILIDADES
-# ==============================
 class HabilidadeListAPIView(generics.ListAPIView):
     """
     Lista todas as habilidades com suporte a busca e ordenação.
@@ -42,9 +39,7 @@ class HabilidadeRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
         return [permissions.IsAdminUser()]
 
 
-# ==============================
-# RAMOS (READ-ONLY)
-# ==============================
+# RAMOS
 class RamoListAPIView(generics.ListAPIView):
     """
     Lista todos os Ramos (vocabulário controlado) para popular selects no frontend.

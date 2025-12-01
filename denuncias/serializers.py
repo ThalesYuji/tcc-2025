@@ -4,18 +4,14 @@ from usuarios.models import Usuario
 from usuarios.serializers import UsuarioSerializer
 
 
-# --------------------------------------------------
-# 🔹 SERIALIZER DAS PROVAS
-# --------------------------------------------------
+# SERIALIZER DAS PROVAS
 class DenunciaProvaSerializer(serializers.ModelSerializer):
     class Meta:
         model = DenunciaProva
         fields = ["id", "arquivo", "data_upload"]
 
 
-# --------------------------------------------------
 # 🔹 SERIALIZER PRINCIPAL DA DENÚNCIA
-# --------------------------------------------------
 class DenunciaSerializer(serializers.ModelSerializer):
     denunciado = serializers.PrimaryKeyRelatedField(
         queryset=Usuario.objects.all(),
@@ -26,7 +22,7 @@ class DenunciaSerializer(serializers.ModelSerializer):
 
     contrato_titulo = serializers.SerializerMethodField()
 
-    # 🔹 Provas anexadas
+    # Provas anexadas
     provas = DenunciaProvaSerializer(many=True, read_only=True)
 
     class Meta:
@@ -50,15 +46,11 @@ class DenunciaSerializer(serializers.ModelSerializer):
             "data_criacao",
         ]
 
-    # --------------------------------------------------
-    # 🔹 TÍTULO (no futuro você pode integrar com contratos)
-    # --------------------------------------------------
+    # TÍTULO
     def get_contrato_titulo(self, obj):
         return "Denúncia geral"
 
-    # --------------------------------------------------
-    # 🔹 VALIDAÇÃO DO MOTIVO
-    # --------------------------------------------------
+    # VALIDAÇÃO DO MOTIVO
     def validate_motivo(self, value: str):
         value = (value or "").strip()
         if not value:
@@ -69,9 +61,7 @@ class DenunciaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O motivo pode ter no máximo 500 caracteres.")
         return value
 
-    # --------------------------------------------------
-    # 🔹 VALIDAÇÕES ESPECIAIS PARA ATUALIZAÇÃO (ADMIN)
-    # --------------------------------------------------
+    # VALIDAÇÕES ESPECIAIS PARA ATUALIZAÇÃO (ADMIN)
     def validate(self, data):
         request = self.context.get("request")
         is_admin = request and request.user and request.user.is_superuser

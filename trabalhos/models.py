@@ -1,11 +1,10 @@
-# trabalhos/models.py
 from django.db import models
 from django.conf import settings
 import unicodedata
 import os
 
 
-# 🔹 Função para normalizar o nome do arquivo (sem acentos, espaços ou caracteres especiais)
+# Função para normalizar o nome do arquivo
 def upload_to_anexos(instance, filename):
     nome, ext = os.path.splitext(filename)
     nome_normalizado = unicodedata.normalize('NFKD', nome).encode('ASCII', 'ignore').decode('ASCII')
@@ -29,14 +28,14 @@ class Trabalho(models.Model):
     orcamento = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='aberto')
 
-    # 🔹 Agora vincula ao contratante (antigo cliente)
+    # vincula ao contratante
     contratante = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='trabalhos_publicados'
     )
 
-    # 🔹 Caso seja um trabalho privado (freelancer específico)
+    # Caso seja um trabalho privado (freelancer específico)
     freelancer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -49,7 +48,7 @@ class Trabalho(models.Model):
 
     anexo = models.FileField(upload_to=upload_to_anexos, blank=True, null=True)
 
-    # 🔹 Ramo (macro-área) opcional para triagem rápida
+    # Ramo
     ramo = models.ForeignKey(
         'habilidades.Ramo',
         on_delete=models.SET_NULL,

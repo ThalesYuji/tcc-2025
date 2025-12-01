@@ -12,11 +12,11 @@ class PermissaoTrabalho(BasePermission):
     def has_object_permission(self, request, view, obj):
         user = request.user
 
-        # 🔹 Admin sempre tem acesso
+        # Admin sempre tem acesso
         if user.is_superuser:
             return True
 
-        # 🔹 Permissão de leitura (GET, HEAD, OPTIONS)
+        # Permissão de leitura (GET, HEAD, OPTIONS)
         if request.method in SAFE_METHODS:
             # Freelancers podem visualizar trabalhos públicos
             if hasattr(obj, "is_privado") and not obj.is_privado:
@@ -24,5 +24,5 @@ class PermissaoTrabalho(BasePermission):
             # Contratante pode visualizar seus próprios trabalhos (mesmo privados)
             return obj.contratante == user
 
-        # 🔹 Edição e exclusão só para o contratante
+        # Edição e exclusão só para o contratante
         return obj.contratante == user

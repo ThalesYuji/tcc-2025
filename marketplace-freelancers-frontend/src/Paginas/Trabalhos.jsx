@@ -91,7 +91,7 @@ const Trabalhos = () => {
     }).format(valor);
   };
 
-  // 🔧 FUNÇÃO CORRIGIDA para formatar data
+  // Formatar data
   const formatarData = (dataString) => {
     if (!dataString) return "Não definido";
     
@@ -126,28 +126,21 @@ const Trabalhos = () => {
     return 'ramo-default';
   };
 
-  // 🔧 CORRIGIDO: Agora usa ramo_detalhes primeiro
   const getRamoNome = (trabalho) => {
-    // Primeiro tenta ramo_detalhes (novo formato do serializer)
     if (trabalho.ramo_detalhes?.nome) {
       return trabalho.ramo_detalhes.nome;
     }
-    // Fallback para formato antigo (ramo como ID)
     if (!trabalho.ramo && !trabalho.ramo_id) return null;
     const ramoId = trabalho.ramo || trabalho.ramo_id;
     const ramoEncontrado = ramos.find(r => String(r.id) === String(ramoId));
     return ramoEncontrado ? ramoEncontrado.nome : trabalho.ramo_nome;
   };
 
-  // 🔧 NOVO: Função para obter habilidades (suporta ambos os formatos)
   const getHabilidades = (trabalho) => {
-    // Primeiro tenta habilidades_detalhes (novo formato do serializer)
     if (trabalho.habilidades_detalhes && trabalho.habilidades_detalhes.length > 0) {
       return trabalho.habilidades_detalhes.map(h => h.nome);
     }
-    // Fallback para formato antigo (array de strings)
     if (trabalho.habilidades && trabalho.habilidades.length > 0) {
-      // Verifica se é array de objetos ou strings
       if (typeof trabalho.habilidades[0] === 'object') {
         return trabalho.habilidades.map(h => h.nome);
       }
@@ -284,7 +277,7 @@ const Trabalhos = () => {
                     </div>
 
                     <div className="trabalho-body">
-                      {/* 🎯 RAMO/ÁREA - CORRIGIDO */}
+                      {/* RAMO/ÁREA */}
                       {getRamoNome(trabalho) && (
                         <div className={`trabalho-ramo-badge ${getRamoClassName(getRamoNome(trabalho))}`}>
                           <FaLayerGroup />
@@ -294,7 +287,7 @@ const Trabalhos = () => {
 
                       <p className="trabalho-descricao">{trabalho.descricao}</p>
 
-                      {/* 📅 PRAZO */}
+                      {/* PRAZO */}
                       <div className="trabalho-info-item">
                         <FaCalendar className="trabalho-info-icon" />
                         <span className="trabalho-info-label">Prazo:</span>
@@ -303,7 +296,7 @@ const Trabalhos = () => {
                         </span>
                       </div>
 
-                      {/* 💰 ORÇAMENTO - COM LABEL */}
+                      {/* ORÇAMENTO */}
                       <div className="trabalho-info-item">
                         <FaDollarSign className="trabalho-info-icon" />
                         <span className="trabalho-info-label">Orçamento:</span>
@@ -312,7 +305,7 @@ const Trabalhos = () => {
                         </span>
                       </div>
 
-                      {/* 🕐 CRIADO EM */}
+                      {/* CRIADO EM */}
                       <div className="trabalho-info-item">
                         <FaClock className="trabalho-info-icon" />
                         <span className="trabalho-info-label">Criado em:</span>
@@ -321,7 +314,7 @@ const Trabalhos = () => {
                         </span>
                       </div>
 
-                      {/* 👤 CONTRATANTE */}
+                      {/* CONTRATANTE */}
                       <div className="trabalho-info-item">
                         <FaUser className="trabalho-info-icon" />
                         <span className="trabalho-info-label">Contratante:</span>
@@ -334,7 +327,7 @@ const Trabalhos = () => {
                         </span>
                       </div>
 
-                      {/* 🏆 HABILIDADES - CORRIGIDO */}
+                      {/* HABILIDADES */}
                       {habilidadesLista.length > 0 && (
                         <div className="trabalho-habilidades">
                           {habilidadesLista.map((habilidade, index) => (
@@ -345,7 +338,7 @@ const Trabalhos = () => {
                         </div>
                       )}
 
-                      {/* 📎 ANEXO */}
+                      {/* ANEXO */}
                       {trabalho.anexo_url && (
                         <div className="trabalho-info-item">
                           <FaPaperclip className="trabalho-info-icon" />

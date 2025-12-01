@@ -5,7 +5,7 @@ from .models import Mensagem
 from contratos.models import Contrato
 import os
 
-# 🔥 Extensões permitidas
+# Extensões permitidas
 ALLOWED_EXTS = {
     ".jpg", ".jpeg", ".png", ".pdf",
     ".zip", ".rar",
@@ -15,7 +15,7 @@ ALLOWED_EXTS = {
     ".txt", ".csv",
 }
 
-# 🔥 Tamanho máximo em MB
+# Tamanho máximo em MB
 MAX_FILE_MB = 20
 
 class MensagemSerializer(serializers.ModelSerializer):
@@ -122,14 +122,14 @@ class MensagemSerializer(serializers.ModelSerializer):
         except Contrato.DoesNotExist:
             raise serializers.ValidationError({"contrato": "Contrato inválido."})
 
-        # 🔹 Garante que remetente e destinatário fazem parte do contrato
+        # Garante que remetente e destinatário fazem parte do contrato
         participantes = {contrato_obj.contratante_id, contrato_obj.freelancer_id}
         if user.id not in participantes or dest_id not in participantes:
             raise serializers.ValidationError({
                 "contrato": "Remetente ou destinatário não pertencem a este contrato."
             })
 
-        # 🔹 Validação de anexo
+        # Validação de anexo
         anexo = attrs.get("anexo") or request.FILES.get("anexo")
         if anexo:
             ext = os.path.splitext(anexo.name)[1].lower()
@@ -145,7 +145,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         return attrs
 
     # -------------------------
-    # UPDATE (edição)
+    # UPDATE
     # -------------------------
     def update(self, instance, validated_data):
         """
@@ -167,13 +167,13 @@ class MensagemSerializer(serializers.ModelSerializer):
 
         request = self.context["request"]
 
-        # 🔹 Remove anexo se solicitado
+        # Remove anexo se solicitado
         if request.data.get("remover_anexo") == "true":
             if instance.anexo:
                 instance.anexo.delete(save=False)
             instance.anexo = None
 
-        # 🔹 Substitui anexo se houver novo upload
+        # Substitui anexo se houver novo upload
         novo_anexo = request.FILES.get("anexo")
         if novo_anexo:
             # Apaga o antigo antes de substituir

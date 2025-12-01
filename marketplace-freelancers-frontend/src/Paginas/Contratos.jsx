@@ -1,4 +1,3 @@
-// src/Paginas/Contratos.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, Link } from "react-router-dom";
@@ -12,14 +11,14 @@ export default function Contratos() {
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Estados para paginação - PADRONIZADOS
+  // Estados para paginação
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
   const [numPages, setNumPages] = useState(1);
 
   const navigate = useNavigate();
 
-  // Função para buscar contratos - PADRONIZADA
+  // Função para buscar contratos
   function buscarContratos(filtros = {}) {
     if (!usuarioLogado) return;
     

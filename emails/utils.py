@@ -1,4 +1,3 @@
-# emails/utils.py
 import sendgrid
 from sendgrid.helpers.mail import Mail
 from django.conf import settings

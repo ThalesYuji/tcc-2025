@@ -1,4 +1,3 @@
-// src/Paginas/CheckoutRetorno.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
@@ -15,9 +14,9 @@ export default function CheckoutRetorno() {
 
   // Estados de exibição
   const [msg, setMsg] = useState("Confirmando pagamento com o servidor...");
-  const [tipo, setTipo] = useState("info"); // info | sucesso | erro
+  const [tipo, setTipo] = useState("info");
 
-  // ⚙️ Fallback do webhook: tenta confirmar no backend
+  // Fallback do webhook: tenta confirmar no backend
   useEffect(() => {
     (async () => {
       try {
@@ -27,12 +26,11 @@ export default function CheckoutRetorno() {
           external_reference: externalReference,
         });
       } catch {
-        // silencioso — o polling continuará tentando
       }
     })();
   }, [paymentId, externalReference]);
 
-  // ✅ Redireciona automaticamente quando o pagamento é confirmado
+  // Redireciona automaticamente quando o pagamento é confirmado
   useEffect(() => {
     if (tipo !== "sucesso") return;
     const t = setTimeout(() => {
@@ -41,7 +39,7 @@ export default function CheckoutRetorno() {
     return () => clearTimeout(t);
   }, [tipo, navigate]);
 
-  // 🔁 Polling automático a cada 3s
+  // Polling automático a cada 3s
   useEffect(() => {
     let parar = false;
     let tentativas = 0;
@@ -52,22 +50,18 @@ export default function CheckoutRetorno() {
       try {
         let pagamento = null;
 
-        // 1️⃣ Nova rota preferida: consulta direta por payment_id (não depende de PK local)
+        // consulta direta por payment_id
         if (paymentId) {
           try {
             const res = await api.get("/pagamentos/consultar-status-mp", {
               params: { payment_id: paymentId },
             });
 
-            // Dois formatos possíveis:
-            // a) { fonte: "local+mp", local: {...}, mp: {...} }
-            // b) { fonte: "mp", mp: {...} }   (ainda sem registro local)
             if (res?.data?.fonte === "local+mp") {
-              pagamento = res.data.local; // já vem no mesmo formato do serializer
+              pagamento = res.data.local; 
             } else if (res?.data?.fonte === "mp") {
               const mp = res.data.mp || {};
               const st = String(mp.status || "").toLowerCase();
-              // normaliza para rótulos locais
               if (st === "approved") {
                 setTipo("sucesso");
                 setMsg("Pagamento aprovado com sucesso!");
@@ -83,15 +77,12 @@ export default function CheckoutRetorno() {
                 setMsg("Aguardando confirmação do pagamento...");
               }
             } else {
-              // Compatibilidade: alguns backends podem retornar diretamente o serializer
               pagamento = res.data;
             }
           } catch {
-            // ignora 404/409 aqui; seguimos para o fallback
           }
         }
 
-        // 2️⃣ Fallback por external_reference: varre lista e tenta achar
         if (!pagamento && (paymentId || externalReference)) {
           try {
             const resp = await api.get("/pagamentos/?page_size=50");
@@ -102,11 +93,10 @@ export default function CheckoutRetorno() {
                 (externalReference && String(p.contrato?.id) === String(externalReference))
             );
           } catch {
-            // mantemos silencioso
           }
         }
 
-        // 3️⃣ Atualiza status na tela (quando houver registro local)
+        // 3️Atualiza status na tela (quando houver registro local)
         if (pagamento) {
           const statusLocal = pagamento.status;
           if (statusLocal === "aprovado") {
@@ -133,7 +123,7 @@ export default function CheckoutRetorno() {
 
       tentativas += 1;
 
-      // 4️⃣ Timeout após ~3 minutos
+      // Timeout após 3 minutos
       if (tentativas >= 60) {
         setTipo("erro");
         setMsg("Tempo limite atingido. Verifique seus contratos manualmente.");

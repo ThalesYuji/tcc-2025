@@ -1,10 +1,5 @@
-# usuarios/views.py
-
-# 🔹 Bibliotecas padrão Python
 import threading
 import time
-
-# 🔹 Django
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -12,14 +7,14 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Q, Count
 
-# 🔹 Django REST Framework
+# Django REST Framework
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 
-# 🔹 Modelos e Serializers locais
+# Modelos e Serializers locais
 from .models import Usuario
 from .serializers import (
     UsuarioSerializer,
@@ -29,14 +24,14 @@ from .serializers import (
     PasswordResetConfirmSerializer,
 )
 
-# 🔹 Permissões e utilidades do app
+# Permissões e utilidades do app
 from .permissoes import PermissaoUsuario
 from notificacoes.utils import enviar_notificacao
 
-# 🔹 Integrações externas
+# Integrações externas
 from emails.utils import enviar_email_sendgrid  # ✅ Envio de e-mails via API SendGrid
 
-# 🔹 Outros apps relacionados
+# Outros apps relacionados
 from avaliacoes.models import Avaliacao
 from avaliacoes.serializers import AvaliacaoSerializer
 from propostas.models import Proposta
@@ -58,7 +53,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - /usuarios/me/resumo/ (GET)
     """
     serializer_class = UsuarioSerializer
-    queryset = Usuario.objects.all().order_by("-id")  # ✅ ordenação global
+    queryset = Usuario.objects.all().order_by("-id") 
 
     def get_permissions(self):
         if self.action == "create":
@@ -70,10 +65,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         elif self.action in [
             "update", "partial_update", "destroy",
             "alterar_senha_me", "excluir_conta_me", "resumo",
-            "desativar_me", "reativar_me",   # ← novos endpoints "me"
+            "desativar_me", "reativar_me",  
         ]:
-            # Para ações "me/*", não precisamos checar PermissaoUsuario por ID.
-            # Mantemos PermissaoUsuario para update/destroy por ID.
+            
             if self.action in ["update", "partial_update", "destroy"]:
                 return [IsAuthenticated(), PermissaoUsuario()]
             return [IsAuthenticated()]
@@ -104,7 +98,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
         return Usuario.objects.none()
 
-    # ------------------ PERFIL PÚBLICO ------------------
+    # PERFIL PÚBLICO
     @action(
         detail=True,
         methods=["get"],
@@ -134,7 +128,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = UsuarioPublicoSerializer(usuario, context={"request": request})
         return Response(serializer.data)
 
-    # ------------------ AVALIAÇÕES PÚBLICAS ------------------
+    # AVALIAÇÕES PÚBLICAS
     @action(
         detail=True,
         methods=["get"],
@@ -158,7 +152,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = AvaliacaoSerializer(avaliacoes, many=True, context={"request": request})
         return Response(serializer.data)
 
-    # ------------------ MÉTRICAS DE PERFORMANCE ------------------
+    # MÉTRICAS DE PERFORMANCE
     @action(
         detail=True,
         methods=["get"],
@@ -220,7 +214,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             "contratos_cancelados": cancelados,
         })
 
-    # ------------------ DADOS PÚBLICOS (USADO NA DENÚNCIA) ------------------
+    # DADOS PÚBLICOS
     @action(
         detail=True,
         methods=["get"],
@@ -245,7 +239,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             "email": usuario.email,
         })
 
-    # ------------------ ALTERAR SENHA (ME) ------------------
+    # ALTERAR SENHA
     @action(detail=False, methods=["post"], url_path="me/alterar_senha", permission_classes=[IsAuthenticated])
     def alterar_senha_me(self, request):
         """Troca a senha do usuário logado (não depende de {id})."""
@@ -264,7 +258,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         )
         return Response({"mensagem": "Senha alterada com sucesso!"}, status=200)
 
-    # ------------------ EXCLUIR CONTA (ME) ------------------
+    # EXCLUIR CONTA
     @action(detail=False, methods=["post"], url_path="me/excluir_conta", permission_classes=[IsAuthenticated])
     def excluir_conta_me(self, request):
         """Exclui a conta do usuário logado, sem depender do get_queryset()."""
@@ -279,7 +273,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         user.delete()
         return Response({"mensagem": "Conta excluída com sucesso!"}, status=200)
 
-    # ------------------ DESATIVAR CONTA (ME) — modo leitura ------------------
+    # DESATIVAR CONTA
     @action(detail=False, methods=["post"], url_path="me/desativar", permission_classes=[IsAuthenticated])
     def desativar_me(self, request):
         """
@@ -300,7 +294,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         )
         return Response({"mensagem": "Conta desativada. Você está em modo leitura."}, status=200)
 
-    # ------------------ REATIVAR CONTA (ME) ------------------
+    # REATIVAR CONTA
     @action(detail=False, methods=["post"], url_path="me/reativar", permission_classes=[IsAuthenticated])
     def reativar_me(self, request):
         """Reativa a conta do usuário logado (sai do modo leitura)."""
@@ -316,7 +310,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         )
         return Response({"mensagem": "Conta reativada com sucesso."}, status=200)
 
-    # ------------------ RESUMO ------------------
+    # RESUMO
     @action(detail=False, methods=["get"], url_path="me/resumo")
     def resumo(self, request):
         """
@@ -327,10 +321,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         user = request.user
         resumo = {}
 
-        # 🔹 Importa localmente para evitar dependências circulares
         from denuncias.models import Denuncia
 
-        # ----- PROPOSTAS -----
+        # PROPOSTAS
         if user.tipo == "freelancer":
             propostas = Proposta.objects.filter(freelancer=user)
             resumo["enviadas"] = propostas.count()
@@ -342,7 +335,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             resumo["pendentes"] = propostas.filter(status="pendente").count()
             resumo["aceitas"] = propostas.filter(status="aceita").count()
 
-        # ----- AVALIAÇÕES -----
+        # AVALIAÇÕES
         avaliacoes_recebidas = Avaliacao.objects.filter(avaliado=user)
         avaliacoes_enviadas = Avaliacao.objects.filter(avaliador=user)
 
@@ -355,14 +348,14 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             else None
         )
 
-        # ----- DENÚNCIAS -----
+        # DENÚNCIAS
         resumo["denunciasEnviadas"] = Denuncia.objects.filter(denunciante=user).count()
         resumo["denunciasRecebidas"] = Denuncia.objects.filter(denunciado=user).count()
 
         return Response(resumo)
 
 
-# ------------------ USUÁRIO LOGADO ------------------
+# USUÁRIO LOGADO
 class UsuarioMeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -380,7 +373,7 @@ class UsuarioMeAPIView(APIView):
         return Response(serializer.errors, status=400)
 
 
-# ------------------ RECUPERAÇÃO DE SENHA (ASSÍNCRONA) ------------------
+# RECUPERAÇÃO DE SENHA
 def enviar_email_async(destinatario, assunto, corpo_texto, corpo_html):
     """Executa o envio de e-mail de redefinição em uma thread separada."""
     try:

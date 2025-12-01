@@ -1,4 +1,3 @@
-// src/Paginas/EditarTrabalho.jsx - REDESIGN COMPLETO NO PADRÃO CADASTROTRABALHO
 import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useParams } from "react-router-dom";
@@ -41,7 +40,7 @@ export default function EditarTrabalho() {
   const [removerAnexo, setRemoverAnexo] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  // 🔹 Estados do Ramo - NOVO: igual ao CadastroTrabalho
+  // Estados do Ramo
   const [ramoSelecionado, setRamoSelecionado] = useState("");
   const [ramoInput, setRamoInput] = useState("");
   const [showRamoSugestoes, setShowRamoSugestoes] = useState(false);
@@ -68,7 +67,7 @@ export default function EditarTrabalho() {
     "Data Science", "DevOps", "UI/UX", "Backend", "Frontend",
   ];
 
-  // 🔹 Filtrar sugestões de ramos conforme digitação
+  // Filtrar sugestões de ramos conforme digitação
   const ramoSugestoesFiltradas = useMemo(() => {
     if (!ramoInput.trim()) return [];
     const termo = ramoInput.toLowerCase();
@@ -78,7 +77,7 @@ export default function EditarTrabalho() {
       .slice(0, 5);
   }, [ramoInput, ramos, ramoSelecionado]);
 
-  // 🔄 Carregar dados do trabalho
+  // Carregar dados do trabalho
   useEffect(() => {
     carregarTrabalho();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +113,7 @@ export default function EditarTrabalho() {
 
       setAnexoAtual(trabalho.anexo_url || null);
 
-      // 🔹 Carregar ramo como NOME (não ID)
+      // Carregar ramo como NOME
       if (trabalho.ramo_detalhes?.nome) {
         setRamoSelecionado(trabalho.ramo_detalhes.nome);
       } else {
@@ -170,7 +169,7 @@ export default function EditarTrabalho() {
     setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
-  // 🔹 Handlers do Ramo
+  // Handlers do Ramo
   const handleRamoInput = (e) => {
     const valor = e.target.value;
     setRamoInput(valor);
@@ -385,7 +384,7 @@ export default function EditarTrabalho() {
           </div>
         )}
 
-        {/* Botão Voltar - MOVIDO AQUI */}
+        {/* Botão Voltar */}
         <div style={{ marginBottom: "var(--space-xl)" }}>
           <button onClick={() => navigate("/trabalhos")} className="btn btn-primary">
             <i className="bi bi-arrow-left"></i>
@@ -393,7 +392,6 @@ export default function EditarTrabalho() {
           </button>
         </div>
 
-        {/* Layout Criativo em 2 Colunas */}
         <div className="ct-creative-layout">
           {/* Coluna Esquerda - Preview Visual */}
           <div className="ct-preview-column">

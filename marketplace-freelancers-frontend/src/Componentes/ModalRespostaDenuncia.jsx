@@ -1,4 +1,3 @@
-// src/Componentes/ModalRespostaDenuncia.jsx - Versão Atualizada (sem status)
 import React, { useState } from "react";
 import api from "../Servicos/Api";
 import "../styles/ModalRespostaDenuncia.css";
@@ -9,7 +8,7 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
 
-  // 👉 Apenas envia a resposta_admin
+  // Apenas envia a resposta_admin
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -50,7 +49,7 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
     }
   };
 
-  // 👉 Fechar modal com ESC
+  // Fechar modal com ESC
   React.useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") onClose();

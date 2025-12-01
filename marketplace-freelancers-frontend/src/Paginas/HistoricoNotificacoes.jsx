@@ -1,4 +1,3 @@
-// src/Paginas/HistoricoNotificacoes.jsx
 import React, { useEffect, useState } from "react";
 import api from "../Servicos/Api";
 import { useNavigate } from "react-router-dom";
@@ -69,7 +68,7 @@ export default function HistoricoNotificacoes() {
 
   const navigate = useNavigate();
 
-  // Buscar notificações - MANTENDO A LÓGICA ORIGINAL
+  // Buscar notificações
   async function fetchNotificacoes(url = "/notificacoes/") {
     setCarregando(true);
     setErro("");
@@ -105,7 +104,7 @@ export default function HistoricoNotificacoes() {
     fetchNotificacoes();
   }, []);
 
-  // Paginação - NOVA LÓGICA IGUAL AOS TRABALHOS
+  // Paginação
   function anterior() {
     if (prevPage) {
       fetchNotificacoes(prevPage);
@@ -170,7 +169,7 @@ export default function HistoricoNotificacoes() {
     <div className="notificacoes-page">
       <div className="page-container">
         
-        {/* Header igual aos trabalhos */}
+        {/* Header */}
         <div className="notificacoes-header">
           <div className="notificacoes-title">
             <div className="notificacoes-title-icon">
@@ -297,7 +296,7 @@ export default function HistoricoNotificacoes() {
           </div>
         )}
 
-        {/* Paginação igual aos trabalhos - APENAS ESTA PARTE MUDOU */}
+        {/* Paginação */}
         {numPages > 1 && (
           <div className="trabalhos-pagination">
             <button 

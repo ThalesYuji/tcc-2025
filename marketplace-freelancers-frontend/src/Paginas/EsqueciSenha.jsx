@@ -1,4 +1,3 @@
-// src/Paginas/EsqueciSenha.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { FaEnvelope, FaCheckCircle, FaArrowLeft } from "react-icons/fa";
@@ -30,7 +29,6 @@ export default function EsqueciSenha() {
 
     setCarregando(true);
     try {
-      // ✅ Agora usa o api.js (Railway)
       await api.post("/password-reset/", { email: email.trim() });
       setMensagem(true);
     } catch (err) {

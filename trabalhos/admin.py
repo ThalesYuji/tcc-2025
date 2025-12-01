@@ -1,4 +1,3 @@
-# trabalhos/admin.py
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 from .models import Trabalho
@@ -6,7 +5,7 @@ from .models import Trabalho
 
 @admin.register(Trabalho)
 class TrabalhoAdmin(admin.ModelAdmin):
-    # 🧭 Listagem
+    # Listagem
     list_display = (
         "id",
         "titulo",
@@ -22,7 +21,6 @@ class TrabalhoAdmin(admin.ModelAdmin):
     list_select_related = ("contratante", "freelancer", "ramo")
     list_filter = ("status", "is_privado", "ramo", "prazo", "criado_em")
     
-    # ✅ CORRIGIDO: sem referências a 'username'
     search_fields = (
         "titulo",
         "descricao",
@@ -35,7 +33,7 @@ class TrabalhoAdmin(admin.ModelAdmin):
     )
     ordering = ("-criado_em", "-id")
     
-    # 📝 Formulário
+    # Formulário
     readonly_fields = ("criado_em", "atualizado_em", "anexo_link")
     autocomplete_fields = ("contratante", "freelancer")
     filter_horizontal = ("habilidades",)
@@ -62,12 +60,12 @@ class TrabalhoAdmin(admin.ModelAdmin):
         }),
     )
     
-    # ⚡ Otimização do queryset
+    # Otimização do queryset
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related("contratante", "freelancer", "ramo").prefetch_related("habilidades")
     
-    # 🧩 Colunas auxiliares
+    # Colunas auxiliares
     def contratante_name(self, obj):
         u = obj.contratante
         if not u:
@@ -88,7 +86,7 @@ class TrabalhoAdmin(admin.ModelAdmin):
         return "—"
     anexo_link.short_description = "Anexo"
     
-    # 🛠️ Ações em massa
+    # Ações em massa
     actions = ["marcar_como_concluido", "marcar_como_cancelado", "marcar_como_em_andamento"]
     
     def marcar_como_concluido(self, request, queryset):

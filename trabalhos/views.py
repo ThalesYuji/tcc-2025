@@ -1,6 +1,3 @@
-# trabalhos/views.py
-
-# 🧩 DRF e Django
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,11 +7,11 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q
 
-# 🗂️ Modelos e Serializers do app
+# Modelos e Serializers do app
 from .models import Trabalho
 from .serializers import TrabalhoSerializer
 
-# 🔔 Notificações e dependências externas
+# Notificações e dependências externas
 from notificacoes.utils import enviar_notificacao
 from habilidades.models import Habilidade, Ramo
 
@@ -26,7 +23,7 @@ class TrabalhoAPIView(APIView):
     - POST: cria um trabalho (apenas contratantes). Aceita upload (imagem/arquivos).
     """
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # ✅ aceita uploads de arquivos
+    parser_classes = [MultiPartParser, FormParser] 
 
     def get(self, request):
         """
@@ -40,14 +37,13 @@ class TrabalhoAPIView(APIView):
         """
         usuario = request.user
 
-        # ---------- Query params ----------
         busca = (request.query_params.get("busca") or "").strip()
         habilidade_param = (request.query_params.get("habilidade") or "").strip()
         ramo_param = (request.query_params.get("ramo") or "").strip()
         status_param = (request.query_params.get("status") or "").strip().lower()
         ver_todos_contratante = (request.query_params.get("todos") or "").strip() in ("1", "true", "True")
 
-        # paginação defensiva
+        # paginação
         try:
             page = max(1, int(request.query_params.get("page", 1)))
         except ValueError:
@@ -57,12 +53,11 @@ class TrabalhoAPIView(APIView):
         except ValueError:
             page_size = 6
 
-        # ---------- Base conforme o tipo do usuário ----------
+        # Base conforme o tipo do usuário
         if usuario.is_superuser:
             trabalhos = Trabalho.objects.all()
         elif getattr(usuario, "tipo", None) == "contratante":
             # Por padrão, contratante vê apenas os trabalhos que publicou.
-            # Se quiser ver também a vitrine pública, passe ?todos=1.
             if ver_todos_contratante:
                 trabalhos = Trabalho.objects.filter(
                     Q(contratante=usuario) |
@@ -71,16 +66,12 @@ class TrabalhoAPIView(APIView):
             else:
                 trabalhos = Trabalho.objects.filter(contratante=usuario)
         else:
-            # freelancer vê:
-            # - públicos
-            # - privados destinados a ele
             trabalhos = Trabalho.objects.filter(
                 Q(is_privado=False) |
                 Q(is_privado=True, freelancer=usuario)
             )
 
-        # ---------- Filtros: busca textual ----------
-        if busca:
+        #Filtros
             trabalhos = trabalhos.filter(
                 Q(titulo__icontains=busca) |
                 Q(descricao__icontains=busca) |
@@ -88,7 +79,7 @@ class TrabalhoAPIView(APIView):
                 Q(ramo__nome__icontains=busca)
             ).distinct()
 
-        # ---------- Filtro por habilidade (id ou nome exato) ----------
+        #Filtro por habilidade
         if habilidade_param:
             habilidade_obj = None
             try:
@@ -99,10 +90,9 @@ class TrabalhoAPIView(APIView):
             if habilidade_obj:
                 trabalhos = trabalhos.filter(habilidades=habilidade_obj)
             else:
-                # nada encontrado para o filtro → zera
                 trabalhos = trabalhos.none()
 
-        # ---------- Filtro por ramo (id ou nome exato) ----------
+        # Filtro por ramo
         if ramo_param:
             ramo_obj = None
             try:
@@ -115,15 +105,14 @@ class TrabalhoAPIView(APIView):
             else:
                 trabalhos = trabalhos.none()
 
-        # ---------- Filtro por status ----------
+        # Filtro por status
         if status_param:
             trabalhos = trabalhos.filter(status=status_param)
 
-        # ---------- Otimização + Ordenação ----------
+        # Otimização + Ordenação
         trabalhos = trabalhos.select_related("contratante", "freelancer", "ramo").prefetch_related("habilidades")
         trabalhos = trabalhos.order_by("-criado_em", "-id")
 
-        # ---------- Paginação manual ----------
         total = trabalhos.count()
         start = (page - 1) * page_size
         end = start + page_size
@@ -147,7 +136,7 @@ class TrabalhoAPIView(APIView):
         - Apenas contratantes podem criar.
         - Dispara notificações: se privado → apenas ao freelancer-alvo; senão → a todos os freelancers.
         """
-        # ✅ Garantia de permissão
+        # Garantia de permissão
         if not (request.user.is_superuser or getattr(request.user, "tipo", None) == "contratante"):
             return Response({"erro": "Apenas contratantes podem publicar trabalhos."}, status=status.HTTP_403_FORBIDDEN)
 
@@ -157,17 +146,17 @@ class TrabalhoAPIView(APIView):
 
         trabalho = serializer.save()
 
-        # 🔔 Disparo de notificações
+        # Disparo de notificações
         from usuarios.models import Usuario
         if trabalho.is_privado and trabalho.freelancer:
-            # privado → só para o freelancer selecionado
+            # privado só para o freelancer selecionado
             enviar_notificacao(
                 usuario=trabalho.freelancer,
                 mensagem=f"Você recebeu um trabalho privado: '{trabalho.titulo}'.",
                 link=f"/trabalhos/detalhes/{trabalho.id}",
             )
         else:
-            # público → para todos os freelancers
+            # público para todos os freelancers
             freelancers = Usuario.objects.filter(tipo="freelancer").only("id")
             for f in freelancers:
                 enviar_notificacao(
@@ -198,13 +187,13 @@ class TrabalhoDetalheAPIView(APIView):
         if trabalho.is_privado:
             # privado: apenas contratante dono e o freelancer convidado
             return (trabalho.contratante_id == user.id) or (trabalho.freelancer_id == user.id)
-        # público: qualquer autenticado (no seu app, só usuários autenticados usam)
+        # público: qualquer autenticad
         return True
 
     def get(self, request, pk):
         trabalho = self.get_object(pk)
 
-        # 🔐 Visibilidade
+        # Visibilidade
         if not self._pode_ver(request.user, trabalho):
             return Response({"erro": "Você não tem permissão para visualizar este trabalho."},
                             status=status.HTTP_403_FORBIDDEN)
@@ -216,7 +205,7 @@ class TrabalhoDetalheAPIView(APIView):
         """Atualização total."""
         trabalho = self.get_object(pk)
 
-        # 🔐 Permissão de edição
+        # Permissão de edição
         if not (request.user.is_superuser or request.user.id == trabalho.contratante_id):
             return Response({"erro": "Você não tem permissão para editar este trabalho."},
                             status=status.HTTP_403_FORBIDDEN)
@@ -227,7 +216,7 @@ class TrabalhoDetalheAPIView(APIView):
 
         trabalho_atualizado = serializer.save()
 
-        # 🔔 Notificações
+        # Notificações
         from usuarios.models import Usuario
         if trabalho_atualizado.is_privado and trabalho_atualizado.freelancer:
             enviar_notificacao(
@@ -250,7 +239,7 @@ class TrabalhoDetalheAPIView(APIView):
         """Atualização parcial."""
         trabalho = self.get_object(pk)
 
-        # 🔐 Permissão de edição
+        # Permissão de edição
         if not (request.user.is_superuser or request.user.id == trabalho.contratante_id):
             return Response({"erro": "Você não tem permissão para editar este trabalho."},
                             status=status.HTTP_403_FORBIDDEN)
@@ -261,7 +250,7 @@ class TrabalhoDetalheAPIView(APIView):
 
         trabalho_atualizado = serializer.save()
 
-        # 🔔 Notificações (mesma regra do PUT)
+        # Notificações 
         from usuarios.models import Usuario
         if trabalho_atualizado.is_privado and trabalho_atualizado.freelancer:
             enviar_notificacao(
@@ -283,7 +272,7 @@ class TrabalhoDetalheAPIView(APIView):
     def delete(self, request, pk):
         trabalho = self.get_object(pk)
 
-        # 🔐 Permissão de exclusão
+        # Permissão de exclusão
         if not (request.user.is_superuser or request.user.id == trabalho.contratante_id):
             return Response({"erro": "Você não tem permissão para excluir este trabalho."},
                             status=status.HTTP_403_FORBIDDEN)
@@ -294,7 +283,7 @@ class TrabalhoDetalheAPIView(APIView):
 
         trabalho.delete()
 
-        # 🔔 Notificações pós-exclusão
+        # Notificações pós-exclusão
         from usuarios.models import Usuario
         if is_privado and freelancer_destino:
             enviar_notificacao(
@@ -311,7 +300,6 @@ class TrabalhoDetalheAPIView(APIView):
                     link="/trabalhos",
                 )
 
-        # 204 tradicional não tem corpo, mas mantive a mensagem por compatibilidade
         return Response({"mensagem": "Trabalho excluído com sucesso."}, status=status.HTTP_204_NO_CONTENT)
 
 
@@ -328,14 +316,13 @@ class TrabalhoAceitarAPIView(APIView):
 
         trabalho = get_object_or_404(Trabalho, pk=pk)
 
-        # ✅ Somente o freelancer convidado pode aceitar
+        # Somente o freelancer convidado pode aceitar
         if not trabalho.is_privado or request.user.id != trabalho.freelancer_id:
             return Response(
                 {"erro": "Você não tem permissão para aceitar este trabalho."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Transação atômica: evita contratos duplicados sob concorrência
         with transaction.atomic():
             # Se já estiver em andamento/recusado/concluído/cancelado, bloqueia
             if trabalho.status in ("em_andamento", "recusado", "concluido", "cancelado"):
@@ -348,7 +335,7 @@ class TrabalhoAceitarAPIView(APIView):
             trabalho.status = "em_andamento"
             trabalho.save(update_fields=["status"])
 
-            # Busca proposta (se existir) para herdar valor
+            # Busca proposta
             proposta = Proposta.objects.filter(trabalho=trabalho, freelancer=request.user).first()
 
             # Evita criar contrato duplicado
@@ -365,7 +352,7 @@ class TrabalhoAceitarAPIView(APIView):
                     status="ativo",
                 )
 
-        # 🔔 Notificações
+        # Notificações
         enviar_notificacao(
             usuario=trabalho.contratante,
             mensagem=f"O freelancer aceitou o trabalho privado: '{trabalho.titulo}'. O contrato foi criado automaticamente.",
@@ -394,7 +381,7 @@ class TrabalhoRecusarAPIView(APIView):
     def post(self, request, pk):
         trabalho = get_object_or_404(Trabalho, pk=pk)
 
-        # ✅ Somente o freelancer convidado pode recusar
+        # Somente o freelancer convidado pode recusar
         if not trabalho.is_privado or request.user.id != trabalho.freelancer_id:
             return Response(
                 {"erro": "Você não tem permissão para recusar este trabalho."},
@@ -418,7 +405,7 @@ class TrabalhoRecusarAPIView(APIView):
         if motivo:
             msg += f" Motivo: {motivo}"
 
-        # 🔔 Notifica o contratante
+        # Notifica o contratante
         enviar_notificacao(
             usuario=trabalho.contratante,
             mensagem=msg,

@@ -17,13 +17,11 @@ export default function HistoricoPunicoes() {
   const [tipoFiltro, setTipoFiltro] = useState("Todos");
   const [removendo, setRemovendo] = useState(null);
 
-  // 🔵 novo: modal
+  // modal
   const [modalAberto, setModalAberto] = useState(false);
   const [punicaoSelecionada, setPunicaoSelecionada] = useState(null);
 
-  // ======================================================
-  // 🔄 CARREGAR HISTÓRICO
-  // ======================================================
+  // CARREGAR HISTÓRICO
   async function carregarHistorico() {
     setCarregando(true);
 
@@ -42,9 +40,7 @@ export default function HistoricoPunicoes() {
     carregarHistorico();
   }, []);
 
-  // ======================================================
-  // 🔍 FILTRAGEM
-  // ======================================================
+  // FILTRAGEM
   const punicoesFiltradas = punicoes.filter((p) => {
     const matchTipo = tipoFiltro === "Todos" || p.tipo === tipoFiltro;
     const nomeUsuario = (p.usuario_punido_nome || "").toLowerCase();
@@ -52,9 +48,7 @@ export default function HistoricoPunicoes() {
     return matchTipo && matchBusca;
   });
 
-  // ======================================================
-  // ❌ REMOVER PUNIÇÃO (com modal)
-  // ======================================================
+  // REMOVER PUNIÇÃO
   async function confirmarRemocao() {
     setModalAberto(false);
     const id = punicaoSelecionada;
@@ -109,9 +103,7 @@ export default function HistoricoPunicoes() {
     setModalAberto(false);
   }
 
-  // ======================================================
-  // 🏷️ BADGE DO TIPO
-  // ======================================================
+  // BADGE DO TIPO
   function BadgeTipo({ tipo }) {
     const map = {
       advertencia: { label: "Advertência", cls: "badge-warning" },
@@ -123,9 +115,7 @@ export default function HistoricoPunicoes() {
     return <span className={`hp-badge ${item.cls}`}>{item.label}</span>;
   }
 
-  // ======================================================
   // LOADING
-  // ======================================================
   if (carregando) {
     return (
       <div className="historico-punicoes-page">
@@ -139,15 +129,11 @@ export default function HistoricoPunicoes() {
     );
   }
 
-  // ======================================================
   // 🎨 RENDERIZAÇÃO
-  // ======================================================
   return (
     <div className="historico-punicoes-page">
       
-      {/* ======================= */}
-      {/* 🔵 MODAL DE CONFIRMAÇÃO */}
-      {/* ======================= */}
+      {/* MODAL DE CONFIRMAÇÃO */}
       {modalAberto && (
         <div className="modal-overlay" style={{
           position: "fixed",

@@ -1,4 +1,3 @@
-# habilidades/models.py
 from django.db import models
 
 
@@ -14,7 +13,7 @@ class Ramo(models.Model):
     )
 
     class Meta:
-        ordering = ["nome"]  # lista sempre em ordem alfabética
+        ordering = ["nome"] 
         verbose_name = "Ramo"
         verbose_name_plural = "Ramos"
 
@@ -33,7 +32,7 @@ class Habilidade(models.Model):
     subcategoria = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
-        ordering = ['nome']  # Ordena sempre por nome
+        ordering = ['nome']  
         verbose_name = "Habilidade"
         verbose_name_plural = "Habilidades"
 

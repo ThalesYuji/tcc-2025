@@ -72,7 +72,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     bio = models.TextField(blank=True, null=True)
 
     # ---------------------------
-    # DESATIVAÇÃO VOLUNTÁRIA (modo leitura)
+    # DESATIVAÇÃO VOLUNTÁRIA
     # ---------------------------
     is_suspended_self = models.BooleanField(
         default=False,
@@ -91,9 +91,8 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     )
 
     # ---------------------------
-    # 🔥 PUNIÇÕES ADMINISTRATIVAS (NOVO)
+    # PUNIÇÕES ADMINISTRATIVAS 
     # ---------------------------
-    # suspensão aplicada por admin
     is_suspended_admin = models.BooleanField(
         default=False,
         help_text="Usuário suspenso temporariamente por administrador."

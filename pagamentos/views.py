@@ -41,7 +41,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             Q(contrato__freelancer=user)
         ).distinct()
 
-    # ============ CHECKOUT PRO - Criar preferência ============
+    # CHECKOUT PRO - Criar preferência
     @action(detail=False, methods=['post'], url_path=r'checkout[-_]pro/criar[-_]preferencia')
     def criar_preferencia_checkout_pro(self, request):
         """
@@ -117,7 +117,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
             logger.exception("Erro ao criar preference do Checkout Pro")
             return Response({"erro": f"Erro interno: {e}"}, status=500)
 
-    # -------- CONFIRMAR RETORNO (fallback do webhook) --------
+    # CONFIRMAR RETORNO
     @action(detail=False, methods=['post'], url_path='confirmar_retorno')
     def confirmar_retorno(self, request):
         """
@@ -166,7 +166,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
         return Response(PagamentoSerializer(pagamento, context={"request": request}).data, status=200)
 
-    # ================ CONSULTAR STATUS ================
+    # CONSULTAR STATUS
     @action(detail=True, methods=['get'], url_path='status')
     def consultar_status(self, request, pk=None):
         """
@@ -178,20 +178,20 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         try:
             payment_id_mp = request.query_params.get("payment_id")
 
-            # --- Consulta por payment_id do MP (novo fluxo) ---
+            # Consulta por payment_id do MP
             if payment_id_mp:
                 mp = MercadoPagoService()
                 info = mp.consultar_pagamento(payment_id_mp)
                 if not info:
                     return Response({"detail": "Pagamento não encontrado no Mercado Pago."}, status=404)
 
-                # Tenta resolver o Pagamento local pelo external_reference (id do contrato)
+                # Tenta resolver o Pagamento local
                 extref = info.get("external_reference")
                 pagamento = None
                 if extref:
                     pagamento = self.get_queryset().filter(contrato__id=extref).order_by("-id").first()
 
-                # Se ainda não existir registro local, devolve dados do MP (o webhook pode criar depois)
+                # Se ainda não existir registro local, devolve dados do MP
                 if not pagamento:
                     return Response({"fonte": "mercado_pago", "mp": info}, status=200)
 
@@ -207,7 +207,6 @@ class PagamentoViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(pagamento)
                 return Response({"fonte": "local+mp", "local": serializer.data, "mp": info}, status=200)
 
-            # --- Fluxo antigo: por PK local ---
             pagamento = self.get_object()
             if pagamento.mercadopago_payment_id:
                 mp = MercadoPagoService()
@@ -260,7 +259,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
 
         return Response({"fonte": "mp", "mp": info}, status=200)
 
-    # -------- Helper interno --------
+    # Helper interno
     def _concluir_contrato(self, contrato):
         contrato.status = "concluido"
         contrato.trabalho.status = "concluido"
@@ -278,7 +277,7 @@ class PagamentoViewSet(viewsets.ModelViewSet):
         )
 
 
-# ------------------------ Retorno do Checkout Pro ------------------------
+# Retorno do Checkout Pro
 def mercadopago_retorno(request):
     front_base = (getattr(settings, "FRONT_RETURN_URL", None)
                   or f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')}/checkout/retorno")
@@ -288,7 +287,7 @@ def mercadopago_retorno(request):
     return redirect(destino)
 
 
-# ------------------------ Webhook Mercado Pago ------------------------
+# Webhook Mercado Pago
 @csrf_exempt
 def mercadopago_webhook(request):
     if request.method != "POST":
@@ -358,7 +357,7 @@ def mercadopago_webhook(request):
     return JsonResponse({"status": "ok"}, status=200)
 
 
-# ------------------------ DEV: força aprovação ------------------------
+# DEV força aprovação
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def force_approve_payment(request, pagamento_id: int):

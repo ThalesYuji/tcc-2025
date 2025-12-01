@@ -1,4 +1,3 @@
-// src/Paginas/Dashboard.jsx
 import React, { useContext, useEffect, useState } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -32,14 +31,14 @@ export default function Dashboard() {
     }
   }, [usuarioLogado]);
 
-  // 🔹 Configuração REORGANIZADA dos cards
+  // Configuração dos cards
   const getStatsConfig = () => {
     const avaliacoesEnviadas = resumo?.avaliacoesEnviadas ?? 0;
     const avaliacoesRecebidas = resumo?.avaliacoesRecebidas ?? 0;
     const denunciasEnviadas = resumo?.denunciasEnviadas ?? 0;
     const denunciasRecebidas = resumo?.denunciasRecebidas ?? 0;
 
-    // 🧑‍💻 Painel para FREELANCER
+    // Painel para FREELANCER
     if (usuarioLogado?.tipo === "freelancer") {
       return {
         propostas: [
@@ -100,7 +99,7 @@ export default function Dashboard() {
       };
     }
 
-    // 🧍 Painel para CONTRATANTE
+    // Painel para CONTRATANTE
     return {
       propostas: [
         {

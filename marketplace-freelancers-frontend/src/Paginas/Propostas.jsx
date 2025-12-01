@@ -1,4 +1,3 @@
-// src/Paginas/Propostas.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -26,7 +25,7 @@ export default function Propostas() {
 
   const navigate = useNavigate();
 
-  // Buscar propostas (suporta DRF com paginação ou lista simples)
+  // Buscar propostas
   function buscarPropostas(filtros = {}) {
     if (!usuarioLogado) return;
 
@@ -79,7 +78,6 @@ export default function Propostas() {
   function formatarData(dataStr) {
     if (!dataStr) return "";
     
-    // Adiciona 'Z' se não tiver indicador de timezone para forçar UTC
     const dataISO = dataStr.includes('Z') || dataStr.includes('+') || dataStr.includes('-') 
       ? dataStr 
       : dataStr + 'Z';
@@ -87,7 +85,6 @@ export default function Propostas() {
     const data = new Date(dataISO);
     const agora = new Date();
     
-    // Zera as horas para comparar apenas as datas
     const dataComparar = new Date(data.getFullYear(), data.getMonth(), data.getDate());
     const agoraComparar = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
     
@@ -102,7 +99,7 @@ export default function Propostas() {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: 'UTC' // Força UTC para evitar conversão de fuso
+      timeZone: 'UTC'
     });
   }
 
@@ -463,7 +460,7 @@ export default function Propostas() {
 
                     <div className="proposta-descricao">{proposta.descricao}</div>
 
-                    {/* Motivo da revisão (freelancer explicando o que mudou) */}
+                    {/* Motivo da revisão */}
                     {motivoRevisao && (
                       <div className="proposta-revisao">
                         <i className="bi bi-arrow-repeat"></i>
@@ -474,7 +471,7 @@ export default function Propostas() {
                       </div>
                     )}
 
-                    {/* Feedback do contratante (quando recusada) */}
+                    {/* Feedback do contratante */}
                     {proposta.status === "recusada" && motivoRecusaTexto && (
                       <div className="proposta-recusa">
                         <i className="bi bi-exclamation-circle"></i>

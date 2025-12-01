@@ -6,9 +6,7 @@ from freelancer.storage import MensagensRawStorage
 import os
 
 
-# =========================
 # Upload de anexos
-# =========================
 def mensagem_upload_to(instance: "Mensagem", filename: str) -> str:
     """
     Caminho do arquivo anexo da mensagem.
@@ -20,9 +18,7 @@ def mensagem_upload_to(instance: "Mensagem", filename: str) -> str:
     return f"mensagens/contrato_{instance.contrato_id}/{timezone.now():%Y/%m}/{base}{ext}"
 
 
-# =========================
 # Modelo principal
-# =========================
 class Mensagem(models.Model):
     """
     Mensagem trocada entre contratante e freelancer dentro de um contrato.
@@ -65,7 +61,7 @@ class Mensagem(models.Model):
     data_envio = models.DateTimeField(auto_now_add=True)
     editada_em = models.DateTimeField(null=True, blank=True)
 
-    # 🔹 Novo campo para exclusão lógica
+    # campo para exclusão lógica
     excluida = models.BooleanField(default=False, help_text="Indica se a mensagem foi excluída.")
 
     class Meta:

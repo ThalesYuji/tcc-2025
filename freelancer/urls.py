@@ -1,4 +1,3 @@
-# freelancer/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -24,9 +23,7 @@ from mensagens.views import MensagemViewSet
 from denuncias.views import DenunciaViewSet
 from notificacoes.views import NotificacaoViewSet
 
-# ------------------------
 # Roteador central DRF
-# ------------------------
 router = DefaultRouter()
 router.register(r"usuarios", UsuarioViewSet, basename="usuarios")
 router.register(r"propostas", PropostaViewSet)
@@ -37,9 +34,7 @@ router.register(r"mensagens", MensagemViewSet, basename="mensagem")
 router.register(r"denuncias", DenunciaViewSet)
 router.register(r"notificacoes", NotificacaoViewSet, basename="notificacao")
 
-# ------------------------
 # URLs principais
-# ------------------------
 urlpatterns = [
     path("admin/", admin.site.urls),
 
@@ -47,8 +42,7 @@ urlpatterns = [
     path("mercadopago/", include("pagamentos.urls")),
 
     # JWT
-    path("api/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair")
-    ,
+    path("api/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # Usuário logado

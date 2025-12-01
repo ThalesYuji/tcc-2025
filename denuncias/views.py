@@ -26,9 +26,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
 
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    # ---------------------------------------------------------
-    # 🔍 FILTRO (admin vê tudo, usuários veem suas próprias)
-    # ---------------------------------------------------------
+    # FILTRO (admin vê tudo, usuários veem suas próprias)
     def get_queryset(self):
         user = self.request.user
         tipo = (self.request.query_params.get("tipo") or "").lower()
@@ -47,9 +45,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
 
         return base.filter(denunciante=user)
 
-    # ---------------------------------------------------------
-    # 📨 CRIAÇÃO DA DENÚNCIA (usuário comum)
-    # ---------------------------------------------------------
+    # CRIAÇÃO DA DENÚNCIA (usuário comum)
     def perform_create(self, serializer):
         user = self.request.user
         denunciado = serializer.validated_data.get("denunciado")
@@ -83,12 +79,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
             link=f"/minhas-denuncias?id={instancia.id}"
         )
 
-    # ---------------------------------------------------------
-    # ⭐ AÇÕES ADMINISTRATIVAS DE MODERAÇÃO
-    # (Opção A — marcar procedente NÃO aplica punição)
-    # ---------------------------------------------------------
-
-    # 🔵 1. MARCAR COMO "ANALISANDO"
+    # MARCAR COMO "ANALISANDO"
     @action(detail=True, methods=["patch"], url_path="marcar-analisando")
     def marcar_analisando(self, request, pk=None):
         denuncia = self.get_object()
@@ -101,7 +92,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
 
         return Response({"mensagem": "Denúncia marcada como ANALISANDO."})
 
-    # 🟡 2. MARCAR COMO "PROCEDENTE"
+    # MARCAR COMO "PROCEDENTE"
     @action(detail=True, methods=["patch"], url_path="marcar-procedente")
     def marcar_procedente(self, request, pk=None):
         denuncia = self.get_object()
@@ -135,7 +126,7 @@ class DenunciaViewSet(viewsets.ModelViewSet):
             "denuncia_id": denuncia.id
         })
 
-    # 🔴 3. MARCAR COMO "IMPROCEDENTE"
+    # MARCAR COMO "IMPROCEDENTE"
     @action(detail=True, methods=["patch"], url_path="marcar-improcedente")
     def marcar_improcedente(self, request, pk=None):
         denuncia = self.get_object()

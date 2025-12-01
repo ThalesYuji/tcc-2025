@@ -1,4 +1,3 @@
-// src/Paginas/AvaliacaoContrato.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";

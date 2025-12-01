@@ -1,4 +1,3 @@
-// src/Paginas/CadastrarDenuncia.jsx - Redesign Seguindo Padrão dos Trabalhos
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -166,9 +165,7 @@ export default function CadastrarDenuncia() {
     setProvas((prev) => [...prev, ...validFiles]);
   };
 
-  // =====================
   // Estados de carregamento e erro
-  // =====================
   if (carregando) {
     return (
       <div className="denuncia-page">
@@ -225,9 +222,7 @@ export default function CadastrarDenuncia() {
     );
   }
 
-  // =====================
   // Página principal
-  // =====================
   return (
     <div className="denuncia-page">
       <div className="denuncia-container">

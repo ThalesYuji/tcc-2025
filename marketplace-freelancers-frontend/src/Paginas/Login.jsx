@@ -65,7 +65,7 @@ export default function Login() {
   return (
     <div className="login-bg">
       <div className="login-content">
-        {/* Lado esquerdo (branding) */}
+        {/* Lado esquerdo */}
         <div className="login-left">
           <img
             src="/profreelabr.png"
@@ -120,7 +120,7 @@ export default function Login() {
                 </button>
               </div>
 
-              {/* Link "Esqueci minha senha" */}
+              {/* Esqueci minha senha */}
               <div className="senha-opcoes">
                 <Link to="/esqueci-senha" className="esqueci-senha-link">
                   Esqueci minha senha

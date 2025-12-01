@@ -1,4 +1,3 @@
-// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
@@ -37,7 +36,7 @@ import CheckoutRetorno from "./Paginas/CheckoutRetorno";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// 🔥 NOVA PÁGINA — Histórico de Punições
+// Histórico de Punições
 import HistoricoPunicoes from "./Paginas/HistoricoPunicoes";
 
 import "./App.css";
@@ -111,7 +110,7 @@ function App() {
                       {/* MERCADO PAGO */}
                       <Route path="/checkout/retorno" element={<CheckoutRetorno />} />
 
-                      {/* 🔥 NOVO — HISTÓRICO DE PUNIÇÕES */}
+                      {/* HISTÓRICO DE PUNIÇÕES */}
                       <Route path="/historico-punicoes" element={<HistoricoPunicoes />} />
 
                       {/* CASO A ROTA NÃO EXISTA */}

@@ -1,5 +1,3 @@
-// src/Paginas/PagamentoContrato.jsx
-// Pagamento de contrato - Checkout Pro (Mercado Pago)
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
@@ -16,7 +14,7 @@ export default function PagamentoContrato() {
   const [carregando, setCarregando] = useState(true);
   const [processandoPagamento, setProcessandoPagamento] = useState(false);
 
-  // 🔹 Dados do formulário de endereço (necessários para boleto)
+  // Dados do formulário de endereço
   const [dadosEndereco, setDadosEndereco] = useState({
     cep: "",
     rua: "",
@@ -26,7 +24,7 @@ export default function PagamentoContrato() {
     uf: "",
   });
 
-  // 🔹 Carrega o contrato
+  // Carrega o contrato
   useEffect(() => {
     (async () => {
       try {
@@ -40,7 +38,7 @@ export default function PagamentoContrato() {
     })();
   }, [id]);
 
-  // 🔹 Trata erros vindos do backend
+  // Trata erros vindos do backend
   const handleErro = (error) => {
     let msg = "Erro ao iniciar o pagamento.";
     const data = error?.response?.data;
@@ -58,7 +56,7 @@ export default function PagamentoContrato() {
     setErro(msg);
   };
 
-  // 🔹 Busca endereço por CEP (ViaCEP)
+  // Busca endereço por CEP
   const buscarEnderecoPorCEP = async (cep) => {
     const cepLimpo = cep.replace(/\D/g, "");
     if (cepLimpo.length !== 8) return;
@@ -81,7 +79,7 @@ export default function PagamentoContrato() {
     }
   };
 
-  // 🔹 Atualiza campo do endereço
+  // Atualiza campo do endereço
   const handleEnderecoChange = (campo, valor) => {
     setDadosEndereco(prev => ({ ...prev, [campo]: valor }));
     
@@ -91,7 +89,7 @@ export default function PagamentoContrato() {
     }
   };
 
-  // 🔹 Valida se todos os campos obrigatórios estão preenchidos
+  // Valida se todos os campos obrigatórios estão preenchidos
   const validarDadosEndereco = () => {
     const { cep, rua, numero, bairro, cidade, uf } = dadosEndereco;
     
@@ -123,7 +121,7 @@ export default function PagamentoContrato() {
     return true;
   };
 
-  // 🔹 Cria preferência do Checkout Pro
+  // Cria preferência do Checkout Pro
   const criarPreferenceCheckoutPro = async () => {
     if (!contrato?.id) return;
     
@@ -137,11 +135,11 @@ export default function PagamentoContrato() {
     setProcessandoPagamento(true);
 
     try {
-      // ✅ Envia dados do contrato + endereço completo
+      // Envia dados do contrato + endereço completo
       const payload = {
         contrato_id: contrato.id,
-        // Dados do endereço (necessários para boleto)
-        cep: dadosEndereco.cep.replace(/\D/g, ""), // Remove formatação
+        // Dados do endereço
+        cep: dadosEndereco.cep.replace(/\D/g, ""),
         rua: dadosEndereco.rua,
         numero: dadosEndereco.numero,
         bairro: dadosEndereco.bairro,
@@ -162,7 +160,7 @@ export default function PagamentoContrato() {
     }
   };
 
-  // 🔹 Estados de carregamento e erro
+  // Estados de carregamento e erro
   if (carregando) {
     return (
       <div className="pagamento-container">
@@ -191,7 +189,7 @@ export default function PagamentoContrato() {
     maximumFractionDigits: 2,
   });
 
-  // 🔹 Tela principal
+  // Tela principal
   return (
     <div className="pagamento-container">
       {/* Header */}
@@ -239,7 +237,7 @@ export default function PagamentoContrato() {
             </div>
           </div>
 
-          {/* ✅ Formulário de Endereço (necessário para boleto) */}
+          {/* Formulário de Endereço (necessário para boleto) */}
           <div className="endereco-form">
             <h3>
               <i className="bi bi-geo-alt"></i> Dados para Pagamento

@@ -1,4 +1,3 @@
-// src/Paginas/MinhasDenuncias.jsx - Redesign Moderno
 import React, { useEffect, useState, useContext, useCallback, useMemo } from "react";
 import api from "../Servicos/Api";
 import { UsuarioContext } from "../Contextos/UsuarioContext";

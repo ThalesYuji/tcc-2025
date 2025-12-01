@@ -1,4 +1,3 @@
-// src/Componentes/ModalPunicoes.jsx
 import React, { useState } from "react";
 import {
   aplicarAdvertencia,
@@ -15,7 +14,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
 
   const usuarioPunidoId = denuncia?.denunciado_detalhes?.id;
 
-  // Proteção caso a denúncia venha quebrada (não deve acontecer)
+  // Proteção caso a denúncia venha quebrada
   if (!usuarioPunidoId) {
     return (
       <div className="modal-overlay">
@@ -39,9 +38,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
     );
   }
 
-  // =========================================================
-  // ▶ FUNÇÃO PRINCIPAL: APLICAR PUNIÇÃO
-  // =========================================================
+  // FUNÇÃO PRINCIPAL: APLICAR PUNIÇÃO
   async function aplicar() {
     if (loading) return;
 
@@ -126,9 +123,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
     setLoading(false);
   }
 
-  // =========================================================
-  // ▶ RENDERIZAÇÃO DO MODAL
-  // =========================================================
+  // RENDERIZAÇÃO DO MODAL
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -169,7 +164,7 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
             onChange={(e) => setMotivo(e.target.value)}
           ></textarea>
 
-          {/* Dias (só aparece na suspensão) */}
+          {/* Dias */}
           {tipo === "suspensao" && (
             <>
               <label className="form-label">Dias de Suspensão</label>

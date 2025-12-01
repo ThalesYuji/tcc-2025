@@ -10,17 +10,17 @@ class PermissaoContrato(BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # 🔹 Admin tem acesso total
+        # Admin tem acesso total
         if request.user.is_superuser:
             return True
 
-        # 🔹 Leitura (GET, HEAD, OPTIONS): contratante e freelancer podem visualizar
+        # Leitura (GET, HEAD, OPTIONS): contratante e freelancer podem visualizar
         if request.method in SAFE_METHODS:
             return request.user == obj.contratante or request.user == obj.freelancer
 
-        # 🔹 Exclusão: apenas admin
+        # Exclusão: apenas admin
         if request.method == "DELETE":
             return False
 
-        # 🔹 Edição: apenas contratante
+        # Edição: apenas contratante
         return request.user == obj.contratante

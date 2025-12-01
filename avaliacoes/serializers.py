@@ -4,7 +4,7 @@ from .models import Avaliacao
 from usuarios.models import Usuario
 import re
 
-# 🔹 Palavras proibidas em comentários
+# Palavras proibidas
 PALAVRAS_PROIBIDAS = ['ofensa', 'palavrão', 'xingar', 'idiota', 'burro']
 
 
@@ -28,9 +28,7 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['avaliador', 'avaliado']
 
-    # ----------------------------
     # CAMPOS EXTRAS
-    # ----------------------------
     def get_titulo_trabalho(self, obj):
         if obj.contrato and obj.contrato.trabalho:
             return obj.contrato.trabalho.titulo
@@ -41,9 +39,7 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
             return obj.contrato.trabalho.id
         return None
 
-    # ----------------------------
     # VALIDAÇÕES
-    # ----------------------------
     def validate_nota(self, value):
         if not 1 <= value <= 5:
             raise serializers.ValidationError("A nota deve estar entre 1 e 5.")
@@ -82,11 +78,11 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError("Você não faz parte deste contrato.")
 
-        # 🔹 Só permite avaliação após conclusão
+        # Só permite avaliação após conclusão
         if contrato.status != 'concluido':
             raise serializers.ValidationError("A avaliação só pode ser feita após a conclusão do contrato.")
 
-        # 🔹 Bloqueia avaliações duplicadas
+        # Bloqueia avaliações duplicadas
         if Avaliacao.objects.filter(contrato=contrato, avaliador=avaliador).exists():
             raise serializers.ValidationError("Você já avaliou esse contrato.")
 
@@ -96,9 +92,7 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
 
         return data
 
-    # ----------------------------
     # CREATE / UPDATE
-    # ----------------------------
     def create(self, validated_data):
         avaliacao = super().create(validated_data)
         self.atualizar_nota_media(avaliacao.avaliado)
@@ -109,9 +103,7 @@ class AvaliacaoSerializer(serializers.ModelSerializer):
         self.atualizar_nota_media(avaliacao.avaliado)
         return avaliacao
 
-    # ----------------------------
     # MÉTODO AUXILIAR
-    # ----------------------------
     def atualizar_nota_media(self, usuario):
         """
         Atualiza a nota média do usuário avaliado

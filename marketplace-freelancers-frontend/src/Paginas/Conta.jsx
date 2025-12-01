@@ -1,4 +1,3 @@
-// src/Paginas/Conta.jsx
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -7,12 +6,12 @@ import "../styles/Conta.css";
 export default function Conta() {
   const { usuarioLogado, setUsuarioLogado } = useContext(UsuarioContext);
 
-  // ===== Flags derivadas =====
+  // Flags derivadas
   const suspenso = Boolean(
     usuarioLogado?.modo_leitura || usuarioLogado?.is_suspended_self
   );
 
-  // ========================= Estado da página / perfil =========================
+  // Estado da página / perfil
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
     nome: usuarioLogado?.nome || "",
@@ -27,14 +26,14 @@ export default function Conta() {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [notaMedia, setNotaMedia] = useState(usuarioLogado?.nota_media);
 
-  // ========================= Exclusão de conta (modal) ========================
+  // Exclusão de conta
   const [showModalExcluir, setShowModalExcluir] = useState(false);
   const [senhaExcluir, setSenhaExcluir] = useState("");
   const [excluindo, setExcluindo] = useState(false);
   const [feedbackExcluir, setFeedbackExcluir] = useState("");
   const [erroExcluir, setErroExcluir] = useState("");
 
-  // ========================= Desativação de conta (modal) =====================
+  // Desativação de conta
   const [showModalDesativar, setShowModalDesativar] = useState(false);
   const [senhaDesativar, setSenhaDesativar] = useState(""); // opcional (apenas confirmação visual)
   const [motivoDesativar, setMotivoDesativar] = useState("");
@@ -43,7 +42,7 @@ export default function Conta() {
   const [feedbackDesativar, setFeedbackDesativar] = useState("");
   const [erroDesativar, setErroDesativar] = useState("");
 
-  // ========================= Troca de senha ===================================
+  // Troca de senha
   const [exibirTrocaSenha, setExibirTrocaSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -55,7 +54,7 @@ export default function Conta() {
   const modalRefExcluir = useRef(null);   // A11y do modal excluir
   const modalRefDesativar = useRef(null); // A11y do modal desativar
 
-  // ========================= Buscar avaliações públicas =======================
+  // Buscar avaliações públicas
   useEffect(() => {
     async function buscarAvaliacoes() {
       try {
@@ -98,18 +97,18 @@ export default function Conta() {
     if (usuarioLogado) buscarAvaliacoes();
   }, [usuarioLogado]);
 
-  // ========================= Travar rolagem ao abrir modais ===================
+  // Travar rolagem ao abrir modais
   useEffect(() => {
     const aberto = showModalExcluir || showModalDesativar;
     document.body.style.overflow = aberto ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [showModalExcluir, showModalDesativar]);
 
-  // ========================= A11y: trap de foco nos modais ====================
+  // foco nos modais
   useEffect(() => trapFocus(showModalExcluir, modalRefExcluir, () => setShowModalExcluir(false)), [showModalExcluir]);
   useEffect(() => trapFocus(showModalDesativar, modalRefDesativar, () => setShowModalDesativar(false)), [showModalDesativar]);
 
-  // ========================= Handlers de perfil ===============================
+  // Handlers de perfil
   function handleEditar() {
     if (suspenso) {
       setErro("Sua conta está desativada (modo leitura). Reative para alterar dados.");
@@ -306,7 +305,7 @@ export default function Conta() {
     setExcluindo(false);
   }
 
-  // ✅ DESATIVAR — sem logout; atualiza /me e fecha o modal
+  // DESATIVAR — sem logout
   async function handleDesativarConta(e) {
     e.preventDefault();
     setDesativando(true);
@@ -321,7 +320,7 @@ export default function Conta() {
       const me = await api.get('/usuarios/me/');
       setUsuarioLogado(me.data);
       setFeedbackDesativar("Conta desativada com sucesso. Você está em modo leitura.");
-      // fecha modal depois de um breve feedback
+      // fecha modal depois de um feedback
       setTimeout(() => {
         setShowModalDesativar(false);
         setFeedbackDesativar("");
@@ -345,7 +344,7 @@ export default function Conta() {
     setDesativando(false);
   }
 
-  // ✅ REATIVAR — atualiza /me
+  // REATIVAR
   async function handleReativarConta() {
     setReativando(true);
     try {
@@ -373,12 +372,12 @@ export default function Conta() {
 
   if (!usuarioLogado) return null;
 
-  // ========================= JSX =========================
+  // JSX 
   return (
     <div className="conta-page">
       <div className="conta-container">
 
-        {/* 🔵 Banner de modo leitura */}
+        {/* Banner de modo leitura */}
         {suspenso && (
           <div className="alert alert-info" style={{ marginBottom: 16 }}>
             <i className="bi bi-pause-circle"></i>
@@ -964,7 +963,6 @@ export default function Conta() {
                   <p>Sua conta ficará <strong>inativa</strong> até que você a reative. Você pode voltar quando quiser.</p>
                 </div>
                 <form onSubmit={handleDesativarConta}>
-                  {/* Campo de senha é apenas confirmação visual (não é usado no backend) */}
                   <div className="form-field">
                     <label>Digite sua senha para confirmar (opcional):</label>
                     <input
@@ -1032,8 +1030,6 @@ export default function Conta() {
     </div>
   );
 }
-
-/* ========================= Ajudantes locais ========================= */
 
 function trapFocus(ativo, modalRef, onClose) {
   if (!ativo || !modalRef.current) return () => {};

@@ -1,10 +1,9 @@
-// src/Componentes/NotificacoesDropdown.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../Servicos/Api";
 import "../styles/NotificacoesDropdown.css";
 
-/* ========= Ícone por tipo de mensagem ========= */
+/* Ícone por tipo de mensagem */
 function getIconeNotificacao(mensagem = "") {
   const msg = (mensagem || "").toLowerCase();
 
@@ -22,7 +21,7 @@ function getIconeNotificacao(mensagem = "") {
   return "bi-bell";
 }
 
-/* ========= Data “human friendly” ========= */
+/* Data */
 function formatarData(dataStr) {
   if (!dataStr) return "";
   const agora = new Date();
@@ -51,7 +50,7 @@ export default function NotificacoesDropdown() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  /* ====== Buscar notificações do backend ====== */
+  /* Buscar notificações do backend */
   async function fetchNotificacoes() {
     try {
       setCarregando(true);
@@ -81,7 +80,7 @@ export default function NotificacoesDropdown() {
     if (aberto) fetchNotificacoes();
   }, [aberto]);
 
-  // Refresh a cada 60s enquanto aberto
+  // Refresh a cada 60s
   useEffect(() => {
     if (!aberto) return;
     const id = setInterval(fetchNotificacoes, 60000);
@@ -218,7 +217,6 @@ export default function NotificacoesDropdown() {
           {/* Lista */}
           {!carregando && !erro && notificacoes.length > 0 && (
             <ul className="notificacoes-lista">
-              {/* Não lidas primeiro */}
               {listaNaoLidas.map((n) => (
                 <li
                   key={n.id}
@@ -238,7 +236,6 @@ export default function NotificacoesDropdown() {
                 </li>
               ))}
 
-              {/* Lidas depois (limite 5) */}
               {listaLidas.map((n) => (
                 <li
                   key={n.id}

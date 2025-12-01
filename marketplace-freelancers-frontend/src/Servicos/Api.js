@@ -1,22 +1,17 @@
-// src/Servicos/Api.js
 import axios from "axios";
 
 const IS_PROD = process.env.NODE_ENV === "production";
 const SUSP_HEADER = "x-blocked-by-suspension";
 const SUSP_KEY = "account_suspended";
 
-// =============================================================
-// 🔧 BASE DA API
-// =============================================================
+// BASE DA API
 const api = axios.create({
   baseURL: "https://web-production-385bb.up.railway.app/api",
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
 
-// =============================================================
-// 🔐 TOKEN
-// =============================================================
+// TOKEN
 export function setAuthToken(token) {
   if (token) localStorage.setItem("token", token);
   else localStorage.removeItem("token");
@@ -26,9 +21,7 @@ function getAuthToken() {
   return localStorage.getItem("token");
 }
 
-// =============================================================
-// 🚫 MODO LEITURA (SUSPENSÃO)
-// =============================================================
+// MODO LEITURA (SUSPENSÃO)
 export function getSuspendedFlag() {
   return localStorage.getItem(SUSP_KEY) === "1";
 }
@@ -47,9 +40,7 @@ function notifySuspension(message = "Sua conta está desativada (modo leitura)."
   if (!IS_PROD) console.warn("🚫 Modo leitura acionado:", message);
 }
 
-// =============================================================
-// 🔄 INTERCEPTOR DE REQUEST
-// =============================================================
+// INTERCEPTOR DE REQUEST
 api.interceptors.request.use(
   (config) => {
     const token = getAuthToken();
@@ -59,9 +50,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// =============================================================
-// 🔄 INTERCEPTOR DE RESPOSTA
-// =============================================================
+// INTERCEPTOR DE RESPOSTA
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -96,9 +85,7 @@ api.interceptors.response.use(
   }
 );
 
-// =============================================================
-// 🧍 CONTROLE DE CONTA
-// =============================================================
+// CONTROLE DE CONTA
 export async function desativarConta() {
   const resp = await api.post("/usuarios/me/desativar/");
   setSuspendedFlag(true);
@@ -111,9 +98,7 @@ export async function reativarConta() {
   return resp?.data;
 }
 
-// =============================================================
-// 🛡️ DENÚNCIAS — MODERAÇÃO
-// =============================================================
+// DENÚNCIAS — MODERAÇÃO
 export async function marcarDenunciaComoAnalisando(id) {
   const resp = await api.patch(`/denuncias/${id}/marcar-analisando/`);
   return resp.data;
@@ -133,9 +118,7 @@ export async function marcarDenunciaComoImprocedente(id, resposta_admin = "") {
   return resp.data;
 }
 
-// =============================================================
-// 🔥 PUNIÇÕES — ADMIN
-// =============================================================
+// PUNIÇÕES — ADMIN
 export async function aplicarAdvertencia(usuario_id, motivo, denuncia_id = null) {
   const resp = await api.post("/punicoes/advertir/", {
     usuario_id,
@@ -171,23 +154,19 @@ export async function removerSuspensao(usuario_id) {
   return resp.data;
 }
 
-// =============================================================
-// 📌 HISTÓRICO DE PUNIÇÕES
-// =============================================================
-
-// 🔹 Listar tudo
+// HISTÓRICO DE PUNIÇÕES
 export async function listarHistoricoPunicoes() {
   const resp = await api.get("/punicoes/historico/");
   return resp.data;
 }
 
-// 🔹 Listar por usuário
+// Listar por usuário
 export async function listarPunicoesPorUsuario(usuario_id) {
   const resp = await api.get(`/punicoes/historico/${usuario_id}/`);
   return resp.data;
 }
 
-// 🔹 Remover punição (DELETE correto)
+// Remover punição
 export async function removerPunicao(punicao_id) {
   const resp = await api.post(`/punicoes/remover/${punicao_id}/`);
   return resp.data;

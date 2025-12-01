@@ -17,5 +17,5 @@ class PermissaoDenuncia(BasePermission):
         if request.method == "DELETE":
             return False
 
-        # Só o autor pode editar a própria denúncia (exceto campos restritos)
+        # Só o autor pode editar a própria denúncia
         return obj.autor == request.user

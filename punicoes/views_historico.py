@@ -1,5 +1,3 @@
-# punicoes/views_historico.py
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
@@ -9,16 +7,14 @@ from .models import Punicao
 from .serializers import PunicaoSerializer
 
 
-# ============================================================
-# 🔹 LISTAR HISTÓRICO COMPLETO (APENAS ATIVAS)
-# ============================================================
+# LISTAR HISTÓRICO COMPLETO (APENAS ATIVAS)
 class HistoricoPunicoesView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
         punicoes = (
             Punicao.objects
-            .filter(ativo=True)  # ← somente ativas
+            .filter(ativo=True)
             .select_related(
                 "usuario_punido",
                 "admin_responsavel",
@@ -31,16 +27,14 @@ class HistoricoPunicoesView(APIView):
         return Response(PunicaoSerializer(punicoes, many=True).data)
 
 
-# ============================================================
-# 🔹 LISTAR HISTÓRICO POR USUÁRIO (APENAS ATIVAS)
-# ============================================================
+# LISTAR HISTÓRICO POR USUÁRIO (APENAS ATIVAS)
 class HistoricoPorUsuarioView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request, usuario_id):
         punicoes = (
             Punicao.objects
-            .filter(usuario_punido_id=usuario_id, ativo=True)  # ← somente ativas
+            .filter(usuario_punido_id=usuario_id, ativo=True)  
             .select_related(
                 "usuario_punido",
                 "admin_responsavel",
@@ -53,9 +47,7 @@ class HistoricoPorUsuarioView(APIView):
         return Response(PunicaoSerializer(punicoes, many=True).data)
 
 
-# ============================================================
-# 🔹 DESFAZER / REMOVER PUNIÇÃO (POST!)
-# ============================================================
+# DESFAZER / REMOVER PUNIÇÃO (POST!)
 class RemoverPunicaoView(APIView):
     """
     Essa view usa POST — porque você decidiu manter a estrutura do frontend

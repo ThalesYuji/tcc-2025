@@ -38,7 +38,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError("Usuário inativo.")
 
         # ===============================
-        #  🚫 BANIMENTO PERMANENTE
+        #  BANIMENTO PERMANENTE
         # ===============================
         if user.banido:
             raise serializers.ValidationError(
@@ -46,7 +46,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
 
         # ===============================
-        #  ⛔ SUSPENSÃO ADMINISTRATIVA
+        #  SUSPENSÃO ADMINISTRATIVA
         # ===============================
         if user.is_suspended_admin:
             # Se existe data de expiração da suspensão

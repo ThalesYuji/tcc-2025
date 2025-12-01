@@ -1,4 +1,3 @@
-# trabalhos/serializers.py
 from rest_framework import serializers
 from .models import Trabalho
 from habilidades.models import Habilidade, Ramo
@@ -6,7 +5,7 @@ from datetime import date
 import re
 
 
-# 🔹 Palavras proibidas (compartilhada entre habilidades e ramos)
+# Palavras proibidas
 PALAVRAS_PROIBIDAS = [
     "merda", "porra", "puta", "puto", "caralho", "buceta", "pinto", "piroca",
     "pau", "rola", "bosta", "arrombado", "vagabundo", "vagabunda", "corno",
@@ -28,19 +27,19 @@ class HabilidadeSerializer(serializers.ModelSerializer):
 
 
 class TrabalhoSerializer(serializers.ModelSerializer):
-    # 🔹 Ramo: entrada flexível (ID ou nome) + read detalhado
+    # Ramo
     ramo = serializers.CharField(required=False, allow_blank=True, allow_null=True, write_only=True)
     ramo_detalhes = RamoSerializer(source="ramo", read_only=True)
 
-    # 🔹 Habilidades: entrada flexível por texto e saída detalhada
+    # Habilidades
     habilidades = serializers.CharField(required=False, allow_blank=True, write_only=True)
     habilidades_detalhes = HabilidadeSerializer(source="habilidades", many=True, read_only=True)
 
-    # 🔹 Conveniências
+    # Conveniências
     nome_contratante = serializers.SerializerMethodField(read_only=True)
     contratante_id = serializers.SerializerMethodField(read_only=True)
 
-    # 🔹 Anexo
+    # Anexo
     anexo = serializers.FileField(required=False, allow_null=True, use_url=True)
     anexo_url = serializers.SerializerMethodField(read_only=True)
 
@@ -61,7 +60,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             "contratante_id", "anexo_url", "ramo_detalhes",
         ]
 
-    # -------- Helpers de leitura --------
+    # Helpers de leitura
     def get_nome_contratante(self, obj):
         if obj.contratante:
             if getattr(obj.contratante, "nome", None):
@@ -88,7 +87,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         except (AttributeError, ValueError, TypeError):
             return None
 
-    # -------- Validações --------
+    # Validações
     def validate_prazo(self, value):
         if value < date.today():
             raise serializers.ValidationError("O prazo deve ser uma data futura.")
@@ -116,7 +115,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Apenas contratantes ou administradores podem publicar trabalhos.")
         return data
 
-    # -------- Create / Update --------
+    # Create / Update
     def create(self, validated_data):
         habilidades_texto = self._extrair_habilidades()
         ramo_input = self._extrair_ramo(validated_data)
@@ -131,7 +130,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         
         trabalho = super().create(validated_data)
 
-        # Processa ramo (get_or_create)
+        # Processa ramo
         self._processar_ramo(trabalho, ramo_input)
         
         # Processa habilidades
@@ -165,7 +164,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
 
         return trabalho
 
-    # -------- Internos para ramo --------
+    # Internos para ramo
     def _extrair_ramo(self, validated_data):
         """
         Extrai o ramo do request.
@@ -201,7 +200,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         
         ramo_obj = None
         
-        # Tenta como ID numérico primeiro
         try:
             ramo_id = int(ramo_input)
             ramo_obj = Ramo.objects.filter(id=ramo_id).first()
@@ -212,7 +210,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         except (ValueError, TypeError):
             pass
         
-        # Trata como nome (string)
         nome_ramo = str(ramo_input).strip()
         
         if not nome_ramo or len(nome_ramo) < 2:
@@ -222,7 +219,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         if any(p.lower() in nome_ramo.lower() for p in PALAVRAS_PROIBIDAS):
             return
         
-        # Remove caracteres especiais (mantém letras, números, espaços, /, &, -)
+        # Remove caracteres especiais
         nome_limpo = re.sub(r"[^a-zA-ZÀ-ÿ0-9\s/&\-]", "", nome_ramo)
         
         if len(nome_limpo) < 2:
@@ -231,12 +228,11 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         # Formata: primeira letra maiúscula de cada palavra
         nome_formatado = " ".join(word.capitalize() for word in nome_limpo.split())
         
-        # Get or create
         ramo_obj, _ = Ramo.objects.get_or_create(nome=nome_formatado)
         trabalho.ramo = ramo_obj
         trabalho.save(update_fields=["ramo"])
 
-    # -------- Internos para habilidades --------
+    # Internos para habilidades
     def _extrair_habilidades(self):
         request = self.context.get("request")
         habilidades = []

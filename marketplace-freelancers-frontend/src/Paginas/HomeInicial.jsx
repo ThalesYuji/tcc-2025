@@ -1,4 +1,3 @@
-// src/Paginas/HomeInicial.jsx
 import React, { useContext, useEffect, useState } from "react";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
 import api from "../Servicos/Api";
@@ -15,7 +14,7 @@ export default function HomeInicial() {
 
   useEffect(() => {
     async function fetchData() {
-      // ✅ Proteção: não executa sem usuário logado
+      // não executa sem usuário logado
       if (!usuarioLogado) {
         setCarregando(false);
         return;
@@ -27,7 +26,7 @@ export default function HomeInicial() {
 
         let endpoint = "";
         
-        // 🔹 Define endpoint baseado no tipo de usuário
+        // Define endpoint baseado no tipo de usuário
         if (usuarioLogado.tipo === "freelancer") {
           endpoint = `/trabalhos/?page=${pagina}&page_size=6`;
         } else if (usuarioLogado.tipo === "contratante") {
@@ -41,37 +40,37 @@ export default function HomeInicial() {
 
         console.log("🔍 Buscando:", endpoint);
 
-        // ✅ Faz requisição
+        // Faz requisição
         const res = await api.get(endpoint);
 
         console.log("✅ Resposta recebida:", res.data);
 
-        // ✅ Valida resposta
+        // Valida resposta
         if (!res || !res.data) {
           throw new Error("Resposta inválida da API");
         }
 
-        // 🔹 Trata paginação do DRF (rest_framework)
+        // Trata paginação do DRF 
         if (res.data.results !== undefined) {
-          // Formato DRF: { count, next, previous, results }
+          // Formato DRF
           setOportunidades(res.data.results || []);
           
           const pageSize = 6;
           const totalItens = res.data.count || 0;
           setTotalPaginas(Math.ceil(totalItens / pageSize));
         } 
-        // 🔹 Resposta customizada do backend
+        // Resposta customizada do backend
         else if (res.data.total !== undefined) {
-          // Formato: { results, total, page, page_size, num_pages }
+          // Formato
           setOportunidades(res.data.results || []);
           setTotalPaginas(res.data.num_pages || 1);
         }
-        // 🔹 Array direto
+        // Array direto
         else if (Array.isArray(res.data)) {
           setOportunidades(res.data);
           setTotalPaginas(1);
         }
-        // ❌ Formato desconhecido
+        // Formato desconhecido
         else {
           console.error("Formato de resposta desconhecido:", res.data);
           setOportunidades([]);
@@ -105,7 +104,7 @@ export default function HomeInicial() {
     fetchData();
   }, [usuarioLogado, pagina]);
 
-  // 🔹 Estado de carregamento
+  // Estado de carregamento
   if (carregando) {
     return (
       <div className="page-container">
@@ -117,7 +116,7 @@ export default function HomeInicial() {
     );
   }
 
-  // 🔹 Usuário não logado
+  // Usuário não logado
   if (!usuarioLogado) {
     return (
       <div className="page-container">
@@ -133,7 +132,7 @@ export default function HomeInicial() {
     );
   }
 
-  // 🔹 Atalhos rápidos do painel
+  // Atalhos rápidos do painel
   const getShortcuts = () => {
     if (usuarioLogado.tipo === "contratante") {
       return [
@@ -154,7 +153,7 @@ export default function HomeInicial() {
 
   return (
     <div className="home-wrapper page-container fade-in">
-      {/* 🏠 Hero Section */}
+      {/* Hero Section */}
       <section className="hero-section">
         <h1 className="user-greeting">
           Olá, {usuarioLogado.nome || usuarioLogado.username || "Usuário"}!
@@ -167,7 +166,7 @@ export default function HomeInicial() {
         </p>
       </section>
 
-      {/* ⚡ Atalhos Rápidos */}
+      {/* Atalhos Rápidos */}
       <section className="shortcuts-section section-spacing">
         <h2 className="section-title">Atalhos Rápidos</h2>
         <div className="shortcuts-grid">
@@ -182,7 +181,7 @@ export default function HomeInicial() {
         </div>
       </section>
 
-      {/* 💼 Oportunidades */}
+      {/* Oportunidades */}
       <section className="opportunities-section section-spacing">
         <div className="opportunities-header">
           <h2 className="section-title">
@@ -356,7 +355,7 @@ export default function HomeInicial() {
         )}
       </section>
 
-      {/* ⚙️ Rodapé */}
+      {/* Rodapé */}
       <footer className="home-footer">
         <div className="footer-content">
           <i className="bi bi-rocket-takeoff"></i>

@@ -16,7 +16,7 @@ def validar_cpf(cpf: str):
         resp.raise_for_status()
         data = resp.json()
         
-        # 🔹 Verifica campo "status" (1 = válido, 0 = inválido)
+        # Verifica campo "status" (1 = válido, 0 = inválido)
         status = data.get("status")
         if status == 1:
             return True, data
@@ -46,7 +46,7 @@ def validar_cnpj(cnpj: str):
         resp.raise_for_status()
         data = resp.json()
         
-        # 🔹 Verifica campo "status" (1 = válido, 0 = inválido)
+        # Verifica campo "status" (1 = válido, 0 = inválido)
         status = data.get("status")
         if status == 1:
             return True, data

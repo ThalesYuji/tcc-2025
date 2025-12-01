@@ -19,9 +19,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
     serializer_class = ContratoSerializer
     permission_classes = [IsAuthenticated, PermissaoContrato]
 
-    # =========================================================
     # LISTAGEM — Filtra contratos conforme o usuário
-    # =========================================================
     def get_queryset(self):
         user = self.request.user
         qs_base = Contrato.objects.all().order_by("-id")
@@ -33,18 +31,14 @@ class ContratoViewSet(viewsets.ModelViewSet):
             models.Q(contratante=user) | models.Q(freelancer=user)
         ).distinct()
 
-    # =========================================================
     # BLOQUEIA CRIAÇÃO MANUAL
-    # =========================================================
     def create(self, request, *args, **kwargs):
         return Response(
             {"detail": "A criação de contratos é automática ao aceitar uma proposta."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
 
-    # =========================================================
     # ATUALIZAÇÃO DE STATUS (cancelamento / reativação)
-    # =========================================================
     def perform_update(self, serializer):
         contrato_antigo = self.get_object()
         novo_status = self.request.data.get("status")
@@ -65,9 +59,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
             contratante = contrato_novo.contratante
             freelancer = contrato_novo.freelancer
 
-            # -----------------------------------------
             # CANCELAMENTO
-            # -----------------------------------------
             if contrato_novo.status == "cancelado":
 
                 # Se não houver outro contrato ativo, reabre o trabalho
@@ -90,9 +82,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
                     link=link
                 )
 
-            # -----------------------------------------
             # REATIVAÇÃO
-            # -----------------------------------------
             elif contrato_novo.status == "ativo":
                 trabalho.status = "em_andamento"
                 trabalho.save()
@@ -110,9 +100,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
                     link=link
                 )
 
-    # =========================================================
     # DELETE — Somente admin
-    # =========================================================
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.check_object_permissions(request, instance)

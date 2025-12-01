@@ -48,7 +48,7 @@ class AvaliacaoViewSet(viewsets.ModelViewSet):
         """
         avaliacao = serializer.save(avaliador=self.request.user)
         
-        # 🔹 Notificação ao avaliado
+        # Notificação ao avaliado
         enviar_notificacao(
             usuario=avaliacao.avaliado,
             mensagem=(
@@ -60,7 +60,7 @@ class AvaliacaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def feitas(self, request):
-        """🔹 Retorna avaliações feitas pelo usuário logado"""
+        """Retorna avaliações feitas pelo usuário logado"""
         avaliacoes = (
             Avaliacao.objects
             .filter(avaliador=request.user)
@@ -72,7 +72,7 @@ class AvaliacaoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def recebidas(self, request):
-        """🔹 Retorna avaliações recebidas pelo usuário logado"""
+        """Retorna avaliações recebidas pelo usuário logado"""
         avaliacoes = (
             Avaliacao.objects
             .filter(avaliado=request.user)

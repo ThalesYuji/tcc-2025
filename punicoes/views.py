@@ -1,5 +1,3 @@
-# punicoes/views.py
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
@@ -17,10 +15,7 @@ from .serializers import (
     RemoverSuspensaoSerializer,
 )
 
-
-# ============================================================
-# 🔹 APLICAR ADVERTÊNCIA
-# ============================================================
+# APLICAR ADVERTÊNCIA
 class AplicarAdvertenciaView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -58,10 +53,7 @@ class AplicarAdvertenciaView(APIView):
 
         return Response({"mensagem": "Advertência aplicada com sucesso."})
 
-
-# ============================================================
-# 🔹 APLICAR SUSPENSÃO
-# ============================================================
+# APLICAR SUSPENSÃO
 class AplicarSuspensaoView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -110,10 +102,7 @@ class AplicarSuspensaoView(APIView):
 
         return Response({"mensagem": "Suspensão aplicada com sucesso."})
 
-
-# ============================================================
-# 🔹 APLICAR BANIMENTO
-# ============================================================
+# APLICAR BANIMENTO
 class AplicarBanimentoView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -158,10 +147,7 @@ class AplicarBanimentoView(APIView):
 
         return Response({"mensagem": "Banimento aplicado com sucesso."})
 
-
-# ============================================================
-# 🔹 REMOVER SUSPENSÃO
-# ============================================================
+# REMOVER SUSPENSÃO
 class RemoverSuspensaoView(APIView):
     permission_classes = [IsAdminUser]
 

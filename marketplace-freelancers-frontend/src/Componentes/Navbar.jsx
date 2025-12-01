@@ -1,4 +1,3 @@
-// src/Componentes/Navbar.jsx
 import React, { useContext, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -11,7 +10,7 @@ import {
   FaFileAlt,
   FaHandshake,
   FaStar,
-  FaGavel, // ← ÍCONE NOVO
+  FaGavel,
 } from "react-icons/fa";
 import NotificacoesDropdown from "../Componentes/NotificacoesDropdown";
 import "../styles/Navbar.css";
@@ -107,7 +106,7 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* 🔥 DENÚNCIAS */}
+          {/* DENÚNCIAS */}
           {usuarioLogado.is_superuser ? (
             <button
               onClick={() => navegarPara("/painel-denuncias")}
@@ -128,7 +127,7 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* 🔥🔥 NOVO – HISTÓRICO DE PUNIÇÕES (APENAS ADMIN) */}
+          {/* HISTÓRICO DE PUNIÇÕES (ADMIN) */}
           {usuarioLogado.is_superuser && (
             <button
               onClick={() => navegarPara("/historico-punicoes")}
@@ -142,7 +141,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* AÇÕES À DIREITA */}
+      {/* AÇÕES */}
       <div className="nav-actions">
         {/* Notificações */}
         <NotificacoesDropdown />

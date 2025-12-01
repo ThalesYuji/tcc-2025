@@ -1,4 +1,3 @@
-# services/mercadopago.py
 """
 Serviço de integração com Mercado Pago
 Escopo atual: Checkout Pro (preference) + consulta de pagamento.
@@ -15,7 +14,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-# ---------------- Utils ----------------
+# Utils
 def _split_nome_completo(nome: str) -> Tuple[str, str]:
     nome = (nome or "").strip()
     if not nome:
@@ -118,7 +117,7 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
     first = (payer.get("first_name") or "").strip()
     last = (payer.get("last_name") or "").strip()
 
-    # fallback gentis
+    # fallback
     if not first and payer.get("name"):
         first = payer["name"].strip()
     if not last and payer.get("surname"):
@@ -130,7 +129,7 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
 
     email = (payer.get("email") or "").strip()
 
-    # Identification (CPF)
+    # (CPF)
     ident = payer.get("identification") or {}
     id_type = (ident.get("type") or "").upper().strip()
     id_num = _only_digits(ident.get("number"))
@@ -151,13 +150,11 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
     if identification:
         normalized["identification"] = identification
 
-    # ✅ CORREÇÃO PARA BOLETO: Normaliza endereço
-    # O Mercado Pago exige endereço completo para boleto
     if tem_cpf_valido and payer.get("address"):
         addr = payer["address"]
         normalized_addr = {}
         
-        # CEP (obrigatório para boleto)
+        # CEP
         zip_code = _only_digits(addr.get("zip_code"))
         if len(zip_code) == 8:
             normalized_addr["zip_code"] = zip_code
@@ -178,7 +175,7 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
         if addr.get("city"):
             normalized_addr["city"] = str(addr["city"]).strip()
         
-        # Estado (UF) - apenas 2 caracteres
+        # Estado 
         if addr.get("federal_unit"):
             uf = str(addr["federal_unit"]).strip().upper()
             if len(uf) == 2:
@@ -193,7 +190,7 @@ def _normalize_payer(payer: Optional[dict]) -> Optional[dict]:
     return normalized
 
 
-# --------------- Serviço ---------------
+# Serviço
 class MercadoPagoService:
     """Operações do Mercado Pago via SDK (Checkout Pro + consulta)."""
 
@@ -201,7 +198,7 @@ class MercadoPagoService:
         access = settings.MERCADOPAGO_ACCESS_TOKEN
         self.sdk = mercadopago.SDK(access)
 
-    # -------------- CHECKOUT PRO (PREFERENCE) --------------
+    # CHECKOUT PRO
     def criar_preferencia_checkout_pro(
         self,
         titulo: str,
@@ -238,12 +235,9 @@ class MercadoPagoService:
             if notif:
                 preference["notification_url"] = notif
 
-            # ✅ CORREÇÃO: Normaliza o payer
             normalized_payer = _normalize_payer(payer)
             if normalized_payer:
                 preference["payer"] = normalized_payer
-
-                # ✅ CORREÇÃO CRÍTICA PARA BOLETO
                 # Se tiver CPF válido E endereço completo, habilita boleto
                 ident = normalized_payer.get("identification") or {}
                 has_cpf = (ident.get("type") == "CPF" and 
@@ -254,8 +248,8 @@ class MercadoPagoService:
                 if has_cpf:
                     # Define métodos de pagamento permitidos
                     payment_methods = {
-                        "excluded_payment_types": [],  # Não exclui nenhum tipo
-                        "installments": 1,  # Boleto não parcela
+                        "excluded_payment_types": [], 
+                        "installments": 1,  
                     }
                     
                     # Se tiver endereço completo, prioriza boleto
@@ -289,7 +283,7 @@ class MercadoPagoService:
             logger.exception("❌ Erro ao criar preference")
             return {"sucesso": False, "erro": str(e)}
 
-    # -------------- CONSULTA --------------
+    # -CONSULTA
     def consultar_pagamento(self, payment_id: str) -> Optional[Dict]:
         """Consulta o status de um pagamento."""
         try:
@@ -316,7 +310,7 @@ class MercadoPagoService:
             logger.exception("❌ Erro ao consultar pagamento %s", payment_id)
             return None
 
-    # -------------- MAPA STATUS --------------
+    # MAPA STATUS 
     def mapear_status_mp_para_local(self, status_mp: str) -> str:
         """Mapeia status do Mercado Pago para os status do model local."""
         mapeamento = {

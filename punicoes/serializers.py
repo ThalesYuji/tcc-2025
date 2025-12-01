@@ -4,9 +4,7 @@ from denuncias.models import Denuncia
 from .models import Punicao
 
 
-# ============================================================
-# 🔥 SERIALIZER COMPLETO DAS PUNIÇÕES (HISTÓRICO + DETALHES)
-# ============================================================
+# SERIALIZER COMPLETO DAS PUNIÇÕES (HISTÓRICO + DETALHES)
 
 class PunicaoSerializer(serializers.ModelSerializer):
     """
@@ -72,9 +70,7 @@ class PunicaoSerializer(serializers.ModelSerializer):
 
 
 
-# ============================================================
-# 🔍 SERIALIZERS DE AÇÃO (ADVERTÊNCIA / SUSPENSÃO / BANIMENTO)
-# ============================================================
+# SERIALIZERS DE AÇÃO (ADVERTÊNCIA / SUSPENSÃO / BANIMENTO)
 
 class AplicarAdvertenciaSerializer(serializers.Serializer):
     usuario_id = serializers.IntegerField()

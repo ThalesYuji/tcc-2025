@@ -13,7 +13,7 @@ export function UsuarioProvider({ children }) {
       getUsuarioLogado()
         .then(user => {
           setUsuarioLogado(user);
-          localStorage.setItem("userId", user.id); // 🔹 salva ID no localStorage pro resto do app
+          localStorage.setItem("userId", user.id); // salva ID no localStorage pro resto do app
         })
         .catch(() => {
           setUsuarioLogado(null);

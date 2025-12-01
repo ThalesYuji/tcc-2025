@@ -1,4 +1,3 @@
-# propostas/serializers.py
 from rest_framework import serializers
 from datetime import date
 from .models import Proposta
@@ -6,7 +5,7 @@ from .models import Proposta
 MAX_ENVIOS_POR_TRABALHO = 3
 
 class PropostaSerializer(serializers.ModelSerializer):
-    # Extras só leitura (FKs resolvidas)
+    # Extras só leitura
     trabalho_titulo = serializers.CharField(source="trabalho.titulo", read_only=True)
     freelancer_nome = serializers.CharField(source="freelancer.nome", read_only=True)
 
@@ -19,10 +18,10 @@ class PropostaSerializer(serializers.ModelSerializer):
             "freelancer",
             "numero_envio",
             "revisao_de",
-            "motivo_recusa",  # 🆕 Só o contratante preenche via endpoint específico
+            "motivo_recusa",  
         ]
 
-    # ========================= VALIDAÇÕES DE CAMPOS =========================
+    # VALIDAÇÕES DE CAMPOS
     def validate_valor(self, value):
         if value is None or value <= 0:
             raise serializers.ValidationError("O valor deve ser maior que zero.")
@@ -33,7 +32,7 @@ class PropostaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O prazo estimado deve ser uma data futura.")
         return value
 
-    # ========================= VALIDAÇÃO GERAL (CREATE) =========================
+    # VALIDAÇÃO GERAL (CREATE)
     def validate(self, data):
         """
         Regras:
@@ -49,7 +48,6 @@ class PropostaSerializer(serializers.ModelSerializer):
         freelancer = getattr(request, "user", None)
         trabalho = data.get("trabalho")
 
-        # Em update/partial_update, delegamos ao update()
         if self.instance:
             return data
 
@@ -62,11 +60,11 @@ class PropostaSerializer(serializers.ModelSerializer):
         if trabalho.contratante_id == freelancer.id:
             raise serializers.ValidationError("Você não pode enviar proposta para seu próprio trabalho.")
 
-        # 🔒 Trabalho precisa estar aberto
+        # Trabalho precisa estar aberto
         if getattr(trabalho, "status", "") != "aberto":
             raise serializers.ValidationError("Este trabalho não está aberto para novas propostas.")
 
-        # 🔒 Trabalho privado: somente o freelancer direcionado pode propor
+        # Trabalho privado: somente o freelancer direcionado pode propor
         if getattr(trabalho, "is_privado", False):
             if trabalho.freelancer_id != getattr(freelancer, "id", None):
                 raise serializers.ValidationError("Este trabalho é privado e não está direcionado a você.")
@@ -77,15 +75,15 @@ class PropostaSerializer(serializers.ModelSerializer):
         ).order_by("-data_envio")
         total_envios = anteriores.count()
 
-        # 🔒 Limite de 3 no total
+        # Limite de 3 no total
         if total_envios >= MAX_ENVIOS_POR_TRABALHO:
             raise serializers.ValidationError("Limite de 3 envios atingido para este trabalho.")
 
-        # 🔒 Não permite novo envio se já existir pendente/aceita do mesmo autor
+        # Não permite novo envio se já existir pendente/aceita do mesmo autor
         if anteriores.filter(status__in=["pendente", "aceita"]).exists():
             raise serializers.ValidationError("Você já possui uma proposta pendente/aceita para este trabalho.")
 
-        # 🔒 Se existe anterior recusada, exigir motivo da revisão
+        # Se existe anterior recusada, exigir motivo da revisão
         if total_envios >= 1:
             ultima = anteriores.first()
             if ultima and ultima.status == "recusada":
@@ -95,17 +93,17 @@ class PropostaSerializer(serializers.ModelSerializer):
 
         return data
 
-    # ========================= UPDATE (EDIÇÃO DE PENDENTE) =========================
+    # UPDATE (EDIÇÃO DE PENDENTE)
     def update(self, instance, validated_data):
-        # 🔒 Não permitir editar se não está pendente
+        # Não permitir editar se não está pendente
         if instance.status != "pendente":
             raise serializers.ValidationError("Não é possível editar uma proposta que já foi aceita ou recusada.")
 
-        # 🔒 Status só muda pelos endpoints específicos
+        # Status só muda pelos endpoints específicos
         if "status" in validated_data:
             raise serializers.ValidationError("O status só pode ser alterado pelos endpoints específicos.")
 
-        # 🔒 Não permitir trocar o trabalho após criada
+        # Não permitir trocar o trabalho após criada
         if "trabalho" in validated_data and validated_data.get("trabalho") != instance.trabalho:
             raise serializers.ValidationError("Não é permitido alterar o trabalho da proposta.")
 

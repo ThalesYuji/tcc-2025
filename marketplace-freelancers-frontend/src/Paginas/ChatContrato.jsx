@@ -38,7 +38,6 @@ export default function ChatContrato() {
       const contrato = resp.data;
       setStatusContrato(contrato.status);
 
-      // 🔹 Ajuste de cliente → contratante
       const outroId =
         userId === contrato.contratante?.id
           ? contrato.freelancer?.id
@@ -83,12 +82,12 @@ export default function ChatContrato() {
     scrollToBottom();
   }, [mensagens]);
 
-  // 🔹 Foca no campo ao abrir a tela
+  // Foca no campo ao abrir a tela
   useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
   }, []);
 
-  // 🔹 Quando mensagem é enviada e limpa, foca de novo
+  // Quando mensagem é enviada e limpa, foca de novo
   useEffect(() => {
     if (novaMensagem === "" && inputRef.current) inputRef.current.focus();
   }, [novaMensagem]);
@@ -102,31 +101,31 @@ export default function ChatContrato() {
   const enviarMensagem = async (e) => {
     if (e) e.preventDefault();
 
-    // 🚫 Bloqueia apenas se não houver NEM texto NEM anexo
+    // Bloqueia apenas se não houver nem texto nem anexo
     if (!novaMensagem.trim() && !anexo) return;
 
-    // 🚫 Se por algum motivo o destinatário não estiver definido, não envia
+    // Se por algum motivo o destinatário não estiver definido, não envia
     if (!destinatarioId) return;
 
     setEnviando(true);
 
-    // 📨 Monta o corpo da requisição
+    // Monta o corpo da requisição
     const formData = new FormData();
     formData.append("contrato", contratoId);
     formData.append("destinatario", destinatarioId);
 
-    // ✍️ Só adiciona o texto se realmente tiver algo
+    // Só adiciona o texto se realmente tiver algo
     if (novaMensagem.trim()) {
       formData.append("texto", novaMensagem.trim());
     }
 
-    // 📎 Só adiciona o anexo se houver
+    // Só adiciona o anexo se houver
     if (anexo) {
       formData.append("anexo", anexo);
     }
 
     try {
-      // 🚀 Envia mensagem para o backend
+      // Envia mensagem para o backend
       const resp = await api.post("/mensagens/", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -134,24 +133,23 @@ export default function ChatContrato() {
         },
       });
 
-      // 🔄 Atualiza lista de mensagens
+      // Atualiza lista de mensagens
       setMensagens(resp.data.mensagens || resp.data || []);
 
-      // 🧹 Limpa campos e estado após envio
+      // Limpa campos e estado após envio
       setNovaMensagem("");
       setAnexo(null);
 
-      // 🧭 Reseta a altura do textarea
+      // Reseta a altura do textarea
       if (inputRef.current) inputRef.current.style.height = "auto";
 
-      // 🧹 Limpa o campo de input de arquivo
+      // Limpa o campo de input de arquivo
       const fileInput = document.querySelector('input[type="file"]');
       if (fileInput) fileInput.value = "";
 
-      // ⬇️ Rola até o final da conversa
+      // Rola até o final da conversa
       scrollToBottom();
     } catch (err) {
-      // ⚠️ Exibe erro amigável
       alert(err.response?.data?.erro || "Erro ao enviar mensagem.");
     } finally {
       setEnviando(false);
@@ -330,7 +328,7 @@ export default function ChatContrato() {
                         {/* Horário */}
                         <span className="mensagem-info">{formatarData(m.data_envio)}</span>
 
-                        {/* 🔹 Menu (agora DENTRO da bolha, canto superior direito) */}
+                        {/* Menu */}
                         {m.remetente === userId && !m.excluida && (podeEditar || podeExcluir) && (
                           <div className="mensagem-menu-wrapper">
                             <button className="menu-toggle" onClick={() => toggleMenu(m.id)}>

@@ -62,7 +62,7 @@ class PagamentoAdmin(admin.ModelAdmin):
         }),
     )
     
-    # ========== FORMATOS E BADGES ==========
+    # FORMATOS E BADGES
     def valor_formatado(self, obj):
         """Exibe o valor formatado em reais"""
         return f"R$ {obj.valor:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
@@ -132,11 +132,11 @@ class PagamentoAdmin(admin.ModelAdmin):
         return "—"
     qr_code_preview.short_description = "📱 QR Code PIX"
     
-    # ==================== ACTIONS ====================
+    # ACTIONS
     
     def aprovar_pagamento(self, request, queryset):
         """
-        ✅ Simula aprovação de pagamento (APENAS PARA TESTES)
+        Simula aprovação de pagamento (APENAS PARA TESTES)
         Marca o pagamento como aprovado e conclui o contrato
         """
         count = 0
@@ -177,7 +177,7 @@ class PagamentoAdmin(admin.ModelAdmin):
     
     def marcar_como_processando(self, request, queryset):
         """
-        ⚙️ Marca pagamentos como em processamento
+        Marca pagamentos como em processamento
         """
         count = queryset.filter(status='pendente').update(status='em_processamento')
         self.message_user(

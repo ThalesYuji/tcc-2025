@@ -45,7 +45,7 @@ class Punicao(models.Model):
 
     ativo = models.BooleanField(default=True)
 
-    # 🔥 NOVO – Histórico de remoção
+    # Histórico de remoção
     removida_em = models.DateTimeField(null=True, blank=True)
     removida_por_admin = models.ForeignKey(
         Usuario,

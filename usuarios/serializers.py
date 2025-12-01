@@ -1,4 +1,3 @@
-# usuarios/serializers.py
 from rest_framework import serializers
 import re
 from django.conf import settings
@@ -8,7 +7,7 @@ from notificacoes.models import Notificacao
 from avaliacoes.models import Avaliacao
 from contratos.models import Contrato
 
-# 🔹 Service real para CPF/CNPJ
+# Service real para CPF/CNPJ
 from services.cpfcnpj import consultar_documento, CPF_CNPJValidationError
 
 
@@ -33,11 +32,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     tipo = serializers.ChoiceField(choices=Usuario.TIPO_USUARIO, required=True)
 
-    # ✅ Flags para a UI
+    # Flags para a UI
     modo_leitura = serializers.SerializerMethodField(read_only=True)
     status_conta = serializers.SerializerMethodField(read_only=True)
 
-    # ✅ Expõe explicitamente como read-only (já estaria em __all__, mas assim fica claro)
+    # Expõe explicitamente como read-only
     is_suspended_self = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -49,7 +48,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             'groups', 'user_permissions',
         )
 
-    # --------------------- Representação (saída) ---------------------
+    # Representação
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')
@@ -65,7 +64,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
     def get_status_conta(self, obj):
         return "desativada" if getattr(obj, "is_suspended_self", False) else "ativa"
 
-    # --------------------- Normalização (entrada) ---------------------
+    # Normalização (entrada)
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
         if 'cpf' in data and data['cpf']:
@@ -76,7 +75,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             data['telefone'] = re.sub(r'\D', '', data['telefone'])
         return data
 
-    # --------------------- Validadores únicos ---------------------
+    # Validadores únicos
     def validate_email(self, value):
         qs = Usuario.objects.filter(email=value)
         if self.instance:
@@ -124,7 +123,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Telefone já cadastrado.")
         return value
 
-    # --------------------- Senha ---------------------
+    # Senha
     def validate_password(self, password):
         if len(password or '') < 8:
             raise serializers.ValidationError("A senha deve ter pelo menos 8 caracteres.")
@@ -138,10 +137,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("A senha deve conter ao menos um símbolo especial.")
         return password
 
-    # --------------------- Criação / Atualização ---------------------
+    # Criação / Atualização 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        # Campos protegidos (se vierem por engano no payload)
         validated_data.pop('groups', None)
         validated_data.pop('user_permissions', None)
         validated_data.pop('is_suspended_self', None)
@@ -173,10 +171,9 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
 
-    # --------------------- Regras por tipo + bloqueio amigável ---------------------
+    # Regras por tipo
     def validate(self, data):
         request = self.context.get('request')
-        # Reforço ao middleware (mensagem amigável na própria validação)
         if request and request.method in ('POST', 'PUT', 'PATCH'):
             user = getattr(request, 'user', None)
             if getattr(user, 'is_authenticated', False) and not getattr(user, 'is_superuser', False):
@@ -192,12 +189,12 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if senha:
             self.validate_password(senha)
 
-        # --- Freelancers: CPF obrigatório ---
+        #Freelancers CPF obrigatório
         if tipo == 'freelancer':
             if not cpf:
                 raise serializers.ValidationError({"cpf": "Freelancers devem fornecer CPF válido."})
 
-        # --- Contratantes: CPF obrigatório, CNPJ só se for empresa ---
+        # Contratantes CPF obrigatório, CNPJ só se for empresa
         elif tipo == 'contratante':
             if not cpf:
                 raise serializers.ValidationError({"cpf": "CPF é obrigatório para contratantes."})
@@ -207,8 +204,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         return data
 
 
-# --------------------- Outros Serializers ---------------------
-
+# Outros Serializers
 class TrocaSenhaSerializer(serializers.Serializer):
     senha_atual = serializers.CharField(write_only=True)
     nova_senha = serializers.CharField(write_only=True)
@@ -254,8 +250,6 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
     avaliacoes_recebidas = serializers.SerializerMethodField()
     denuncias_enviadas = serializers.SerializerMethodField()
     denuncias_recebidas = serializers.SerializerMethodField()
-
-    # 🔹 Novos campos públicos de status
     status_publico = serializers.SerializerMethodField()
     modo_leitura_publico = serializers.SerializerMethodField()
 
@@ -266,11 +260,10 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
             "nota_media", "trabalhos_publicados", "trabalhos_concluidos",
             "avaliacoes_enviadas", "avaliacoes_recebidas",
             "denuncias_enviadas", "denuncias_recebidas",
-            # 👇 novos
             "status_publico", "modo_leitura_publico"
         ]
 
-    # URL absoluta da foto
+    # URL da foto
     def to_representation(self, instance):
         data = super().to_representation(instance)
         request = self.context.get('request')
@@ -280,9 +273,8 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
                 data['foto_perfil'] = request.build_absolute_uri(foto)
         return data
 
-    # ---------- status público ----------
+    # status público
     def get_status_publico(self, obj):
-        # "desativado" se a conta está em modo leitura ou inativa no Django
         suspenso = bool(getattr(obj, "is_suspended_self", False))
         ativo = bool(getattr(obj, "is_active", True))
         return "desativado" if (suspenso or not ativo) else "ativo"
@@ -290,7 +282,7 @@ class UsuarioPublicoSerializer(serializers.ModelSerializer):
     def get_modo_leitura_publico(self, obj):
         return bool(getattr(obj, "is_suspended_self", False))
 
-    # ---------- métricas ----------
+    # métricas
     def get_nota_media(self, obj):
         avaliacoes = Avaliacao.objects.filter(avaliado=obj)
         if not avaliacoes.exists():

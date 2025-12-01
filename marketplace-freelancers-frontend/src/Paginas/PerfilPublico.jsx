@@ -1,4 +1,3 @@
-// src/Paginas/PerfilPublico.jsx
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import { useParams, useNavigate } from "react-router-dom";
@@ -34,7 +33,6 @@ function formatarNumero(num) {
 }
 
 export default function PerfilPublico() {
-  // 🔹 Suporta /perfil/:id e /perfil/me
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const { usuarioLogado } = useContext(UsuarioContext);
@@ -51,24 +49,23 @@ export default function PerfilPublico() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const avaliacoesPorPagina = 4;
 
-  // 🔹 Busca dados com fallback e suporte a /me
+  // Busca dados com fallback e suporte a /me
   useEffect(() => {
     async function buscarDados() {
       try {
         setCarregando(true);
         setErro("");
 
-        // 1) Resolver o alvo (id real)
+        // Resolver o alvo
         let idAlvo = idParam;
 
-        // Se for /perfil/me, busca /usuarios/me/ e redireciona para /perfil/{id}
         if (idParam === "me") {
           const me = await api.get("/usuarios/me/");
           idAlvo = me?.data?.id;
           if (idAlvo) {
             if (String(idAlvo) !== String(idParam)) {
               navigate(`/perfil/${idAlvo}`, { replace: true });
-              return; // encerra aqui; o próximo efeito roda com o id real
+              return; 
             }
           } else {
             setErro("Não foi possível resolver o usuário atual.");
@@ -76,7 +73,7 @@ export default function PerfilPublico() {
           }
         }
 
-        // 2) Perfil público e avaliações
+        // Perfil público e avaliações
         const resp = await api.get(`/usuarios/${idAlvo}/perfil_publico/`);
         setUsuario(resp.data);
         setNotaMedia(resp.data.nota_media || null);
@@ -120,7 +117,7 @@ export default function PerfilPublico() {
     if (paginaAtual > 1) setPaginaAtual(paginaAtual - 1);
   };
 
-  // ================== ESTADOS DE CARREGAMENTO / ERRO ==================
+  // ESTADOS DE CARREGAMENTO / ERRO
   if (carregando) {
     return (
       <>
@@ -159,19 +156,17 @@ export default function PerfilPublico() {
     );
   }
 
-  // ================== CONTEÚDO PRINCIPAL ==================
+  // CONTEÚDO PRINCIPAL
   const fotoPerfil = usuario?.foto_perfil || "/icone-usuario.png";
   const isTopUser = usuario.tipo === "freelancer" && notaMedia && notaMedia >= 4.5;
   const isNewUser =
     new Date() - new Date(usuario.date_joined || usuario.created_at) <
     30 * 24 * 60 * 60 * 1000;
 
-  // 🔎 Status robusto vindo do backend (aceita vários nomes)
+  // Status robusto vindo do backend
   const suspensoPublico = Boolean(
-    // nomes novos
     usuario?.status_publico === "desativado" ||
     usuario?.modo_leitura_publico === true ||
-    // nomes já existentes em outros serializers
     usuario?.is_active === false ||
     usuario?.is_suspended_self === true ||
     usuario?.modo_leitura === true
@@ -328,7 +323,7 @@ export default function PerfilPublico() {
                 </button>
               </div>
 
-              {/* === ABA ESTATÍSTICAS === */}
+              {/* ABA ESTATÍSTICAS */}
               {activeTab === "estatisticas" && (
                 <div className="fade-in">
                   {(usuario.tipo === "freelancer" || usuario.tipo === "contratante") && (
@@ -444,7 +439,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
-              {/* === ABA SOBRE === */}
+              {/* ABA SOBRE */}
               {activeTab === "sobre" && (
                 <div className="standard-card fade-in">
                   <div className="card-header-std">
@@ -464,7 +459,7 @@ export default function PerfilPublico() {
                 </div>
               )}
 
-              {/* === ABA AVALIAÇÕES === */}
+              {/* ABA AVALIAÇÕES */}
               {activeTab === "avaliacoes" && (
                 <div className="fade-in">
                   {avaliacoes.length === 0 ? (
@@ -539,7 +534,7 @@ export default function PerfilPublico() {
               )}
             </div>
 
-            {/* === SIDEBAR DIREITA === */}
+            {/* SIDEBAR DIREITA */}
             <div className="content-right">
               {usuarioLogado && usuarioLogado.id !== usuario.id && (
                 <div className="standard-card">

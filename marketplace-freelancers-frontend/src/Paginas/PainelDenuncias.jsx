@@ -1,9 +1,8 @@
-// src/Paginas/PainelDenuncias.jsx - Redesign Aprimorado
 import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import ModalRespostaDenuncia from "../Componentes/ModalRespostaDenuncia";
 import "../styles/PainelDenuncias.css";
-import { UsuarioContext } from "../Contextos/UsuarioContext";  // ⬅️ IMPORTANTE
+import { UsuarioContext } from "../Contextos/UsuarioContext"; 
 import ModalPunicoes from "../Componentes/ModalPunicoes";
 import {
   marcarDenunciaComoAnalisando,
@@ -110,7 +109,7 @@ export default function PainelDenuncias() {
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Paginação - Padrão do projeto
+  // Paginação
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
   const [numPages, setNumPages] = useState(1);
@@ -168,7 +167,6 @@ export default function PainelDenuncias() {
     setDenunciaSelecionada(null);
   };
 
-  /* 👉 ADICIONE AQUI */
   function abrirModalPunicoes(denuncia) {
     setDenunciaParaPunicao(denuncia);
     setModalPunicoesAberto(true);
@@ -185,7 +183,7 @@ export default function PainelDenuncias() {
     );
   };
 
-  // 🔵 MARCAR COMO ANALISANDO
+  // MARCAR COMO ANALISANDO
   async function marcarComoAnalisando(denuncia) {
     try {
       await marcarDenunciaComoAnalisando(denuncia.id);
@@ -193,7 +191,7 @@ export default function PainelDenuncias() {
       atualizarDenuncia({
         ...denuncia,
         status: "Analisando",
-        foiImprocedente: false // garante que não carregue flag antiga
+        foiImprocedente: false 
       });
     } catch (e) {
       console.error("Erro ao marcar como analisando:", e);
@@ -201,7 +199,7 @@ export default function PainelDenuncias() {
     }
   }
 
-  // 🟡 MARCAR COMO PROCEDENTE
+  // MARCAR COMO PROCEDENTE
   async function marcarComoProcedente(denuncia) {
     try {
       const resp = await marcarDenunciaComoProcedente(denuncia.id, "");
@@ -210,7 +208,7 @@ export default function PainelDenuncias() {
         ...denuncia,
         status: "Resolvida",
         resposta_admin: resp.resposta_admin || "",
-        foiImprocedente: false // procedente → mantém false
+        foiImprocedente: false 
       });
     } catch (e) {
       console.error("Erro ao marcar como procedente:", e);
@@ -218,7 +216,7 @@ export default function PainelDenuncias() {
     }
   }
 
-  // 🔴 MARCAR COMO IMPROCEDENTE
+  // MARCAR COMO IMPROCEDENTE
   async function marcarComoImprocedente(denuncia) {
     try {
       const resp = await marcarDenunciaComoImprocedente(denuncia.id, "");
@@ -227,7 +225,7 @@ export default function PainelDenuncias() {
         ...denuncia,
         status: "Resolvida",
         resposta_admin: resp.resposta_admin || "",
-        foiImprocedente: true // improcedente → marca a flag
+        foiImprocedente: true 
       });
     } catch (e) {
       console.error("Erro ao marcar como improcedente:", e);
@@ -505,7 +503,7 @@ export default function PainelDenuncias() {
                     {/* Botões de Ação */}
                     <div className="denuncia-actions">
 
-                      {/* 👉 1) Botão principal: Responder */}
+                      {/* Botão principal: Responder */}
                       <button
                         className="btn-responder"
                         onClick={() => abrirModal(denuncia)}
@@ -514,11 +512,11 @@ export default function PainelDenuncias() {
                         {denuncia.resposta_admin ? "Editar Resposta" : "Responder Denúncia"}
                       </button>
 
-                      {/* 👉 2) Grupo dos botões administrativos */}
+                      {/* Grupo dos botões administrativos */}
                       {usuario?.is_superuser && (
                       <div className="admin-buttons">
 
-                        {/* 🔵 MARCAR COMO ANALISANDO */}
+                        {/* MARCAR COMO ANALISANDO */}
                         <button
                           className="btn-admin btn-analise"
                           onClick={() => marcarComoAnalisando(denuncia)}
@@ -527,7 +525,7 @@ export default function PainelDenuncias() {
                           Analisar
                         </button>
 
-                        {/* 🔴 IMPROCEDENTE */}
+                        {/* IMPROCEDENTE */}
                         <button
                           className="btn-admin btn-improcedente"
                           onClick={() => marcarComoImprocedente(denuncia)}
@@ -536,7 +534,7 @@ export default function PainelDenuncias() {
                           Improcedente
                         </button>
 
-                        {/* 🟡 PROCEDENTE */}
+                        {/* PROCEDENTE */}
                         <button
                           className="btn-admin btn-procedente"
                           onClick={() => marcarComoProcedente(denuncia)}
@@ -547,7 +545,7 @@ export default function PainelDenuncias() {
                       </div>
                       )}
 
-                      {/* 👉 3) Botão Punir: sempre isolado, linha inteira */}
+                      {/* Botão Punir */}
                       {usuario?.is_superuser &&
                         denuncia.status === "Resolvida" &&
                         !denuncia.foiImprocedente && (

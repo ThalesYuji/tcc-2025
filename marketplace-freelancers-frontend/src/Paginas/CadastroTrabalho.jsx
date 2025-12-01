@@ -1,4 +1,3 @@
-// src/Paginas/CadastroTrabalho.jsx - DESIGN CRIATIVO E MODERNO
 import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -43,9 +42,9 @@ export default function CadastroTrabalho() {
   const [anexo, setAnexo] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // 🔹 Estados do Ramo - NOVO: agora funciona igual às habilidades
-  const [ramoSelecionado, setRamoSelecionado] = useState(""); // Nome do ramo selecionado
-  const [ramoInput, setRamoInput] = useState(""); // Texto digitado no input
+  // Estados do Ramo 
+  const [ramoSelecionado, setRamoSelecionado] = useState(""); 
+  const [ramoInput, setRamoInput] = useState("");
   const [showRamoSugestoes, setShowRamoSugestoes] = useState(false);
 
   const [erros, setErros] = useState({});
@@ -63,13 +62,13 @@ export default function CadastroTrabalho() {
     "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
   ];
 
-  // 🔹 Ramos populares/sugeridos
+  // Ramos populares/sugeridos
   const ramosPopulares = [
     "Desenvolvimento Web", "Design", "Marketing Digital", "Mobile",
     "Data Science", "DevOps", "UI/UX", "Backend", "Frontend",
   ];
 
-  // 🔹 Filtrar sugestões de ramos conforme digitação
+  // Filtrar sugestões de ramos conforme digitação
   const ramoSugestoesFiltradas = useMemo(() => {
     if (!ramoInput.trim()) return [];
     const termo = ramoInput.toLowerCase();
@@ -134,7 +133,7 @@ export default function CadastroTrabalho() {
     setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
-  // 🔹 Handlers do Ramo - NOVOS
+  // Handlers do Ramo
   const handleRamoInput = (e) => {
     const valor = e.target.value;
     setRamoInput(valor);
@@ -227,7 +226,7 @@ export default function CadastroTrabalho() {
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
 
-    // 🔹 Agora envia o NOME do ramo (não o ID)
+    // envia o nome do ramo
     if (ramoSelecionado) formData.append("ramo", ramoSelecionado);
     
     habilidades.forEach((hab) => formData.append("habilidades", hab));
@@ -284,7 +283,7 @@ export default function CadastroTrabalho() {
 
   return (
     <div className="cadastro-trabalho-page">
-      {/* Header - MANTIDO IGUAL */}
+      {/* Header */}
       <div className="cadastro-trabalho-header">
         <div className="cadastro-trabalho-title">
           <div className="cadastro-trabalho-title-icon">
@@ -321,10 +320,9 @@ export default function CadastroTrabalho() {
           </div>
         )}
 
-        {/* Layout Criativo em 2 Colunas */}
         <div className="ct-creative-layout">
           
-          {/* Coluna Esquerda - Preview Visual */}
+          {/* Preview Visual */}
           <div className="ct-preview-column">
             <div className="ct-preview-card">
               <div className="ct-preview-header">
@@ -365,7 +363,7 @@ export default function CadastroTrabalho() {
                       </div>
                     </div>
 
-                    {/* 🔹 Preview do ramo selecionado */}
+                    {/* Preview do ramo selecionado */}
                     {ramoSelecionado && (
                       <div className="ct-preview-ramo">
                         <FaLayerGroup />
@@ -420,11 +418,11 @@ export default function CadastroTrabalho() {
             </div>
           </div>
 
-          {/* Coluna Direita - Formulário */}
+          {/* Formulário */}
           <div className="ct-form-column">
             <form onSubmit={handleSubmit} className="ct-form">
               
-              {/* Bloco: Título */}
+              {/* Título */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon">
@@ -452,7 +450,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Bloco: Descrição */}
+              {/* Descrição */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon">
@@ -480,7 +478,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Bloco: Prazo e Orçamento */}
+              {/* Prazo e Orçamento */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon">
@@ -530,7 +528,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* 🔹 Bloco: Área/Ramo - NOVO DESIGN COM AUTOCOMPLETE */}
+              {/* Área/Ramo */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon ct-block-icon-optional">
@@ -542,7 +540,6 @@ export default function CadastroTrabalho() {
                   </div>
                 </div>
                 <div className="ct-block-content">
-                  {/* Ramo selecionado como tag */}
                   {ramoSelecionado ? (
                     <div className="ct-selected-ramo">
                       <span className="ct-ramo-tag">
@@ -618,7 +615,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Bloco: Habilidades */}
+              {/* Habilidades */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon ct-block-icon-optional">
@@ -694,7 +691,7 @@ export default function CadastroTrabalho() {
                 </div>
               </div>
 
-              {/* Bloco: Upload */}
+              {/* Upload */}
               <div className="ct-form-block">
                 <div className="ct-block-header">
                   <div className="ct-block-icon ct-block-icon-optional">

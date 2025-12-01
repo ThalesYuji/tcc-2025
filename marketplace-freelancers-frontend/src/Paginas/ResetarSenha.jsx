@@ -1,4 +1,3 @@
-// src/Paginas/ResetarSenha.jsx
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { FaLock, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
@@ -35,7 +34,7 @@ export default function ResetarSenha() {
 
     setCarregando(true);
     try {
-      // ✅ Usa o api.js (Railway)
+      // Usa o api.js
       await api.post("/password-reset-confirm/", {
         uid,
         token,

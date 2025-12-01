@@ -18,11 +18,11 @@ class PermissaoMensagem(BasePermission):
         if request.user and request.user.is_authenticated and request.user.is_superuser:
             return True
 
-        # 🔹 Leitura geral (GET, HEAD, OPTIONS)
+        # Leitura geral (GET, HEAD, OPTIONS)
         if request.method in SAFE_METHODS:
             return request.user and request.user.is_authenticated
 
-        # 🔹 Criação (POST): precisa ser participante do contrato
+        # Criação (POST): precisa ser participante do contrato
         if request.method == "POST":
             contrato_id = request.data.get("contrato")
             if not contrato_id or not request.user.is_authenticated:
@@ -35,25 +35,25 @@ class PermissaoMensagem(BasePermission):
 
             return request.user.id in (contrato.contratante_id, contrato.freelancer_id)
 
-        # 🔹 PUT/PATCH/DELETE são checados em nível de objeto
+        # PUT/PATCH/DELETE são checados em nível de objeto
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # 🔹 Admin: pode ver e deletar qualquer mensagem, nunca editar
+        # Admin: pode ver e deletar qualquer mensagem, nunca editar
         if request.user.is_superuser:
             if request.method in SAFE_METHODS or request.method == "DELETE":
                 return True
             return False
 
-        # 🔹 Leitura: se é participante do contrato
+        # Leitura: se é participante do contrato
         if request.method in SAFE_METHODS:
             return request.user.id in (obj.contrato.contratante_id, obj.contrato.freelancer_id)
 
-        # 🔹 Edição/Exclusão: apenas o remetente, dentro da janela de 25 segundos
+        # Edição/Exclusão: apenas o remetente, dentro da janela de 25 segundos
         if request.method in ["PUT", "PATCH", "DELETE"]:
             tempo_limite = obj.data_envio + timedelta(seconds=25)
             agora = timezone.now()
             return (request.user.id == obj.remetente_id) and (agora <= tempo_limite)
 
-        # 🔹 Criação foi tratada em has_permission
+        # Criação foi tratada em has_permission
         return False
