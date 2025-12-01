@@ -669,19 +669,22 @@
 
 .denuncia-provas ul {
   margin: 0;
-  padding-left: var(--space-lg);
+  padding: 0;
   list-style: none;
 }
 
 .denuncia-provas li {
-  margin-bottom: var(--space-xs);
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* espaço entre ícone e texto */
+  margin-bottom: 6px;
 }
 
 .denuncia-provas li::before {
-  content: '📎';
-  position: absolute;
-  left: -var(--space-lg);
+  content: "📎";
+  font-size: 1rem;
+  position: static; /* remove position absolute */
+  opacity: 0.85;
 }
 
 .denuncia-provas a {
@@ -1021,5 +1024,69 @@ select:focus {
   
   .btn-responder:hover {
     transform: none;
+  }
+}
+
+/* ==============================
+   AJUSTES DOS BOTÕES DE AÇÃO
+   ============================== */
+
+.denuncia-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+/* Grupo dos botões admin (3 colunas) */
+.admin-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+/* Botões admin */
+.btn-admin {
+  background: var(--superficie-hover);
+  border: 1px solid var(--borda-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+}
+
+.btn-admin:hover {
+  background: var(--superficie-card);
+  border-color: var(--cor-primaria);
+  color: var(--cor-primaria);
+}
+
+/* Punir usuário — ocupa a linha inteira */
+.full-width {
+  width: 100%;
+  margin-top: var(--space-sm);
+  background: linear-gradient(135deg, var(--cor-erro) 0%, #b91c1c 100%);
+  color: white;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-align: center;
+}
+
+.full-width:hover {
+  filter: brightness(1.05);
+  box-shadow: var(--sombra-md);
+}
+
+/* Mobile: transforma os 3 botões em 1 coluna */
+@media (max-width: 600px) {
+  .admin-buttons {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,15 +1,15 @@
-// src/Componentes/ModalRespostaDenuncia.jsx - Redesign Moderno
+// src/Componentes/ModalRespostaDenuncia.jsx - Versão Atualizada (sem status)
 import React, { useState } from "react";
 import api from "../Servicos/Api";
 import "../styles/ModalRespostaDenuncia.css";
 
 export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }) {
-  const [status, setStatus] = useState(denuncia.status || "Pendente");
   const [resposta, setResposta] = useState(denuncia.resposta_admin || "");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
 
+  // 👉 Apenas envia a resposta_admin
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -20,11 +20,8 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
     try {
       const token = localStorage.getItem("token");
 
-      // Monta o payload dinamicamente
-      const payload = { status };
-      if (resposta.trim()) {
-        payload.resposta_admin = resposta.trim();
-      }
+      const payload = {};
+      if (resposta.trim()) payload.resposta_admin = resposta.trim();
 
       const response = await api.patch(
         `/denuncias/${denuncia.id}/`,
@@ -37,96 +34,102 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
         }
       );
 
-      setSucesso("Denúncia atualizada com sucesso!");
+      setSucesso("Resposta salva com sucesso!");
+
+      // Atualiza o card no painel
       onAtualizar(response.data);
 
-      setTimeout(() => onClose(), 1500);
+      // Fecha modal rapidamente
+      setTimeout(() => onClose(), 1200);
+
     } catch (error) {
-      console.error("Erro ao responder denúncia:", error);
-      setErro("Erro ao atualizar denúncia. Tente novamente.");
+      console.error("Erro ao salvar resposta:", error);
+      setErro("Erro ao salvar resposta. Tente novamente.");
     } finally {
       setCarregando(false);
     }
   };
 
-  // Função para fechar modal com Escape
+  // 👉 Fechar modal com ESC
   React.useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [onClose]);
 
   return (
-    <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-bg"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal-box" role="dialog" aria-modal="true">
-        
+
         {/* Header */}
         <div className="modal-header">
           <h3>
             <i className="bi bi-chat-dots"></i>
             Responder Denúncia #{denuncia.id}
           </h3>
+
           <button
             className="btn-close-modal"
-            aria-label="Fechar modal"
+            aria-label="Fechar"
             onClick={onClose}
-            title="Fechar modal (Esc)"
           >
             <i className="bi bi-x"></i>
           </button>
         </div>
 
-        {/* Informações da Denúncia */}
+        {/* Informações da denúncia */}
         <div className="denuncia-info-modal">
           <div className="denuncia-info-grid">
+
             <div className="info-item">
               <span className="info-label">Contrato</span>
               <p className="info-value">
-                {denuncia.contrato_titulo || denuncia.contrato?.titulo || "Não especificado"}
+                {denuncia.contrato_titulo || denuncia.contrato?.titulo || "Não informado"}
               </p>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">Data</span>
               <p className="info-value">
                 {denuncia.data_criacao
                   ? new Date(denuncia.data_criacao).toLocaleDateString("pt-BR", {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })
-                  : "Não informada"}
+                  : "—"}
               </p>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">Denunciante</span>
               <p className="info-value denunciante">
-                {denuncia.denunciante?.nome || "Usuário não identificado"}
+                {denuncia.denunciante?.nome || "—"}
               </p>
             </div>
-            
+
             <div className="info-item">
               <span className="info-label">Denunciado</span>
               <p className="info-value denunciado">
-                {denuncia.denunciado_detalhes?.nome || 
-                 denuncia.denunciado?.nome || 
-                 "Usuário não identificado"}
+                {denuncia.denunciado_detalhes?.nome ||
+                  denuncia.denunciado?.nome ||
+                  "—"}
               </p>
             </div>
-            
-            <div className="info-item" style={{gridColumn: '1 / -1'}}>
-              <span className="info-label">Motivo da Denúncia</span>
-              <p className="info-value">
-                {denuncia.motivo?.trim() || "Motivo não especificado"}
-              </p>
+
+            <div className="info-item" style={{ gridColumn: "1 / -1" }}>
+              <span className="info-label">Motivo</span>
+              <p className="info-value">{denuncia.motivo || "—"}</p>
             </div>
           </div>
         </div>
 
-        {/* Mensagens de Status */}
+        {/* Mensagens */}
         <div className="modal-messages">
           {erro && (
             <div className="error-msg">
@@ -145,42 +148,26 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
         {/* Formulário */}
         <div className="modal-form">
           <form onSubmit={handleSubmit}>
-            
-            {/* Status */}
-            <div className="form-group">
-              <label htmlFor="status" className="form-label">
-                Status da Denúncia
-              </label>
-              <select
-                id="status"
-                className="form-select"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                disabled={carregando}
-              >
-                <option value="Pendente">Pendente - Aguardando análise</option>
-                <option value="Analisando">Analisando - Em investigação</option>
-                <option value="Resolvida">Resolvida - Caso encerrado</option>
-              </select>
-            </div>
 
-            {/* Resposta */}
+            {/* Campo de resposta */}
             <div className="form-group">
               <label htmlFor="resposta" className="form-label">
-                Resposta da Administração (opcional)
+                Resposta da Administração
               </label>
+
               <textarea
                 id="resposta"
                 className="form-control"
+                placeholder="Digite a resposta oficial..."
                 value={resposta}
                 onChange={(e) => setResposta(e.target.value)}
-                placeholder="Digite sua resposta oficial para esta denúncia..."
                 disabled={carregando}
                 maxLength={1000}
               />
+
               <small className="form-text">
                 <i className="bi bi-info-circle"></i>
-                Esta resposta será visível para o denunciante e o denunciado. Seja claro e profissional.
+                Essa resposta será visível para denunciante e denunciado.
               </small>
             </div>
 
@@ -192,23 +179,15 @@ export default function ModalRespostaDenuncia({ denuncia, onClose, onAtualizar }
                 onClick={onClose}
                 disabled={carregando}
               >
-                <i className="bi bi-x"></i>
-                Cancelar
+                <i className="bi bi-x"></i> Cancelar
               </button>
-              
+
               <button
                 type="submit"
-                className={`btn btn-primary ${carregando ? 'btn-loading' : ''}`}
+                className="btn btn-primary"
                 disabled={carregando}
               >
-                {carregando ? (
-                  "Salvando..."
-                ) : (
-                  <>
-                    <i className="bi bi-check"></i>
-                    Salvar Resposta
-                  </>
-                )}
+                {carregando ? "Salvando..." : <><i className="bi bi-check"></i> Salvar</>}
               </button>
             </div>
           </form>

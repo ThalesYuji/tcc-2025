@@ -185,13 +185,15 @@ export default function PainelDenuncias() {
     );
   };
 
+  // 🔵 MARCAR COMO ANALISANDO
   async function marcarComoAnalisando(denuncia) {
     try {
       await marcarDenunciaComoAnalisando(denuncia.id);
 
       atualizarDenuncia({
         ...denuncia,
-        status: "Analisando"
+        status: "Analisando",
+        foiImprocedente: false // garante que não carregue flag antiga
       });
     } catch (e) {
       console.error("Erro ao marcar como analisando:", e);
@@ -199,6 +201,7 @@ export default function PainelDenuncias() {
     }
   }
 
+  // 🟡 MARCAR COMO PROCEDENTE
   async function marcarComoProcedente(denuncia) {
     try {
       const resp = await marcarDenunciaComoProcedente(denuncia.id, "");
@@ -206,7 +209,8 @@ export default function PainelDenuncias() {
       atualizarDenuncia({
         ...denuncia,
         status: "Resolvida",
-        resposta_admin: resp.resposta_admin || ""
+        resposta_admin: resp.resposta_admin || "",
+        foiImprocedente: false // procedente → mantém false
       });
     } catch (e) {
       console.error("Erro ao marcar como procedente:", e);
@@ -214,21 +218,22 @@ export default function PainelDenuncias() {
     }
   }
 
-async function marcarComoImprocedente(denuncia) {
-  try {
-    const resp = await marcarDenunciaComoImprocedente(denuncia.id, "");
+  // 🔴 MARCAR COMO IMPROCEDENTE
+  async function marcarComoImprocedente(denuncia) {
+    try {
+      const resp = await marcarDenunciaComoImprocedente(denuncia.id, "");
 
-    atualizarDenuncia({
-      ...denuncia,
-      status: "Resolvida",
-      resposta_admin: resp.resposta_admin || ""
-    });
-  } catch (e) {
-    console.error("Erro ao marcar como improcedente:", e);
-    alert("Não foi possível marcar como improcedente.");
+      atualizarDenuncia({
+        ...denuncia,
+        status: "Resolvida",
+        resposta_admin: resp.resposta_admin || "",
+        foiImprocedente: true // improcedente → marca a flag
+      });
+    } catch (e) {
+      console.error("Erro ao marcar como improcedente:", e);
+      alert("Não foi possível marcar como improcedente.");
+    }
   }
-}
-
 
   // Funções de paginação
   const anterior = () => {
@@ -499,7 +504,8 @@ async function marcarComoImprocedente(denuncia) {
 
                     {/* Botões de Ação */}
                     <div className="denuncia-actions">
-                      {/* Botão para responder denúncia */}
+
+                      {/* 👉 1) Botão principal: Responder */}
                       <button
                         className="btn-responder"
                         onClick={() => abrirModal(denuncia)}
@@ -508,49 +514,53 @@ async function marcarComoImprocedente(denuncia) {
                         {denuncia.resposta_admin ? "Editar Resposta" : "Responder Denúncia"}
                       </button>
 
-                      {/* 🔥 Botões administrativos — apenas para admins */}
+                      {/* 👉 2) Grupo dos botões administrativos */}
                       {usuario?.is_superuser && (
-                        <div className="admin-buttons">
-                          
-                          {/* 🔵 MARCAR COMO ANALISANDO */}
-                          <button
-                            className="btn-admin btn-analise"
-                            onClick={() => marcarComoAnalisando(denuncia)}
-                          >
-                            <i className="bi bi-search"></i>
-                            Analisar
-                          </button>
+                      <div className="admin-buttons">
 
-                          {/* 🟡 PROCEDENTE */}
-                          <button
-                            className="btn-admin btn-procedente"
-                            onClick={() => marcarComoProcedente(denuncia)}
-                          >
-                            <i className="bi bi-check-circle"></i>
-                            Procedente
-                          </button>
+                        {/* 🔵 MARCAR COMO ANALISANDO */}
+                        <button
+                          className="btn-admin btn-analise"
+                          onClick={() => marcarComoAnalisando(denuncia)}
+                        >
+                          <i className="bi bi-search"></i>
+                          Analisar
+                        </button>
 
-                          {/* 🔴 IMPROCEDENTE */}
-                          <button
-                            className="btn-admin btn-improcedente"
-                            onClick={() => marcarComoImprocedente(denuncia)}
-                          >
-                            <i className="bi bi-x-circle"></i>
-                            Improcedente
-                          </button>
-                        </div>
+                        {/* 🔴 IMPROCEDENTE */}
+                        <button
+                          className="btn-admin btn-improcedente"
+                          onClick={() => marcarComoImprocedente(denuncia)}
+                        >
+                          <i className="bi bi-x-circle"></i>
+                          Improcedente
+                        </button>
+
+                        {/* 🟡 PROCEDENTE */}
+                        <button
+                          className="btn-admin btn-procedente"
+                          onClick={() => marcarComoProcedente(denuncia)}
+                        >
+                          <i className="bi bi-check-circle"></i>
+                          Procedente
+                        </button>
+                      </div>
                       )}
 
-                      {usuario?.is_superuser && denuncia.status === "Resolvida" && (
-                        <button
-                          className="btn-admin btn-punir"
-                          onClick={() => abrirModalPunicoes(denuncia)}
-                        >
-                          <i className="bi bi-gavel"></i>
-                          Punir Usuário
-                        </button>
+                      {/* 👉 3) Botão Punir: sempre isolado, linha inteira */}
+                      {usuario?.is_superuser &&
+                        denuncia.status === "Resolvida" &&
+                        !denuncia.foiImprocedente && (
+                          <button
+                            className="btn-admin btn-punir full-width"
+                            onClick={() => abrirModalPunicoes(denuncia)}
+                          >
+                            <i className="bi bi-gavel"></i>
+                            Punir Usuário
+                          </button>
                       )}
                     </div>
+
                   </div>
                 );
               })}
