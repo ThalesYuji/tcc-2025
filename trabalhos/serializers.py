@@ -6,6 +6,15 @@ from datetime import date
 import re
 
 
+# 🔹 Palavras proibidas (compartilhada entre habilidades e ramos)
+PALAVRAS_PROIBIDAS = [
+    "merda", "porra", "puta", "puto", "caralho", "buceta", "pinto", "piroca",
+    "pau", "rola", "bosta", "arrombado", "vagabundo", "vagabunda", "corno",
+    "fdp", "foda-se", "foder", "cu", "cuzão", "desgraçado", "otário", "otaria",
+    "asdf", "qwerty", "lorem", "teste", "aaaa", "bbbb", "cccc", "zzzz", "xxx",
+]
+
+
 class RamoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ramo
@@ -19,10 +28,8 @@ class HabilidadeSerializer(serializers.ModelSerializer):
 
 
 class TrabalhoSerializer(serializers.ModelSerializer):
-    # 🔹 Ramo: write por ID (opcional) + read detalhado
-    ramo = serializers.PrimaryKeyRelatedField(
-        queryset=Ramo.objects.all(), required=False, allow_null=True
-    )
+    # 🔹 Ramo: entrada flexível (ID ou nome) + read detalhado
+    ramo = serializers.CharField(required=False, allow_blank=True, allow_null=True, write_only=True)
     ramo_detalhes = RamoSerializer(source="ramo", read_only=True)
 
     # 🔹 Habilidades: entrada flexível por texto e saída detalhada
@@ -112,6 +119,7 @@ class TrabalhoSerializer(serializers.ModelSerializer):
     # -------- Create / Update --------
     def create(self, validated_data):
         habilidades_texto = self._extrair_habilidades()
+        ramo_input = self._extrair_ramo(validated_data)
         validated_data["contratante"] = self.context["request"].user
 
         freelancer = validated_data.get("freelancer")
@@ -119,9 +127,16 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         validated_data["status"] = "aberto"
 
         validated_data.pop("habilidades", None)
+        validated_data.pop("ramo", None)
+        
         trabalho = super().create(validated_data)
 
+        # Processa ramo (get_or_create)
+        self._processar_ramo(trabalho, ramo_input)
+        
+        # Processa habilidades
         self._processar_habilidades(trabalho, habilidades_texto)
+        
         return trabalho
 
     def update(self, instance, validated_data):
@@ -132,15 +147,94 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             validated_data.pop("freelancer")
 
         habilidades_texto = self._extrair_habilidades()
+        ramo_input = self._extrair_ramo(validated_data)
+        
         validated_data.pop("habilidades", None)
+        validated_data.pop("ramo", None)
 
         trabalho = super().update(instance, validated_data)
 
+        # Processa ramo se foi enviado
+        if ramo_input is not None:
+            self._processar_ramo(trabalho, ramo_input)
+
+        # Processa habilidades se foram enviadas
         if habilidades_texto is not None:
             trabalho.habilidades.clear()
             self._processar_habilidades(trabalho, habilidades_texto)
 
         return trabalho
+
+    # -------- Internos para ramo --------
+    def _extrair_ramo(self, validated_data):
+        """
+        Extrai o ramo do request.
+        Pode ser: ID (número), nome (string), vazio ou None.
+        """
+        request = self.context.get("request")
+        ramo_input = None
+        
+        # Tenta pegar do validated_data primeiro
+        if "ramo" in validated_data:
+            ramo_input = validated_data.get("ramo")
+        # Fallback para request.data
+        elif request and hasattr(request, "data"):
+            ramo_input = request.data.get("ramo")
+        
+        # Normaliza valor vazio
+        if ramo_input in [None, "", "null", "undefined"]:
+            return None
+            
+        return ramo_input
+
+    def _processar_ramo(self, trabalho, ramo_input):
+        """
+        Processa o ramo:
+        - Se for ID numérico, busca pelo ID
+        - Se for string (nome), faz get_or_create
+        - Valida palavras proibidas
+        """
+        if ramo_input is None or ramo_input == "":
+            trabalho.ramo = None
+            trabalho.save(update_fields=["ramo"])
+            return
+        
+        ramo_obj = None
+        
+        # Tenta como ID numérico primeiro
+        try:
+            ramo_id = int(ramo_input)
+            ramo_obj = Ramo.objects.filter(id=ramo_id).first()
+            if ramo_obj:
+                trabalho.ramo = ramo_obj
+                trabalho.save(update_fields=["ramo"])
+                return
+        except (ValueError, TypeError):
+            pass
+        
+        # Trata como nome (string)
+        nome_ramo = str(ramo_input).strip()
+        
+        if not nome_ramo or len(nome_ramo) < 2:
+            return
+        
+        # Valida palavras proibidas
+        if any(p.lower() in nome_ramo.lower() for p in PALAVRAS_PROIBIDAS):
+            return
+        
+        # Remove caracteres especiais (mantém letras, números, espaços, /, &, -)
+        nome_limpo = re.sub(r"[^a-zA-ZÀ-ÿ0-9\s/&\-]", "", nome_ramo)
+        
+        if len(nome_limpo) < 2:
+            return
+        
+        # Formata: primeira letra maiúscula de cada palavra
+        nome_formatado = " ".join(word.capitalize() for word in nome_limpo.split())
+        
+        # Get or create
+        ramo_obj, _ = Ramo.objects.get_or_create(nome=nome_formatado)
+        trabalho.ramo = ramo_obj
+        trabalho.save(update_fields=["ramo"])
 
     # -------- Internos para habilidades --------
     def _extrair_habilidades(self):
@@ -156,12 +250,6 @@ class TrabalhoSerializer(serializers.ModelSerializer):
         return habilidades
 
     def _processar_habilidades(self, trabalho, habilidades_texto):
-        PALAVRAS_PROIBIDAS = [
-            "merda", "porra", "puta", "puto", "caralho", "buceta", "pinto", "piroca",
-            "pau", "rola", "bosta", "arrombado", "vagabundo", "vagabunda", "corno",
-            "fdp", "foda-se", "foder", "cu", "cuzão", "desgraçado", "otário", "otaria",
-            "asdf", "qwerty", "lorem", "teste", "aaaa", "bbbb", "cccc", "zzzz", "xxx",
-        ]
         for nome in habilidades_texto:
             nome_limpo = str(nome).strip()
             if not nome_limpo:

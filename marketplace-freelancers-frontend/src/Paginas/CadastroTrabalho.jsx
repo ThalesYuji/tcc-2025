@@ -1,5 +1,5 @@
 // src/Paginas/CadastroTrabalho.jsx - DESIGN CRIATIVO E MODERNO
-import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from "react";
 import api from "../Servicos/Api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UsuarioContext } from "../Contextos/UsuarioContext";
@@ -12,6 +12,7 @@ import {
   FaCheckCircle,
   FaTimes,
   FaUser,
+  FaLightbulb,
   FaExclamationCircle,
   FaLayerGroup,
   FaRocket,
@@ -30,7 +31,7 @@ export default function CadastroTrabalho() {
   const params = new URLSearchParams(location.search);
   const freelancerId = params.get("freelancer");
 
-  // Estados
+  // Estados principais
   const [freelancerNome, setFreelancerNome] = useState("");
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -40,8 +41,12 @@ export default function CadastroTrabalho() {
   const [habilidadeInput, setHabilidadeInput] = useState("");
   const [sugestoes, setSugestoes] = useState([]);
   const [anexo, setAnexo] = useState(null);
-  const [ramo, setRamo] = useState("");
   const [dragActive, setDragActive] = useState(false);
+
+  // 🔹 Estados do Ramo - NOVO: agora funciona igual às habilidades
+  const [ramoSelecionado, setRamoSelecionado] = useState(""); // Nome do ramo selecionado
+  const [ramoInput, setRamoInput] = useState(""); // Texto digitado no input
+  const [showRamoSugestoes, setShowRamoSugestoes] = useState(false);
 
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState("");
@@ -49,6 +54,7 @@ export default function CadastroTrabalho() {
   const [isLoading, setIsLoading] = useState(false);
 
   const debounceRef = useRef(null);
+  const ramoInputRef = useRef(null);
   const { ramos, loadingRamos } = useFetchRamos();
 
   const habilidadesPopulares = [
@@ -56,6 +62,22 @@ export default function CadastroTrabalho() {
     "WordPress", "Figma", "Photoshop", "Marketing Digital", "SEO",
     "Vue.js", "Angular", "Django", "Laravel", "Copywriting",
   ];
+
+  // 🔹 Ramos populares/sugeridos
+  const ramosPopulares = [
+    "Desenvolvimento Web", "Design", "Marketing Digital", "Mobile",
+    "Data Science", "DevOps", "UI/UX", "Backend", "Frontend",
+  ];
+
+  // 🔹 Filtrar sugestões de ramos conforme digitação
+  const ramoSugestoesFiltradas = useMemo(() => {
+    if (!ramoInput.trim()) return [];
+    const termo = ramoInput.toLowerCase();
+    return ramos
+      .filter(r => r.nome.toLowerCase().includes(termo))
+      .filter(r => r.nome !== ramoSelecionado)
+      .slice(0, 5);
+  }, [ramoInput, ramos, ramoSelecionado]);
 
   // Buscar nome do freelancer
   useEffect(() => {
@@ -112,6 +134,46 @@ export default function CadastroTrabalho() {
     setHabilidades((prev) => prev.filter((h) => h !== hab));
   };
 
+  // 🔹 Handlers do Ramo - NOVOS
+  const handleRamoInput = (e) => {
+    const valor = e.target.value;
+    setRamoInput(valor);
+    setShowRamoSugestoes(valor.trim().length > 0);
+  };
+
+  const handleRamoKeyDown = (e) => {
+    if (e.key === "Enter" && ramoInput.trim()) {
+      e.preventDefault();
+      selecionarRamo(ramoInput.trim());
+    }
+    if (e.key === "Escape") {
+      setShowRamoSugestoes(false);
+    }
+  };
+
+  const selecionarRamo = (nome) => {
+    const limpo = nome.replace(/\s+/g, " ").trim();
+    if (!limpo) return;
+    setRamoSelecionado(limpo);
+    setRamoInput("");
+    setShowRamoSugestoes(false);
+  };
+
+  const removerRamo = () => {
+    setRamoSelecionado("");
+  };
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ramoInputRef.current && !ramoInputRef.current.contains(e.target)) {
+        setShowRamoSugestoes(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Drag & Drop para arquivo
   const handleDrag = (e) => {
     e.preventDefault();
@@ -132,44 +194,18 @@ export default function CadastroTrabalho() {
     }
   };
 
-  // Função para formatar data corretamente (sem fuso horário)
-  const formatarData = (dataString) => {
-    if (!dataString) return "Data de entrega";
-    const [ano, mes, dia] = dataString.split("-");
-    return new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR");
-  };
-
-  // Obter nome do ramo
-  const getNomeRamo = () => {
-    if (!ramo) return null;
-    const ramoSelecionado = ramos.find(r => String(r.id) === String(ramo));
-    return ramoSelecionado ? ramoSelecionado.nome : null;
-  };
-
-  // Validações
+  // Validação
   const validarCampos = () => {
     const novosErros = {};
-    if (!titulo.trim()) novosErros.titulo = "Preencha o título.";
-    if (!descricao.trim()) novosErros.descricao = "Preencha a descrição.";
-    if (!prazo) novosErros.prazo = "Escolha o prazo.";
-    if (!orcamento || isNaN(Number(orcamento)) || Number(orcamento) <= 0) {
-      novosErros.orcamento = "Informe um orçamento válido.";
-    }
-    if (anexo) {
-      const max = 10 * 1024 * 1024;
-      if (anexo.size > max) {
-        novosErros.anexo = "Arquivo muito grande (máx. 10MB).";
-      } else {
-        const ext = (anexo.name.split(".").pop() || "").toLowerCase();
-        const permitidos = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "zip", "rar"];
-        if (!permitidos.includes(ext)) {
-          novosErros.anexo = "Tipo não permitido.";
-        }
-      }
-    }
+    if (!titulo.trim()) novosErros.titulo = "O título é obrigatório.";
+    if (!descricao.trim()) novosErros.descricao = "A descrição é obrigatória.";
+    if (!prazo) novosErros.prazo = "O prazo é obrigatório.";
+    if (!orcamento || Number(orcamento) <= 0) novosErros.orcamento = "O orçamento deve ser maior que zero.";
+    if (anexo && anexo.size > 10 * 1024 * 1024) novosErros.anexo = "Arquivo muito grande (máx. 10MB).";
     return novosErros;
   };
 
+  // Submeter formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErros({});
@@ -191,7 +227,9 @@ export default function CadastroTrabalho() {
     formData.append("prazo", prazo);
     formData.append("orcamento", String(Number(orcamento)));
 
-    if (ramo) formData.append("ramo", ramo);
+    // 🔹 Agora envia o NOME do ramo (não o ID)
+    if (ramoSelecionado) formData.append("ramo", ramoSelecionado);
+    
     habilidades.forEach((hab) => formData.append("habilidades", hab));
     if (anexo) formData.append("anexo", anexo);
     if (freelancerId) formData.append("freelancer", freelancerId);
@@ -286,7 +324,103 @@ export default function CadastroTrabalho() {
         {/* Layout Criativo em 2 Colunas */}
         <div className="ct-creative-layout">
           
-          {/* Coluna Esquerda - Formulário */}
+          {/* Coluna Esquerda - Preview Visual */}
+          <div className="ct-preview-column">
+            <div className="ct-preview-card">
+              <div className="ct-preview-header">
+                <span className="ct-preview-badge">
+                  <FaRocket /> Preview em Tempo Real
+                </span>
+              </div>
+              
+              <div className="ct-preview-body">
+                <div className="ct-preview-mockup">
+                  <div className="ct-mockup-header">
+                    <div className="ct-mockup-dots">
+                      <span></span><span></span><span></span>
+                    </div>
+                  </div>
+                  <div className="ct-mockup-content">
+                    <h3 className="ct-preview-title">
+                      {titulo || "Título do seu projeto aparecerá aqui..."}
+                    </h3>
+                    <p className="ct-preview-desc">
+                      {descricao 
+                        ? (descricao.length > 200 ? descricao.substring(0, 200) + "..." : descricao)
+                        : "A descrição detalhada do seu projeto será exibida neste espaço. Freelancers poderão ler e entender exatamente o que você precisa."}
+                    </p>
+                    
+                    <div className="ct-preview-meta">
+                      <div className="ct-preview-meta-item">
+                        <FaCalendarAlt />
+                        <span>{prazo ? new Date(prazo).toLocaleDateString("pt-BR") : "Data de entrega"}</span>
+                      </div>
+                      <div className="ct-preview-meta-item ct-preview-meta-budget">
+                        <FaMoneyBillWave />
+                        <span>
+                          {orcamento 
+                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
+                            : "R$ 0,00"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 🔹 Preview do ramo selecionado */}
+                    {ramoSelecionado && (
+                      <div className="ct-preview-ramo">
+                        <FaLayerGroup />
+                        <span>{ramoSelecionado}</span>
+                      </div>
+                    )}
+
+                    {habilidades.length > 0 && (
+                      <div className="ct-preview-skills">
+                        {habilidades.slice(0, 5).map((hab, i) => (
+                          <span key={i} className="ct-preview-skill">{hab}</span>
+                        ))}
+                        {habilidades.length > 5 && (
+                          <span className="ct-preview-skill ct-preview-skill-more">
+                            +{habilidades.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {anexo && (
+                      <div className="ct-preview-attachment">
+                        <FaFile />
+                        <span>{anexo.name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra de Progresso */}
+              <div className="ct-progress-section">
+                <div className="ct-progress-header">
+                  <span>Progresso do formulário</span>
+                  <span className="ct-progress-percent">{progresso}%</span>
+                </div>
+                <div className="ct-progress-bar">
+                  <div 
+                    className="ct-progress-fill" 
+                    style={{ width: `${progresso}%` }}
+                  ></div>
+                </div>
+                <div className="ct-progress-tips">
+                  <FaLightbulb />
+                  <span>
+                    {progresso < 100 
+                      ? "Complete todos os campos obrigatórios para publicar"
+                      : "Tudo pronto! Você pode publicar seu projeto"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna Direita - Formulário */}
           <div className="ct-form-column">
             <form onSubmit={handleSubmit} className="ct-form">
               
@@ -392,25 +526,95 @@ export default function CadastroTrabalho() {
                       />
                       {erros.orcamento && <span className="ct-error">{erros.orcamento}</span>}
                     </div>
-
-                    <div className="ct-field-group">
-                      <label>
-                        <FaLayerGroup />
-                        Área/Ramo
-                      </label>
-                      <select
-                        className="ct-input ct-select"
-                        value={ramo}
-                        onChange={(e) => setRamo(e.target.value)}
-                        disabled={loadingRamos || isLoading}
-                      >
-                        <option value="">Selecionar</option>
-                        {ramos.map(r => (
-                          <option key={r.id} value={r.id}>{r.nome}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* 🔹 Bloco: Área/Ramo - NOVO DESIGN COM AUTOCOMPLETE */}
+              <div className="ct-form-block">
+                <div className="ct-block-header">
+                  <div className="ct-block-icon ct-block-icon-optional">
+                    <FaLayerGroup />
+                  </div>
+                  <div className="ct-block-info">
+                    <h3>Área/Ramo <span className="ct-optional">Opcional</span></h3>
+                    <p>Selecione ou digite uma nova área para categorizar seu projeto</p>
+                  </div>
+                </div>
+                <div className="ct-block-content">
+                  {/* Ramo selecionado como tag */}
+                  {ramoSelecionado ? (
+                    <div className="ct-selected-ramo">
+                      <span className="ct-ramo-tag">
+                        <FaLayerGroup />
+                        {ramoSelecionado}
+                        <button type="button" onClick={removerRamo} disabled={isLoading}>
+                          <FaTimes />
+                        </button>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="ct-ramo-input-container" ref={ramoInputRef}>
+                      <input
+                        type="text"
+                        className="ct-input"
+                        placeholder="Digite ou selecione uma área (ex: Desenvolvimento Web)"
+                        value={ramoInput}
+                        onChange={handleRamoInput}
+                        onKeyDown={handleRamoKeyDown}
+                        onFocus={() => setShowRamoSugestoes(true)}
+                        disabled={isLoading || loadingRamos}
+                      />
+                      
+                      {/* Dropdown de sugestões */}
+                      {showRamoSugestoes && (ramoSugestoesFiltradas.length > 0 || ramoInput.trim()) && (
+                        <div className="ct-ramo-dropdown">
+                          {ramoSugestoesFiltradas.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              className="ct-ramo-option"
+                              onClick={() => selecionarRamo(r.nome)}
+                            >
+                              {r.nome}
+                            </button>
+                          ))}
+                          {ramoInput.trim() && !ramoSugestoesFiltradas.some(r => r.nome.toLowerCase() === ramoInput.toLowerCase()) && (
+                            <button
+                              type="button"
+                              className="ct-ramo-option ct-ramo-option-new"
+                              onClick={() => selecionarRamo(ramoInput.trim())}
+                            >
+                              <FaPlus /> Criar "{ramoInput.trim()}"
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Ramos populares */}
+                  {!ramoSelecionado && (
+                    <div className="ct-popular-ramos">
+                      <span className="ct-popular-label">Populares:</span>
+                      <div className="ct-popular-list">
+                        {ramosPopulares
+                          .filter((r) => r !== ramoSelecionado)
+                          .slice(0, 6)
+                          .map((r, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              className="ct-popular-btn"
+                              onClick={() => selecionarRamo(r)}
+                              disabled={isLoading}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -578,100 +782,6 @@ export default function CadastroTrabalho() {
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* Coluna Direita - Preview Visual */}
-          <div className="ct-preview-column">
-            <div className="ct-preview-card">
-              <div className="ct-preview-header">
-                <span className="ct-preview-badge">
-                  Preview do Trabalho
-                </span>
-              </div>
-              
-              <div className="ct-preview-body">
-                <div className="ct-preview-mockup">
-                  <div className="ct-mockup-header">
-                    <div className="ct-mockup-dots">
-                      <span></span><span></span><span></span>
-                    </div>
-                  </div>
-                  <div className="ct-mockup-content">
-                    <h3 className="ct-preview-title">
-                      {titulo || "Título do seu projeto aparecerá aqui..."}
-                    </h3>
-                    <p className="ct-preview-desc">
-                      {descricao 
-                        ? (descricao.length > 200 ? descricao.substring(0, 200) + "..." : descricao)
-                        : "A descrição detalhada do seu projeto será exibida neste espaço. Freelancers poderão ler e entender exatamente o que você precisa."}
-                    </p>
-                    
-                    <div className="ct-preview-meta">
-                      <div className="ct-preview-meta-item">
-                        <FaCalendarAlt />
-                        <span>{formatarData(prazo)}</span>
-                      </div>
-                      <div className="ct-preview-meta-item ct-preview-meta-budget">
-                        <FaMoneyBillWave />
-                        <span>
-                          {orcamento 
-                            ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(orcamento))
-                            : "R$ 0,00"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {getNomeRamo() && (
-                      <div className="ct-preview-ramo">
-                        <FaLayerGroup />
-                        <span>{getNomeRamo()}</span>
-                      </div>
-                    )}
-
-                    {habilidades.length > 0 && (
-                      <div className="ct-preview-skills">
-                        {habilidades.slice(0, 5).map((hab, i) => (
-                          <span key={i} className="ct-preview-skill">{hab}</span>
-                        ))}
-                        {habilidades.length > 5 && (
-                          <span className="ct-preview-skill ct-preview-skill-more">
-                            +{habilidades.length - 5}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {anexo && (
-                      <div className="ct-preview-attachment">
-                        <FaFile />
-                        <span>{anexo.name}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Barra de Progresso */}
-              <div className="ct-progress-section">
-                <div className="ct-progress-header">
-                  <span>Progresso do formulário</span>
-                  <span className="ct-progress-percent">{progresso}%</span>
-                </div>
-                <div className="ct-progress-bar">
-                  <div 
-                    className="ct-progress-fill" 
-                    style={{ width: `${progresso}%` }}
-                  ></div>
-                </div>
-                <div className="ct-progress-tips">
-                  <span>
-                    {progresso < 100 
-                      ? "Complete todos os campos obrigatórios para publicar"
-                      : "Tudo pronto! Você pode publicar seu projeto"}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
