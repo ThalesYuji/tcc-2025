@@ -86,11 +86,13 @@ class AplicarSuspensaoView(APIView):
 
         validade = timezone.now() + timezone.timedelta(days=dias)
 
+        # Atualiza usuário
         usuario.is_suspended_admin = True
         usuario.suspenso_ate = validade
         usuario.motivo_suspensao_admin = motivo
         usuario.save(update_fields=["is_suspended_admin", "suspenso_ate", "motivo_suspensao_admin"])
 
+        # Registra punição
         Punicao.objects.create(
             usuario_punido=usuario,
             admin_responsavel=request.user,
@@ -133,11 +135,13 @@ class AplicarBanimentoView(APIView):
             if denuncia_id else None
         )
 
+        # Atualiza usuário
         usuario.banido = True
         usuario.banido_em = timezone.now()
         usuario.motivo_banimento = motivo
         usuario.save(update_fields=["banido", "banido_em", "motivo_banimento"])
 
+        # Registra punição
         Punicao.objects.create(
             usuario_punido=usuario,
             admin_responsavel=request.user,
@@ -156,7 +160,7 @@ class AplicarBanimentoView(APIView):
 
 
 # ============================================================
-# 🔹 REMOVER SUSPENSÃO MANUALMENTE
+# 🔹 REMOVER SUSPENSÃO
 # ============================================================
 class RemoverSuspensaoView(APIView):
     permission_classes = [IsAdminUser]
