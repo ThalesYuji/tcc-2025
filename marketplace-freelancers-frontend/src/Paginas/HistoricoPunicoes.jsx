@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { listarHistoricoPunicoes, removerPunicao } from "../Servicos/Api";
 import {
   FaGavel,
-  FaSearch,
   FaTimes,
   FaRedoAlt,
   FaExclamationCircle,
