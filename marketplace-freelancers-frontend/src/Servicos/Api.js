@@ -78,7 +78,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 403 — conta em modo leitura (middleware)
+    // 403 — conta bloqueada por suspensão
     const blocked = String(headers[SUSP_HEADER]) === "true";
     if (status === 403 && blocked) {
       setSuspendedFlag(true);
@@ -88,6 +88,7 @@ api.interceptors.response.use(
         data?.erro ||
         data?.error ||
         "Sua conta está desativada (modo leitura).";
+
       notifySuspension(msg);
     }
 
@@ -96,7 +97,7 @@ api.interceptors.response.use(
 );
 
 // =============================================================
-// 🧍 CONTROLE DE CONTA (self)
+// 🧍 CONTROLE DE CONTA
 // =============================================================
 export async function desativarConta() {
   const resp = await api.post("/usuarios/me/desativar/");
@@ -164,29 +165,31 @@ export async function aplicarBanimento(usuario_id, motivo, denuncia_id = null) {
 }
 
 export async function removerSuspensao(usuario_id) {
-  const resp = await api.post("/punicoes/remover-suspensao/", { usuario_id });
+  const resp = await api.post("/punicoes/remover-suspensao/", {
+    usuario_id,
+  });
   return resp.data;
 }
 
 // =============================================================
-// 📌 NOVO — HISTÓRICO DE PUNIÇÕES
+// 📌 HISTÓRICO DE PUNIÇÕES
 // =============================================================
 
-// 🔹 Buscar histórico completo
+// 🔹 Listar tudo
 export async function listarHistoricoPunicoes() {
   const resp = await api.get("/punicoes/historico/");
   return resp.data;
 }
 
-// 🔹 Buscar histórico de um único usuário
+// 🔹 Listar por usuário
 export async function listarPunicoesPorUsuario(usuario_id) {
   const resp = await api.get(`/punicoes/historico/${usuario_id}/`);
   return resp.data;
 }
 
-// 🔹 Remover (anular) uma punição
+// 🔹 Remover punição (DELETE correto)
 export async function removerPunicao(punicao_id) {
-  const resp = await api.post(`/punicoes/remover/${punicao_id}/`);
+  const resp = await api.delete(`/punicoes/remover/${punicao_id}/`);
   return resp.data;
 }
 
