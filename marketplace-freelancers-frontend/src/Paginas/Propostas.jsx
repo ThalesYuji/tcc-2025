@@ -78,14 +78,32 @@ export default function Propostas() {
 
   function formatarData(dataStr) {
     if (!dataStr) return "";
-    const data = new Date(dataStr);
+    
+    // Adiciona 'Z' se não tiver indicador de timezone para forçar UTC
+    const dataISO = dataStr.includes('Z') || dataStr.includes('+') || dataStr.includes('-') 
+      ? dataStr 
+      : dataStr + 'Z';
+    
+    const data = new Date(dataISO);
     const agora = new Date();
-    const diffMs = agora - data;
+    
+    // Zera as horas para comparar apenas as datas
+    const dataComparar = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+    const agoraComparar = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    
+    const diffMs = agoraComparar - dataComparar;
     const diffDias = Math.floor(diffMs / 86400000);
+    
     if (diffDias === 0) return "Hoje";
     if (diffDias === 1) return "Ontem";
     if (diffDias < 7) return `${diffDias}d atrás`;
-    return data.toLocaleDateString("pt-BR");
+    
+    return data.toLocaleDateString("pt-BR", {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'UTC' // Força UTC para evitar conversão de fuso
+    });
   }
 
   function traduzirErroBackend(msg) {
