@@ -13,12 +13,13 @@ from .serializers import (
     AplicarSuspensaoSerializer,
     AplicarBanimentoSerializer,
     RemoverSuspensaoSerializer,
+    PunicaoSerializer
 )
 
 
-# ------------------------------------------------------
-# 🔹 ADVERTÊNCIA
-# ------------------------------------------------------
+# ============================================================
+# 🔹 APLICAR ADVERTÊNCIA
+# ============================================================
 class AplicarAdvertenciaView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -35,12 +36,12 @@ class AplicarAdvertenciaView(APIView):
         except Usuario.DoesNotExist:
             return Response({"erro": "Usuário não encontrado."}, status=404)
 
-        denuncia = None
-        if denuncia_id:
-            denuncia = Denuncia.objects.filter(id=denuncia_id).first()
+        denuncia = (
+            Denuncia.objects.filter(id=denuncia_id).first()
+            if denuncia_id else None
+        )
 
-        # Criar punição
-        punicao = Punicao.objects.create(
+        Punicao.objects.create(
             usuario_punido=usuario,
             admin_responsavel=request.user,
             tipo="advertencia",
@@ -48,7 +49,6 @@ class AplicarAdvertenciaView(APIView):
             denuncia_relacionada=denuncia,
         )
 
-        # Notificação
         enviar_notificacao(
             usuario=usuario,
             mensagem=f"Você recebeu uma advertência: {motivo}",
@@ -58,9 +58,9 @@ class AplicarAdvertenciaView(APIView):
         return Response({"mensagem": "Advertência aplicada com sucesso."})
 
 
-# ------------------------------------------------------
-# 🔹 SUSPENSÃO
-# ------------------------------------------------------
+# ============================================================
+# 🔹 APLICAR SUSPENSÃO
+# ============================================================
 class AplicarSuspensaoView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -78,19 +78,20 @@ class AplicarSuspensaoView(APIView):
         except Usuario.DoesNotExist:
             return Response({"erro": "Usuário não encontrado."}, status=404)
 
-        denuncia = None
-        if denuncia_id:
-            denuncia = Denuncia.objects.filter(id=denuncia_id).first()
+        denuncia = (
+            Denuncia.objects.filter(id=denuncia_id).first()
+            if denuncia_id else None
+        )
 
         validade = timezone.now() + timezone.timedelta(days=dias)
 
-        # Atualiza campos do usuário
+        # Atualiza status do usuário
         usuario.is_suspended_admin = True
         usuario.suspenso_ate = validade
         usuario.motivo_suspensao_admin = motivo
         usuario.save(update_fields=["is_suspended_admin", "suspenso_ate", "motivo_suspensao_admin"])
 
-        # Registrar punição
+        # Registra punição
         Punicao.objects.create(
             usuario_punido=usuario,
             admin_responsavel=request.user,
@@ -109,9 +110,9 @@ class AplicarSuspensaoView(APIView):
         return Response({"mensagem": "Suspensão aplicada com sucesso."})
 
 
-# ------------------------------------------------------
-# 🔹 BANIMENTO
-# ------------------------------------------------------
+# ============================================================
+# 🔹 APLICAR BANIMENTO
+# ============================================================
 class AplicarBanimentoView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -128,17 +129,18 @@ class AplicarBanimentoView(APIView):
         except Usuario.DoesNotExist:
             return Response({"erro": "Usuário não encontrado."}, status=404)
 
-        denuncia = None
-        if denuncia_id:
-            denuncia = Denuncia.objects.filter(id=denuncia_id).first()
+        denuncia = (
+            Denuncia.objects.filter(id=denuncia_id).first()
+            if denuncia_id else None
+        )
 
-        # Atualiza usuário
+        # Aplica banimento ao usuário
         usuario.banido = True
         usuario.banido_em = timezone.now()
         usuario.motivo_banimento = motivo
         usuario.save(update_fields=["banido", "banido_em", "motivo_banimento"])
 
-        # Registrar punição
+        # Registra a punição
         Punicao.objects.create(
             usuario_punido=usuario,
             admin_responsavel=request.user,
@@ -157,9 +159,9 @@ class AplicarBanimentoView(APIView):
         return Response({"mensagem": "Banimento aplicado com sucesso."})
 
 
-# ------------------------------------------------------
+# ============================================================
 # 🔹 REMOVER SUSPENSÃO MANUALMENTE
-# ------------------------------------------------------
+# ============================================================
 class RemoverSuspensaoView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -174,6 +176,7 @@ class RemoverSuspensaoView(APIView):
         except Usuario.DoesNotExist:
             return Response({"erro": "Usuário não encontrado."}, status=404)
 
+        # Remove suspensão do usuário
         usuario.is_suspended_admin = False
         usuario.suspenso_ate = None
         usuario.motivo_suspensao_admin = None
@@ -186,3 +189,48 @@ class RemoverSuspensaoView(APIView):
         )
 
         return Response({"mensagem": "Suspensão removida com sucesso."})
+
+
+# ============================================================
+# 🔥 HISTÓRICO COMPLETO
+# ============================================================
+class HistoricoPunicoesView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        punicoes = Punicao.objects.order_by("-criado_em")
+        serializer = PunicaoSerializer(punicoes, many=True)
+        return Response(serializer.data)
+
+
+# ============================================================
+# 🔍 HISTÓRICO POR USUÁRIO
+# ============================================================
+class HistoricoPorUsuarioView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, usuario_id):
+        punicoes = Punicao.objects.filter(usuario_punido_id=usuario_id).order_by("-criado_em")
+        serializer = PunicaoSerializer(punicoes, many=True)
+        return Response(serializer.data)
+
+
+# ============================================================
+# ❌ REMOVER REGISTRO DO HISTÓRICO
+# ============================================================
+class RemoverPunicaoView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def delete(self, request, punicao_id):
+        try:
+            punicao = Punicao.objects.get(id=punicao_id)
+        except Punicao.DoesNotExist:
+            return Response({"erro": "Punição não encontrada."}, status=404)
+
+        # Marca como removida (não apaga do banco)
+        punicao.ativo = False
+        punicao.removida_em = timezone.now()
+        punicao.removida_por_admin = request.user
+        punicao.save(update_fields=["ativo", "removida_em", "removida_por_admin"])
+
+        return Response({"mensagem": "Punição removida do histórico."})

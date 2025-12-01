@@ -1,11 +1,9 @@
-// src/Paginas/HistoricoPunicoes.jsx
 import React, { useEffect, useState } from "react";
 import {
   listarHistoricoPunicoes,
-  listarPunicoesPorUsuario,
   removerPunicao,
 } from "../Servicos/Api";
-import "../styles/HistoricoPunicoes.css"; // NOVO CSS SEPARADO
+import "../styles/HistoricoPunicoes.css";
 
 export default function HistoricoPunicoes() {
   const [punicoes, setPunicoes] = useState([]);
@@ -33,14 +31,20 @@ export default function HistoricoPunicoes() {
     carregarHistorico();
   }, []);
 
+  // ================================
+  // 🔍 FILTROS
+  // ================================
   const punicoesFiltradas = punicoes.filter((p) => {
     const matchTipo = tipoFiltro === "Todos" || p.tipo === tipoFiltro;
+    const nomeUsuario = (p.usuario_punido_nome || "").toLowerCase();
     const matchBusca =
-      !busca ||
-      (p.usuario_nome || "").toLowerCase().includes(busca.toLowerCase());
+      !busca || nomeUsuario.includes(busca.toLowerCase());
     return matchTipo && matchBusca;
   });
 
+  // ================================
+  // ❌ REMOVER REGISTRO
+  // ================================
   async function handleRemover(id) {
     const confirmar = window.confirm(
       "Deseja remover esta punição do histórico? Isso não desfaz suspensões/banimentos já aplicados."
@@ -79,6 +83,9 @@ export default function HistoricoPunicoes() {
     setRemovendo(null);
   }
 
+  // ================================
+  // 🎨 BADGE DO TIPO
+  // ================================
   function BadgeTipo({ tipo }) {
     const map = {
       advertencia: { label: "Advertência", cls: "badge-warning" },
@@ -99,6 +106,9 @@ export default function HistoricoPunicoes() {
     );
   }
 
+  // ================================
+  // 🎨 RENDERIZAÇÃO
+  // ================================
   return (
     <div className="hp-container">
       {/* Título */}
@@ -169,20 +179,26 @@ export default function HistoricoPunicoes() {
 
                 <div className="hp-info">
                   <p>
-                    <strong>Usuário</strong> {p.usuario_nome}
+                    <strong>Usuário:</strong> {p.usuario_punido_nome || "—"}
                   </p>
                   <p>
-                    <strong>Motivo</strong> {p.motivo}
+                    <strong>Motivo:</strong> {p.motivo}
                   </p>
                   <p>
-                    <strong>Aplicada em</strong> {criado}
+                    <strong>Aplicada em:</strong> {criado}
                   </p>
                   <p>
-                    <strong>Válida até</strong> {validade}
+                    <strong>Válida até:</strong> {validade}
                   </p>
                   <p>
-                    <strong>Administrador</strong> {p.admin_nome || "—"}
+                    <strong>Administrador:</strong> {p.admin_responsavel_nome || "—"}
                   </p>
+
+                  {p.removida_por_admin_nome && (
+                    <p>
+                      <strong>Removida por:</strong> {p.removida_por_admin_nome}
+                    </p>
+                  )}
                 </div>
 
                 <button
