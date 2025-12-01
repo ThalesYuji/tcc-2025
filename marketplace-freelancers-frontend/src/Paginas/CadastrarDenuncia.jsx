@@ -33,7 +33,7 @@ export default function CadastrarDenuncia() {
 
     async function buscarUsuario() {
       try {
-        const res = await api.get(`/usuarios/${idDenunciado}/`);
+        const res = await api.get(`/usuarios/${idDenunciado}/dados_publicos/`);
         setDenunciado(res.data);
       } catch {
         setErro("Erro ao buscar informações do usuário denunciado.");

@@ -220,6 +220,31 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             "contratos_cancelados": cancelados,
         })
 
+    # ------------------ DADOS PÚBLICOS (USADO NA DENÚNCIA) ------------------
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="dados_publicos",
+        permission_classes=[AllowAny],
+    )
+    def dados_publicos(self, request, pk=None):
+        """
+        Endpoint PÚBLICO usado pela tela de denúncia.
+        Permite buscar nome, tipo e email do usuário a ser denunciado.
+        NÃO é bloqueado pelo get_queryset().
+        """
+        try:
+            usuario = Usuario.objects.get(pk=pk)
+        except Usuario.DoesNotExist:
+            return Response({"detail": "Usuário não encontrado."}, status=404)
+
+        return Response({
+            "id": usuario.id,
+            "nome": usuario.nome,
+            "tipo": usuario.tipo,
+            "email": usuario.email,
+        })
+
     # ------------------ ALTERAR SENHA (ME) ------------------
     @action(detail=False, methods=["post"], url_path="me/alterar_senha", permission_classes=[IsAuthenticated])
     def alterar_senha_me(self, request):
