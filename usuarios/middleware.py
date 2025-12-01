@@ -13,18 +13,18 @@ class ModoLeituraMiddleware:
     - Suspensão administrativa (is_suspended_admin)
     - Banimento permanente (banido)
 
-    Bloqueia métodos de escrita para suspensos.
-    Bloqueia TODO acesso para banidos.
-    Compatível com JWT.
+    Importante:
+    → Login (POST /api/token/) deve SEMPRE ser liberado.
+    → Nenhuma verificação de suspensão pode acontecer antes do login.
     """
 
     SAFE_PATH_PREFIXES = (
-        "/admin/login",
-        "/api/token",                     # JWT authenticate/refresh
+        "/api/token",                     # LOGIN JWT
         "/api/password-reset",
         "/api/password-reset-confirm",
         "/api/usuarios/me/desativar",
         "/api/usuarios/me/reativar",
+        "/admin/login",
     )
 
     def __init__(self, get_response):
@@ -37,12 +37,11 @@ class ModoLeituraMiddleware:
         self.jwt_auth = JWTAuthentication()
 
     # ============================================================
-    # 🔹 Autenticação JWT no middleware
+    # 🔹 Tenta autenticar usuário via JWT
     # ============================================================
     def _ensure_user_from_jwt(self, request):
-        user = getattr(request, "user", None)
-        if user and getattr(user, "is_authenticated", False):
-            return user
+        if getattr(request, "user", None) and request.user.is_authenticated:
+            return request.user
 
         try:
             auth_tuple = self.jwt_auth.authenticate(request)
@@ -54,72 +53,83 @@ class ModoLeituraMiddleware:
             return None
         except Exception:
             return None
+
         return None
 
     # ============================================================
     # 🔹 Middleware principal
     # ============================================================
     def __call__(self, request):
-        # Preflight CORS
+
+        path = (request.path or "").lower().rstrip("/")
+
+        # ============================================================
+        # 🔥 LOGIN / TOKEN → SEMPRE LIBERADO (ANTES DE TUDO)
+        # ============================================================
+        if path.startswith("/api/token"):
+            return self.get_response(request)
+
+        # Pré-CORS
         if request.method == "OPTIONS":
             return self.get_response(request)
 
-        # Garante user autenticado (JWT ou sessão)
+        # Autentica usuário (JWT ou sessão)
         user = self._ensure_user_from_jwt(request)
 
-        # Não autenticado → view decide
-        if not (user and getattr(user, "is_authenticated", False)):
+        # Não autenticado → deixar seguir
+        if not (user and user.is_authenticated):
             return self.get_response(request)
 
-        # Staff/superuser sempre passa
-        if user.is_staff or user.is_superuser:
+        # Superuser e staff → nunca bloqueiam
+        if user.is_superuser or user.is_staff:
             return self.get_response(request)
 
         # ============================================================
-        # 🔥 1) BANIMENTO PERMANENTE — BLOQUEIA TUDO
+        # 🔥 BANIMENTO PERMANENTE — BLOQUEIA TUDO
         # ============================================================
-        if getattr(user, "banido", False):
+        if user.banido:
             resp = JsonResponse({
                 "detail": "Sua conta foi banida permanentemente por violar as políticas da plataforma."
             }, status=403)
-            resp[self.header_name] = "banido"
+            resp[self.header_name] = "true"
             return resp
 
         # ============================================================
-        # 🔥 2) SUSPENSÃO ADMINISTRATIVA
+        # 🔥 SUSPENSÃO ADMINISTRATIVA
         # ============================================================
-        if getattr(user, "is_suspended_admin", False):
-            expiracao = getattr(user, "suspenso_ate", None)
+        if user.is_suspended_admin:
+            expiracao = user.suspenso_ate
 
-            # Se já passou a validade → desbloqueia automaticamente
+            # Se venceu → limpa automaticamente
             if expiracao and timezone.now() > expiracao:
                 user.is_suspended_admin = False
                 user.suspenso_ate = None
                 user.motivo_suspensao_admin = None
                 user.save(update_fields=["is_suspended_admin", "suspenso_ate", "motivo_suspensao_admin"])
             else:
-                # Suspensão ativa → bloqueia métodos de escrita
+                # Suspensão ativa → bloquear MÉTODOS DE ESCRITA apenas
                 if request.method in self.blocked_methods:
                     resp = JsonResponse({
                         "detail": f"Sua conta está suspensa até {expiracao.strftime('%d/%m/%Y %H:%M')}."
                     }, status=403)
-                    resp[self.header_name] = "suspensao_admin"
+                    resp[self.header_name] = "true"
                     return resp
 
         # ============================================================
-        # 🔥 3) MODO LEITURA VOLUNTÁRIO
+        # 🔥 MODO LEITURA VOLUNTÁRIO
         # ============================================================
-        if getattr(user, "is_suspended_self", False):
+        if user.is_suspended_self:
             if request.method in self.blocked_methods:
-                path = (request.path or "").rstrip("/").lower()
-                # paths permitidos mesmo suspenso voluntariamente
+
+                # Paths permitidos mesmo suspenso
                 for prefix in self.SAFE_PATH_PREFIXES:
                     if path.startswith(prefix.rstrip("/").lower()):
                         return self.get_response(request)
 
+                # Bloqueia escrita
                 resp = JsonResponse({"detail": self.message_voluntaria}, status=403)
-                resp[self.header_name] = "modo_leitura"
+                resp[self.header_name] = "true"
                 return resp
 
-        # GET/HEAD liberados
+        # GET/HEAD sempre liberados
         return self.get_response(request)
