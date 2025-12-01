@@ -1,8 +1,15 @@
 // src/Paginas/PainelDenuncias.jsx - Redesign Aprimorado
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import api from "../Servicos/Api";
 import ModalRespostaDenuncia from "../Componentes/ModalRespostaDenuncia";
 import "../styles/PainelDenuncias.css";
+import { UsuarioContext } from "../Contextos/UsuarioContext";  // ⬅️ IMPORTANTE
+import ModalPunicoes from "../Componentes/ModalPunicoes";
+import {
+  marcarDenunciaComoAnalisando,
+  marcarDenunciaComoProcedente,
+  marcarDenunciaComoImprocedente
+} from "../Servicos/Api";
 
 function Badge({ status }) {
   const map = {
@@ -91,6 +98,8 @@ function ActionButtons({ onRefresh, carregando }) {
 }
 
 export default function PainelDenuncias() {
+  const { usuarioLogado } = useContext(UsuarioContext);
+  const usuario = usuarioLogado;
   const [denuncias, setDenuncias] = useState([]);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -105,6 +114,10 @@ export default function PainelDenuncias() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(6);
   const [numPages, setNumPages] = useState(1);
+
+  // Criar estados para abrir/fechar o modal
+  const [modalPunicoesAberto, setModalPunicoesAberto] = useState(false);
+  const [denunciaParaPunicao, setDenunciaParaPunicao] = useState(null);
 
   async function carregarDenuncias(pageNum = 1) {
     setCarregando(true);
@@ -154,11 +167,67 @@ export default function PainelDenuncias() {
     setDenunciaSelecionada(null);
   };
 
+  /* 👉 ADICIONE AQUI */
+  function abrirModalPunicoes(denuncia) {
+    setDenunciaParaPunicao(denuncia);
+    setModalPunicoesAberto(true);
+  }
+
+  function fecharModalPunicoes() {
+    setModalPunicoesAberto(false);
+    setDenunciaParaPunicao(null);
+  }
+
   const atualizarDenuncia = (denunciaAtualizada) => {
     setDenuncias((prev) =>
       prev.map((d) => (d.id === denunciaAtualizada.id ? denunciaAtualizada : d))
     );
   };
+
+  async function marcarComoAnalisando(denuncia) {
+  try {
+    const resp = await marcarDenunciaComoAnalisando(denuncia.id);
+
+    atualizarDenuncia({
+      ...denuncia,
+      status: "Analisando"
+    });
+  } catch (e) {
+    console.error("Erro ao marcar como analisando:", e);
+    alert("Não foi possível marcar como analisando.");
+  }
+}
+
+async function marcarComoProcedente(denuncia) {
+  try {
+    const resp = await marcarDenunciaComoProcedente(denuncia.id, "");
+
+    atualizarDenuncia({
+      ...denuncia,
+      status: "Resolvida",
+      resposta_admin: resp.resposta_admin || ""
+    });
+  } catch (e) {
+    console.error("Erro ao marcar como procedente:", e);
+    alert("Não foi possível marcar como procedente.");
+  }
+}
+
+async function marcarComoImprocedente(denuncia) {
+  try {
+    const resp = await marcarDenunciaComoImprocedente(denuncia.id, "");
+
+    atualizarDenuncia({
+      ...denuncia,
+      status: "Resolvida",
+      resposta_admin: resp.resposta_admin || ""
+    });
+  } catch (e) {
+    console.error("Erro ao marcar como improcedente:", e);
+    alert("Não foi possível marcar como improcedente.");
+  }
+}
+
 
   // Funções de paginação
   const anterior = () => {
@@ -429,6 +498,7 @@ export default function PainelDenuncias() {
 
                     {/* Botões de Ação */}
                     <div className="denuncia-actions">
+                      {/* Botão para responder denúncia */}
                       <button
                         className="btn-responder"
                         onClick={() => abrirModal(denuncia)}
@@ -436,6 +506,49 @@ export default function PainelDenuncias() {
                         <i className={denuncia.resposta_admin ? "bi bi-pencil" : "bi bi-chat-dots"}></i>
                         {denuncia.resposta_admin ? "Editar Resposta" : "Responder Denúncia"}
                       </button>
+
+                      {/* 🔥 Botões administrativos — apenas para admins */}
+                      {usuario?.is_superuser && (
+                        <div className="admin-buttons">
+                          
+                          {/* 🔵 MARCAR COMO ANALISANDO */}
+                          <button
+                            className="btn-admin btn-analise"
+                            onClick={() => marcarComoAnalisando(denuncia)}
+                          >
+                            <i className="bi bi-search"></i>
+                            Analisar
+                          </button>
+
+                          {/* 🟡 PROCEDENTE */}
+                          <button
+                            className="btn-admin btn-procedente"
+                            onClick={() => marcarComoProcedente(denuncia)}
+                          >
+                            <i className="bi bi-check-circle"></i>
+                            Procedente
+                          </button>
+
+                          {/* 🔴 IMPROCEDENTE */}
+                          <button
+                            className="btn-admin btn-improcedente"
+                            onClick={() => marcarComoImprocedente(denuncia)}
+                          >
+                            <i className="bi bi-x-circle"></i>
+                            Improcedente
+                          </button>
+                        </div>
+                      )}
+
+                      {usuario?.is_superuser && denuncia.status === "Resolvida" && (
+                        <button
+                          className="btn-admin btn-punir"
+                          onClick={() => abrirModalPunicoes(denuncia)}
+                        >
+                          <i className="bi bi-gavel"></i>
+                          Punir Usuário
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -479,6 +592,15 @@ export default function PainelDenuncias() {
             onAtualizar={atualizarDenuncia}
           />
         )}
+
+        {modalPunicoesAberto && denunciaParaPunicao && (
+          <ModalPunicoes
+            denuncia={denunciaParaPunicao}
+            onClose={fecharModalPunicoes}
+            onPunicaoAplicada={atualizarDenuncia}
+          />
+        )}
+
       </div>
     </div>
   );

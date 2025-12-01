@@ -1,0 +1,228 @@
+/* src/styles/ModalPunicoes.css */
+/* ==========================================
+   ESTILO PREMIUM — IDÊNTICO AO MODAL ORIGINAL
+   ========================================== */
+
+/* ==============================
+   OVERLAY / FUNDO ESCURECIDO
+   ============================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+  backdrop-filter: blur(8px);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==============================
+   CAIXA DO MODAL
+   ============================== */
+.modal-content {
+  background: var(--superficie-card);
+  width: 95%;
+  max-width: 650px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--sombra-xl);
+  border: 1px solid var(--borda-light);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+  position: relative;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Barra superior colorida (vermelho, por ser punição) */
+.modal-content::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--cor-erro) 0%, #DC2626 100%);
+}
+
+/* ==============================
+   HEADER
+   ============================== */
+.modal-header {
+  padding: var(--space-xl);
+  background: var(--superficie-hover);
+  border-bottom: 1px solid var(--borda-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--cor-secundaria);
+  display: flex;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  width: 40px;
+  height: 40px;
+  color: var(--cor-texto-light);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: var(--transition-fast);
+}
+
+.close-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--cor-erro);
+  transform: scale(1.1);
+}
+
+/* ==============================
+   BODY / CAMPOS
+   ============================== */
+.modal-body {
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  color: var(--cor-texto);
+}
+
+.modal-body p {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 1rem;
+}
+
+.modal-body strong {
+  color: var(--cor-secundaria);
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--cor-texto-light);
+  margin-bottom: var(--space-xs);
+}
+
+.form-select,
+.form-control {
+  width: 100%;
+  padding: var(--space-md);
+  border: 2px solid var(--borda-light);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  background: var(--superficie-card);
+  color: var(--cor-texto);
+  transition: var(--transition-fast);
+}
+
+.form-select:focus,
+.form-control:focus {
+  outline: none;
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+/* Textarea */
+.form-control {
+  resize: vertical;
+  min-height: 110px;
+  line-height: 1.4;
+}
+
+/* ==============================
+   FOOTER / BOTÕES
+   ============================== */
+.modal-footer {
+  padding: var(--space-xl);
+  background: var(--superficie-hover);
+  border-top: 1px solid var(--borda-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+}
+
+.modal-footer button {
+  padding: var(--space-md) var(--space-lg);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--sombra-sm);
+  transition: var(--transition-normal);
+}
+
+/* Botão cancelar */
+.btn-secondary {
+  background: var(--superficie-card);
+  border: 2px solid var(--borda-medium);
+  color: var(--cor-texto);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--superficie-hover);
+  color: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+}
+
+/* Botão aplicar punição */
+.btn-danger {
+  background: linear-gradient(135deg, var(--cor-erro), #b91c1c);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: var(--sombra-md);
+}
+
+/* Loading */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: var(--space-md);
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: var(--space-lg);
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+}

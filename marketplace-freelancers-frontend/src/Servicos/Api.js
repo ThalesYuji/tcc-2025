@@ -5,137 +5,166 @@ const IS_PROD = process.env.NODE_ENV === "production";
 const SUSP_HEADER = "x-blocked-by-suspension";
 const SUSP_KEY = "account_suspended";
 
-// 🔧 Base da API
+// =============================================================
+// 🔧 BASE DA API
+// =============================================================
 const api = axios.create({
   baseURL: "https://web-production-385bb.up.railway.app/api",
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
 
-// --- Helpers para token ---
+// =============================================================
+// 🔐 TOKEN
+// =============================================================
 export function setAuthToken(token) {
   if (token) localStorage.setItem("token", token);
   else localStorage.removeItem("token");
 }
+
 function getAuthToken() {
   return localStorage.getItem("token");
 }
 
-// --- Helpers do modo leitura ---
+// =============================================================
+// 🚫 MODO LEITURA (SUSPENSÃO)
+// =============================================================
+
 export function getSuspendedFlag() {
   return localStorage.getItem(SUSP_KEY) === "1";
 }
+
 export function setSuspendedFlag(value) {
   if (value) localStorage.setItem(SUSP_KEY, "1");
   else localStorage.removeItem(SUSP_KEY);
 }
+
 function notifySuspension(message = "Sua conta está desativada (modo leitura).") {
   try {
-    // Evento global: ouça em qualquer lugar do app (window.addEventListener)
     window.dispatchEvent(new CustomEvent("account:suspended", { detail: { message } }));
   } catch {}
   if (!IS_PROD) console.warn("🚫 Modo leitura acionado:", message);
 }
 
-// 🔹 Interceptor de requisição: adiciona JWT e faz log
+// =============================================================
+// 🔄 INTERCEPTOR DE REQUEST
+// =============================================================
 api.interceptors.request.use(
   (config) => {
     const token = getAuthToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
-
-    if (!IS_PROD) {
-      console.log("📡 Requisição:", {
-        method: (config.method || "").toUpperCase(),
-        url: config.url,
-        fullURL: `${config.baseURL || ""}${config.url || ""}`,
-        hasToken: !!token,
-      });
-    }
     return config;
   },
-  (error) => {
-    if (!IS_PROD) console.error("❌ Erro no interceptor de request:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// 🔹 Interceptor de resposta: logs + tratamento 401/403 suspensão
+// =============================================================
+// 🔄 INTERCEPTOR DE RESPOSTA
+// =============================================================
 api.interceptors.response.use(
-  (response) => {
-    const url = response?.config?.url || "";
-
-    if (!IS_PROD) {
-      console.log("✅ Resposta OK:", { status: response.status, url });
-      if (url.includes("/usuarios/me/")) console.log("👤 ME (payload):", response.data);
-      if (url.includes("/perfil_publico/")) console.log("🪪 Perfil Público (payload):", response.data);
-    }
-
-    // Se resposta OK, e eventualmente estava marcado como suspenso mas voltou a funcionar,
-    // limpamos o flag quando vier de endpoints de reativação (opcional)
-    return response;
-  },
+  (response) => response,
   (error) => {
     const status = error?.response?.status;
-    const url = error?.config?.url;
     const headers = error?.response?.headers || {};
     const data = error?.response?.data;
 
-    if (error.response) {
-      if (!IS_PROD) {
-        console.error("❌ Erro HTTP:", { status, url, data });
+    // 401 — token expirado
+    if (status === 401) {
+      setAuthToken(null);
+      const cur = window.location.pathname;
+      if (!["/login", "/cadastro", "/esqueci-senha"].includes(cur)) {
+        window.location.href = "/login";
       }
+    }
 
-      // 🔒 401 → token inválido/expirado
-      if (status === 401) {
-        const pathname = window.location.pathname || "/";
-        const publicPaths = ["/login", "/cadastro", "/esqueci-senha", "/reset-password", "/reset-password/"];
-        setAuthToken(null); // limpa o token
-        const isPublic = publicPaths.some((p) => pathname.startsWith(p));
-        if (!isPublic) window.location.href = "/login";
-      }
-
-      // 🚫 403 por conta desativada (modo leitura)
-      const blockedBySuspension = String(headers[SUSP_HEADER]) === "true";
-      if (status === 403 && blockedBySuspension) {
-        // Guarda flag local (permite esconder botões de ação no UI)
-        setSuspendedFlag(true);
-
-        // Mensagem amigável (backend manda {"detail": "..."} pelo middleware)
-        const msg =
-          (data && (data.detail || data.message || data.erro || data.error)) ||
-          "Sua conta está desativada (modo leitura).";
-
-        // Dispara evento global para UI mostrar toast/alerta
-        notifySuspension(msg);
-
-        // Não redireciono automaticamente: deixo a UI decidir.
-        // Se quiser redirecionar para /minha-conta, ative a linha abaixo:
-        // if (!window.location.pathname.startsWith("/minha-conta")) window.location.href = "/minha-conta";
-      }
-    } else if (error.request) {
-      if (!IS_PROD) console.error("📡 Servidor não respondeu:", error.request);
-    } else {
-      if (!IS_PROD) console.error("⚙️ Erro na configuração:", error.message);
+    // 403 — conta em modo leitura
+    const blocked = String(headers[SUSP_HEADER]) === "true";
+    if (status === 403 && blocked) {
+      setSuspendedFlag(true);
+      const msg =
+        data?.detail ||
+        data?.message ||
+        data?.erro ||
+        data?.error ||
+        "Sua conta está desativada (modo leitura).";
+      notifySuspension(msg);
     }
 
     return Promise.reject(error);
   }
 );
 
-// ===== Helpers de conta (endpoints de alternância) =====
-// Observação: esses endpoints serão criados no backend em /usuarios/views.py
+// =============================================================
+// 🧍 CONTROLE DE CONTA (self)
+// =============================================================
 export async function desativarConta() {
   const resp = await api.post("/usuarios/me/desativar/");
-  // Se deu certo, já marcamos flag local
   setSuspendedFlag(true);
   return resp?.data;
 }
 
 export async function reativarConta() {
   const resp = await api.post("/usuarios/me/reativar/");
-  // Se deu certo, limpamos flag local
   setSuspendedFlag(false);
   return resp?.data;
+}
+
+// =============================================================
+// 🛡️ DENÚNCIAS — MODERAÇÃO
+// =============================================================
+export async function marcarDenunciaComoAnalisando(id) {
+  const resp = await api.patch(`/denuncias/${id}/marcar-analisando/`);
+  return resp.data;
+}
+
+export async function marcarDenunciaComoProcedente(id, resposta_admin = "") {
+  const resp = await api.patch(`/denuncias/${id}/marcar-procedente/`, {
+    resposta_admin,
+  });
+  return resp.data;
+}
+
+export async function marcarDenunciaComoImprocedente(id, resposta_admin = "") {
+  const resp = await api.patch(`/denuncias/${id}/marcar-improcedente/`, {
+    resposta_admin,
+  });
+  return resp.data;
+}
+
+// =============================================================
+// 🔥 PUNIÇÕES — ADMIN
+// =============================================================
+export async function aplicarAdvertencia(usuario_id, motivo, denuncia_id = null) {
+  const resp = await api.post("/punicoes/advertir/", {
+    usuario_id,
+    motivo,
+    denuncia_id,
+  });
+  return resp.data;
+}
+
+export async function aplicarSuspensao(usuario_id, motivo, dias, denuncia_id = null) {
+  const resp = await api.post("/punicoes/suspender/", {
+    usuario_id,
+    motivo,
+    dias,
+    denuncia_id,
+  });
+  return resp.data;
+}
+
+export async function aplicarBanimento(usuario_id, motivo, denuncia_id = null) {
+  const resp = await api.post("/punicoes/banir/", {
+    usuario_id,
+    motivo,
+    denuncia_id,
+  });
+  return resp.data;
+}
+
+export async function removerSuspensao(usuario_id) {
+  const resp = await api.post("/punicoes/remover-suspensao/", { usuario_id });
+  return resp.data;
 }
 
 export default api;
