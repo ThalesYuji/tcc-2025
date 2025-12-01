@@ -153,6 +153,7 @@ export default function PainelDenuncias() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     carregarDenuncias();
   }, []);
@@ -185,33 +186,33 @@ export default function PainelDenuncias() {
   };
 
   async function marcarComoAnalisando(denuncia) {
-  try {
-    const resp = await marcarDenunciaComoAnalisando(denuncia.id);
+    try {
+      await marcarDenunciaComoAnalisando(denuncia.id);
 
-    atualizarDenuncia({
-      ...denuncia,
-      status: "Analisando"
-    });
-  } catch (e) {
-    console.error("Erro ao marcar como analisando:", e);
-    alert("Não foi possível marcar como analisando.");
+      atualizarDenuncia({
+        ...denuncia,
+        status: "Analisando"
+      });
+    } catch (e) {
+      console.error("Erro ao marcar como analisando:", e);
+      alert("Não foi possível marcar como analisando.");
+    }
   }
-}
 
-async function marcarComoProcedente(denuncia) {
-  try {
-    const resp = await marcarDenunciaComoProcedente(denuncia.id, "");
+  async function marcarComoProcedente(denuncia) {
+    try {
+      const resp = await marcarDenunciaComoProcedente(denuncia.id, "");
 
-    atualizarDenuncia({
-      ...denuncia,
-      status: "Resolvida",
-      resposta_admin: resp.resposta_admin || ""
-    });
-  } catch (e) {
-    console.error("Erro ao marcar como procedente:", e);
-    alert("Não foi possível marcar como procedente.");
+      atualizarDenuncia({
+        ...denuncia,
+        status: "Resolvida",
+        resposta_admin: resp.resposta_admin || ""
+      });
+    } catch (e) {
+      console.error("Erro ao marcar como procedente:", e);
+      alert("Não foi possível marcar como procedente.");
+    }
   }
-}
 
 async function marcarComoImprocedente(denuncia) {
   try {

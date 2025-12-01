@@ -5,7 +5,7 @@ import {
   aplicarSuspensao,
   aplicarBanimento
 } from "../Servicos/Api";
-import "./ModalPunicoes.css";
+import "../styles/ModalPunicoes.css";
 
 export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) {
   const [tipo, setTipo] = useState("advertencia");
@@ -50,22 +50,21 @@ export default function ModalPunicoes({ denuncia, onClose, onPunicaoAplicada }) 
     setLoading(true);
 
     try {
-      let resp = null;
 
-      if (tipo === "advertencia") {
-        resp = await aplicarAdvertencia(usuarioPunidoId, motivo, denuncia.id);
-      } 
-      else if (tipo === "suspensao") {
-        if (!dias || dias < 1) {
-          alert("Informe uma quantidade válida de dias.");
-          setLoading(false);
-          return;
-        }
-        resp = await aplicarSuspensao(usuarioPunidoId, motivo, dias, denuncia.id);
-      } 
-      else if (tipo === "banimento") {
-        resp = await aplicarBanimento(usuarioPunidoId, motivo, denuncia.id);
-      }
+    if (tipo === "advertencia") {
+    await aplicarAdvertencia(usuarioPunidoId, motivo, denuncia.id);
+    } 
+    else if (tipo === "suspensao") {
+    if (!dias || dias < 1) {
+        alert("Informe uma quantidade válida de dias.");
+        setLoading(false);
+        return;
+    }
+    await aplicarSuspensao(usuarioPunidoId, motivo, dias, denuncia.id);
+    } 
+    else if (tipo === "banimento") {
+    await aplicarBanimento(usuarioPunidoId, motivo, denuncia.id);
+    }
 
       alert("Punição aplicada com sucesso!");
 
