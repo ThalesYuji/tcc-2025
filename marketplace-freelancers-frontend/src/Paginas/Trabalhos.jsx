@@ -30,8 +30,14 @@ const Trabalhos = () => {
 
   useEffect(() => {
     carregarTrabalhos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginaAtual]);
+
+  // Quando filtros forem aplicados
+  useEffect(() => {
+    if (filtrosAplicados) {
+      carregarTrabalhos();
+    }
+  }, [filtrosAplicados]);
 
   const carregarTrabalhos = async () => {
     try {
@@ -72,9 +78,8 @@ const Trabalhos = () => {
 
   const aplicarFiltros = (e) => {
     e.preventDefault();
-    setPaginaAtual(1);
     setFiltrosAplicados(true);
-    carregarTrabalhos();
+    setPaginaAtual(1);
   };
 
   const limparFiltros = () => {
