@@ -10,7 +10,7 @@ from .serializers import PunicaoSerializer
 
 
 # ============================================================
-# 🔹 1) LISTAR HISTÓRICO COMPLETO (APENAS ATIVAS!)
+# 🔹 LISTAR HISTÓRICO COMPLETO (APENAS ATIVAS)
 # ============================================================
 class HistoricoPunicoesView(APIView):
     permission_classes = [IsAdminUser]
@@ -18,7 +18,7 @@ class HistoricoPunicoesView(APIView):
     def get(self, request):
         punicoes = (
             Punicao.objects
-            .filter(ativo=True)                    # ← AQUI!!!
+            .filter(ativo=True)
             .select_related(
                 "usuario_punido",
                 "admin_responsavel",
@@ -31,7 +31,7 @@ class HistoricoPunicoesView(APIView):
 
 
 # ============================================================
-# 🔹 2) LISTAR HISTÓRICO POR USUÁRIO (APENAS ATIVAS!)
+# 🔹 HISTÓRICO POR USUÁRIO (APENAS ATIVAS)
 # ============================================================
 class HistoricoPorUsuarioView(APIView):
     permission_classes = [IsAdminUser]
@@ -39,7 +39,7 @@ class HistoricoPorUsuarioView(APIView):
     def get(self, request, usuario_id):
         punicoes = (
             Punicao.objects
-            .filter(usuario_punido_id=usuario_id, ativo=True)   # ← AQUI!!!
+            .filter(usuario_punido_id=usuario_id, ativo=True)
             .select_related(
                 "usuario_punido",
                 "admin_responsavel",
@@ -52,7 +52,7 @@ class HistoricoPorUsuarioView(APIView):
 
 
 # ============================================================
-# 🔹 3) REMOVER PUNIÇÃO (REVERSÃO)
+# 🔹 REMOVER / DESFAZER PUNIÇÃO
 # ============================================================
 class RemoverPunicaoView(APIView):
     permission_classes = [IsAdminUser]
@@ -78,12 +78,12 @@ class RemoverPunicaoView(APIView):
             usuario.is_suspended_admin = False
             usuario.suspenso_ate = None
             usuario.motivo_suspensao_admin = None
-            usuario.save(update_fields=["is_suspended_admin", "suspenso_ate", "motivo_suspensao_admin"])
+            usuario.save()
 
         if punicao.tipo == "banimento":
             usuario.banido = False
             usuario.banido_em = None
             usuario.motivo_banimento = None
-            usuario.save(update_fields=["banido", "banido_em", "motivo_banimento"])
+            usuario.save()
 
         return Response({"mensagem": "Punição removida com sucesso."})

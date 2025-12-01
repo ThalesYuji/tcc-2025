@@ -1,12 +1,18 @@
+# punicoes/urls.py
+
 from django.urls import path
+
 from .views import (
     AplicarAdvertenciaView,
     AplicarSuspensaoView,
     AplicarBanimentoView,
     RemoverSuspensaoView,
+)
+
+from .views_historico import (
     HistoricoPunicoesView,
     HistoricoPorUsuarioView,
-    RemoverPunicaoView
+    RemoverPunicaoView,
 )
 
 urlpatterns = [
@@ -15,12 +21,10 @@ urlpatterns = [
     path("banir/", AplicarBanimentoView.as_view()),
     path("remover-suspensao/", RemoverSuspensaoView.as_view()),
 
-    # 🔥 Histórico completo
+    # Histórico
     path("historico/", HistoricoPunicoesView.as_view()),
-
-    # 🔍 Histórico por usuário específico
     path("historico/<int:usuario_id>/", HistoricoPorUsuarioView.as_view()),
 
-    # ❌ Remover registro (delete)
+    # Remover punição
     path("remover/<int:punicao_id>/", RemoverPunicaoView.as_view()),
 ]
