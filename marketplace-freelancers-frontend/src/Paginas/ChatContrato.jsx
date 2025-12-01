@@ -400,7 +400,7 @@ export default function ChatContrato() {
                     <i className="bi bi-paperclip"></i>
                     <input
                       type="file"
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept=".jpg,.jpeg,.png,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                       onChange={handleAnexoChange}
                       disabled={enviando || statusContrato === "concluido"}
                     />
@@ -488,7 +488,7 @@ export default function ChatContrato() {
                   {/* Upload de novo anexo */}
                   <input
                     type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
+                    accept=".jpg,.jpeg,.png,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                     className="form-control mt-2"
                     onChange={(e) =>
                       setModalEdicao({ ...modalEdicao, novoAnexo: e.target.files[0] })

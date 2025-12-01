@@ -5,10 +5,18 @@ from .models import Mensagem
 from contratos.models import Contrato
 import os
 
-# 🔹 Configurações de upload
-ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".pdf"}
-MAX_FILE_MB = 5
+# 🔥 Extensões permitidas
+ALLOWED_EXTS = {
+    ".jpg", ".jpeg", ".png", ".pdf",
+    ".zip", ".rar",
+    ".doc", ".docx",
+    ".xls", ".xlsx",
+    ".ppt", ".pptx",
+    ".txt", ".csv",
+}
 
+# 🔥 Tamanho máximo em MB
+MAX_FILE_MB = 20
 
 class MensagemSerializer(serializers.ModelSerializer):
     """

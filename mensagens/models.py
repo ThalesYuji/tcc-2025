@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from usuarios.models import Usuario
 from contratos.models import Contrato
+from freelancer.storage import MensagensRawStorage
 import os
 
 
@@ -55,9 +56,10 @@ class Mensagem(models.Model):
 
     anexo = models.FileField(
         upload_to=mensagem_upload_to,
+        storage=MensagensRawStorage(),
         null=True,
         blank=True,
-        help_text="Anexo opcional (imagens/PDF).",
+        help_text="Anexo opcional (ZIP, RAR, DOCX, XLSX, imagens, PDF e outros).",
     )
 
     data_envio = models.DateTimeField(auto_now_add=True)
